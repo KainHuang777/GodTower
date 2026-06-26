@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>五行迷宮塔防 - Wuxing Maze TD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --panel-bg: rgba(30, 41, 59, 0.85);
+      --border-color: #334155;
+      --text-color: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --danger: #ef4444;
+      --accent: #10b981;
+      --gold: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-color);
+      color: var(--text-color);
+      font-family: 'Outfit', -apple-system, sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; overflow: hidden; padding: 10px;
+    }
+
+    /* === 場景容器 === */
+    .scene { display: none; position: absolute; inset: 0; z-index: 10; }
+    .scene.active { display: flex; align-items: center; justify-content: center; }
+
+    /* === 主介面 === */
+    #mainMenu {
+      flex-direction: column; align-items: center; gap: 30px;
+      background: radial-gradient(ellipse at center, #1e293b 0%, #0f172a 70%);
+    }
+    .menu-title {
+      font-size: 3rem; font-weight: 700; text-align: center;
+      background: linear-gradient(135deg, #f97316, #ef4444, #a855f7, #6366f1, #38bdf8);
+      background-size: 300% 300%;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      animation: gradientShift 4s ease infinite;
+    }
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .menu-subtitle { color: var(--text-muted); font-size: 1.1rem; margin-top: -10px; }
+    .menu-buttons { display: flex; flex-direction: column; gap: 14px; min-width: 260px; }
+    .menu-btn {
+      background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-color);
+      padding: 14px 32px; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 1.1rem;
+      transition: all 0.25s ease; text-align: center; backdrop-filter: blur(8px);
+    }
+    .menu-btn:hover { background: #334155; border-color: #475569; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+    .menu-btn.primary { background: var(--primary); border-color: var(--primary-hover); }
+    .menu-btn.primary:hover { background: var(--primary-hover); }
+    .menu-talent-info { color: var(--gold); font-size: 0.9rem; }
+
+    /* === 天賦頁 === */
+    #talentScreen {
+      flex-direction: column; align-items: center; gap: 20px;
+      background: radial-gradient(ellipse at center, #1e293b 0%, #0f172a 70%);
+      padding: 40px; overflow-y: auto;
+    }
+    .talent-header { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 900px; }
+    .talent-header h2 { font-size: 1.8rem; background: linear-gradient(to right, #fbbf24, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .talent-points-display { font-size: 1.1rem; color: var(--gold); }
+    .talent-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; max-width: 900px; width: 100%;
+    }
+    .talent-category-title { grid-column: 1 / -1; font-size: 1rem; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-top: 10px; }
+    .talent-node {
+      background: #1e293b; border: 2px solid var(--border-color); border-radius: 10px;
+      padding: 12px; cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .talent-node:hover { border-color: #475569; transform: translateY(-1px); }
+    .talent-node.unlocked { border-color: var(--accent); background: rgba(16, 185, 129, 0.1); }
+    .talent-node.available { border-color: var(--gold); box-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
+    .talent-node.locked { opacity: 0.5; cursor: not-allowed; }
+    .talent-node .t-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+    .talent-node .t-desc { font-size: 0.75rem; color: var(--text-muted); }
+    .talent-node .t-cost { font-size: 0.8rem; color: var(--gold); margin-top: 6px; }
+
+    /* === 結算畫面 === */
+    #gameOverScreen {
+      flex-direction: column; align-items: center; gap: 24px;
+      background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px);
+    }
+    .gameover-title { font-size: 2.2rem; font-weight: 700; }
+    .gameover-title.victory { color: var(--accent); }
+    .gameover-title.defeat { color: var(--danger); }
+    .gameover-stats { display: flex; flex-direction: column; gap: 8px; align-items: center; font-size: 1.1rem; }
+    .gameover-stats .highlight { color: var(--gold); font-weight: 600; font-size: 1.3rem; }
+
+    /* === 戰鬥場景 === */
+    .game-container {
+      position: relative; display: flex; flex-direction: column; gap: 10px;
+      background: var(--panel-bg); backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color); border-radius: 14px; padding: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+    }
+    .header-panel { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+    .stats { display: flex; gap: 18px; font-weight: 600; font-size: 1rem; }
+    .stat-item span:first-child { color: var(--text-muted); font-size: 0.85rem; font-weight: 400; margin-right: 3px; }
+    .stat-val-hp { color: var(--danger); }
+    .stat-val-gold { color: var(--gold); }
+    .stat-val-wave { color: var(--accent); }
+    h1 { font-size: 1.15rem; font-weight: 700; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    canvas { background: #020617; border: 1px solid var(--border-color); border-radius: 6px; display: block; cursor: crosshair; }
+
+    .control-panel { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .tools { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn {
+      background: #1e293b; border: 1px solid var(--border-color); color: var(--text-color);
+      padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 0.8rem;
+      transition: all 0.2s ease; display: flex; align-items: center; gap: 4px; white-space: nowrap;
+    }
+    .btn:hover { background: #334155; border-color: #475569; }
+    .btn.active { background: var(--primary); border-color: var(--primary-hover); box-shadow: 0 0 8px rgba(99,102,241,0.4); }
+    .btn-action { background: var(--primary); border-color: var(--primary-hover); }
+    .btn-action:hover { background: var(--primary-hover); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-merge { background: #7c3aed; border-color: #6d28d9; }
+    .btn-merge:hover { background: #6d28d9; }
+    .btn-merge.active { background: #5b21b6; box-shadow: 0 0 10px rgba(139,92,246,0.5); }
+    .btn-quit { background: transparent; border-color: var(--danger); color: var(--danger); }
+    .btn-quit:hover { background: rgba(239,68,68,0.1); }
+
+    .instructions { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 2px; }
+    .merge-hint { color: #c084fc; font-weight: 500; }
+  </style>
+</head>
+<body>
+
+  <!-- ===== 場景 1: 主介面 ===== -->
+  <div id="mainMenu" class="scene active">
+    <div class="menu-title">五行迷宮塔防</div>
+    <div class="menu-subtitle">Wuxing Maze Tower Defense</div>
+    <div class="menu-buttons">
+      <button id="btnStartGame" class="menu-btn primary">⚔️ 開始遊戲</button>
+      <button id="btnTalent" class="menu-btn">🌟 天賦系統</button>
+      <div id="menuTalentInfo" class="menu-talent-info" style="text-align:center;"></div>
+    </div>
+  </div>
+
+  <!-- ===== 場景 2: 天賦頁 ===== -->
+  <div id="talentScreen" class="scene">
+    <div class="talent-header">
+      <h2>🌟 天賦系統</h2>
+      <div>
+        <span class="talent-points-display">可用天賦點: <span id="talentPointsVal">0</span></span>
+        <button id="btnResetTalents" class="btn" style="margin-left:12px;">🔄 重置天賦</button>
+      </div>
+    </div>
+    <div id="talentGrid" class="talent-grid">
+      <!-- 動態生成 -->
+    </div>
+    <button id="btnBackFromTalent" class="menu-btn" style="margin-top:20px;">← 返回主介面</button>
+  </div>
+
+  <!-- ===== 場景 3: 結算畫面 ===== -->
+  <div id="gameOverScreen" class="scene">
+    <div id="gameoverTitle" class="gameover-title defeat">防禦失敗</div>
+    <div class="gameover-stats">
+      <div>存活波次: <span id="goWaveVal" class="highlight">0</span></div>
+      <div>擊殺怪物: <span id="goKillVal" class="highlight">0</span></div>
+      <div>獲得天賦點: <span id="goTalentVal" class="highlight">0</span></div>
+    </div>
+    <button id="btnBackToMenu" class="menu-btn primary">返回主介面</button>
+  </div>
+
+  <!-- ===== 場景 4: 戰鬥 (Canvas) ===== -->
+  <div id="battleScene" class="scene">
+    <div class="game-container">
+      <div class="header-panel">
+        <h1>五行迷宮塔防</h1>
+        <div class="stats">
+          <div class="stat-item"><span>HP:</span><span id="hpVal" class="stat-val-hp">20</span></div>
+          <div class="stat-item"><span>GOLD:</span><span id="goldVal" class="stat-val-gold">60</span></div>
+          <div class="stat-item"><span>WAVE:</span><span id="waveVal" class="stat-val-wave">0</span></div>
+          <div class="stat-item"><span>KILL:</span><span id="killVal" class="stat-val-wave">0</span></div>
+        </div>
+      </div>
+      <canvas id="gameCanvas" width="1280" height="640"></canvas>
+      <div class="control-panel">
+        <div class="tools" id="towerButtons">
+          <!-- 動態生成砲台按鈕 -->
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button id="btnMerge" class="btn btn-merge" data-tool="merge">🔮 合成</button>
+          <button id="btnSell" class="btn" data-tool="sell">💰 拆除</button>
+          <button id="btnShowRoute" class="btn" style="background:#0284c7; border-color:#0369a1;">🗺️ 路線預覽</button>
+          <button id="btnStartWave" class="btn btn-action">⚔️ 下一波</button>
+          <button id="btnQuitBattle" class="btn btn-quit">✕ 放棄</button>
+        </div>
+      </div>
+      <div id="instructionText" class="instructions">
+        選擇砲台後點擊地圖擺放。怪物必須依序碰觸 <span style="color:#f59e0b">❶❷❸❹❺</span> 檢查點，再抵達基地。用砲台築迷宮讓怪物繞最遠的路！
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
