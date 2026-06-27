@@ -2,6 +2,8 @@
 // src/talent.ts — 天賦樹定義、localStorage 持久化
 // ============================================================
 
+import type { Element } from './towers';
+
 const STORAGE_KEY = 'checkpoint_maze_td_talent';
 
 /** 天賦節點 ID */
@@ -56,12 +58,6 @@ export interface TalentSaveData {
   talentLevels: Record<TalentId, number>;
   unlockedTalents?: TalentId[]; // 舊資料相容用
 }
-
-const DEFAULT_SAVE: TalentSaveData = {
-  totalTalentPoints: 0,
-  spentTalentPoints: 0,
-  talentLevels: {} as Record<TalentId, number>
-};
 
 /** 從 localStorage 載入天賦資料 */
 export function loadTalentData(): TalentSaveData {

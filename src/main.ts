@@ -4,7 +4,7 @@
 
 import { BASE_TOWERS, getTowerDef, getSameMergeResult, getCrossRecipeResult, getElementBonus, getSellPrice, type TowerDef, type TowerTypeId, type Element } from './towers';
 import { ENEMY_DEFS, getWaveConfig, type EnemyTypeId } from './enemies';
-import { loadTalentData, saveTalentData, getAvailablePoints, canUnlockTalent, unlockTalent, calcTalentPointsEarned, addTalentPoints, getBaseHP, getStartGold, getDamageMultiplier, getTowerElementDamageMultiplier, getFireRateMultiplier, isTowerUnlocked, resetTalents, TALENT_TREE, type TalentSaveData, type TalentId } from './talent';
+import { loadTalentData, getAvailablePoints, canUnlockTalent, unlockTalent, calcTalentPointsEarned, addTalentPoints, getBaseHP, getStartGold, getDamageMultiplier, getTowerElementDamageMultiplier, getFireRateMultiplier, isTowerUnlocked, resetTalents, TALENT_TREE, type TalentSaveData } from './talent';
 import { initSprites, drawEnemySprite, drawTowerSprite } from './sprites';
 
 // --- 常數 ---
@@ -32,6 +32,9 @@ let wave = 0;
 let killCount = 0;
 let isWaveActive = false;
 let talentData: TalentSaveData;
+let totalDamageDealt = 0;       // 本局總傷害
+let currentKillStreak = 0;      // 當前連殺計數（波次內）
+let maxKillStreak = 0;          // 最高連殺記錄
 const grid: number[][] = Array.from({ length: COLS }, () => Array(ROWS).fill(0));
 
 // --- 實體定義 ---
@@ -73,6 +76,7 @@ interface Bullet {
   critChance?: number; critMultiplier?: number;
   flyingBonus?: number;
   healBase?: number;
+  spawnWall?: boolean;
 }
 
 interface FloatingText {
@@ -80,10 +84,15 @@ interface FloatingText {
   fontSize?: number;
 }
 
+interface TempWall {
+  x: number; y: number; lifetime: number; // 剩餘幀數
+}
+
 let enemies: Enemy[] = [];
 let towers: Tower[] = [];
 let bullets: Bullet[] = [];
 let floatingTexts: FloatingText[] = [];
+let tempWalls: TempWall[] = [];
 let nextEnemyId = 1;
 let nextTowerId = 1;
 let selectedTool: string = 'earth'; // 預設選擇岩壁塔
@@ -92,6 +101,10 @@ let mergeFirstTower: Tower | null = null;
 let spawnTimers: ReturnType<typeof setInterval>[] = [];
 let routePreviewTimer = 0;
 let cachedPreviewRoute: Point[] = [];
+
+// --- 波次進度追蹤 ---
+let waveTotal = 0;    // 本波應生成總怪物數
+let waveSpawned = 0;  // 本波已生成怪物數
 
 // --- DOM 元素 ---
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -107,6 +120,9 @@ const btnQuitBattle = document.getElementById('btnQuitBattle')!;
 const btnShowRoute = document.getElementById('btnShowRoute')!;
 const instructionText = document.getElementById('instructionText')!;
 const towerButtonsContainer = document.getElementById('towerButtons')!;
+const waveProgressFill = document.getElementById('waveProgressFill')!;
+const waveProgressLabel = document.getElementById('waveProgressLabel')!;
+const waveEnemyCount = document.getElementById('waveEnemyCount')!;
 
 // 場景元素
 const mainMenuEl = document.getElementById('mainMenu')!;
@@ -221,16 +237,22 @@ function startBattle() {
   wave = 0;
   killCount = 0;
   isWaveActive = false;
+  totalDamageDealt = 0;
+  currentKillStreak = 0;
+  maxKillStreak = 0;
   enemies = [];
   towers = [];
   bullets = [];
   floatingTexts = [];
+  tempWalls = [];
   nextEnemyId = 1;
   nextTowerId = 1;
   mergeMode = false;
   mergeFirstTower = null;
   spawnTimers.forEach(t => clearInterval(t));
   spawnTimers = [];
+  waveTotal = 0;
+  waveSpawned = 0;
 
   // 清空網格
   for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) grid[x][y] = 0;
@@ -404,6 +426,16 @@ canvas.addEventListener('click', (e) => {
   handleBuild(gx, gy);
 });
 
+// 右鍵快速售塔
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (currentScene !== 'BATTLE') return;
+  const rect = canvas.getBoundingClientRect();
+  const gx = Math.max(0, Math.min(COLS - 1, Math.floor((e.clientX - rect.left) / TILE_SIZE)));
+  const gy = Math.max(0, Math.min(ROWS - 1, Math.floor((e.clientY - rect.top) / TILE_SIZE)));
+  handleSell(gx, gy);
+});
+
 function handleBuild(x: number, y: number) {
   if (grid[x][y] !== 0) { showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '已有建物', '#ef4444', 15); return; }
   const def = BASE_TOWERS[selectedTool];
@@ -510,6 +542,8 @@ function performMerge(tower1: Tower, tower2: Tower, resultId: TowerTypeId) {
 // 6. 波次系統
 // ============================================================
 
+const MAX_WAVES = 20; // 通關波次
+
 btnStartWave.addEventListener('click', () => {
   if (isWaveActive || currentScene !== 'BATTLE') return;
   wave++;
@@ -520,10 +554,10 @@ btnStartWave.addEventListener('click', () => {
 
 function spawnWave(waveNum: number) {
   const configs = getWaveConfig(waveNum);
-  let totalToSpawn = 0;
-  let totalSpawned = 0;
+  waveTotal = 0;
+  waveSpawned = 0;
 
-  for (const cfg of configs) totalToSpawn += cfg.count;
+  for (const cfg of configs) waveTotal += cfg.count;
 
   for (const cfg of configs) {
     let spawned = 0;
@@ -553,7 +587,7 @@ function spawnWave(waveNum: number) {
         });
       }
       spawned++;
-      totalSpawned++;
+      waveSpawned++;
     }, cfg.spawnIntervalMs);
     spawnTimers.push(timer);
   }
@@ -585,10 +619,13 @@ function updatePhysics() {
     // DOT 傷害
     if (e.dotDuration > 0) {
       e.hp -= e.dotDamage;
+      totalDamageDealt += e.dotDamage;
       e.dotDuration--;
       if (e.hp <= 0) {
         gold += e.goldAward;
         killCount++;
+        currentKillStreak++;
+        if (currentKillStreak > maxKillStreak) maxKillStreak = currentKillStreak;
         showFloat(e.x, e.y, `+${e.goldAward}g`, '#f59e0b');
         enemies.splice(i, 1);
         updateUI();
@@ -683,6 +720,7 @@ function updatePhysics() {
         critMultiplier: tower.def.critMultiplier,
         flyingBonus: tower.def.flyingBonus,
         healBase: tower.def.healBase,
+        spawnWall: tower.def.spawnWall,
       });
 
       tower.cooldown = Math.floor(tower.def.fireRate * frMult);
@@ -725,6 +763,7 @@ function updatePhysics() {
       }
 
       b.targetEnemy.hp -= dmg;
+      totalDamageDealt += dmg;
       showFloat(b.targetEnemy.x, b.targetEnemy.y - 10, `-${dmg}`, '#ef4444');
 
       // 減速效果
@@ -747,6 +786,7 @@ function updatePhysics() {
           const adist = Math.sqrt((e.x - b.targetEnemy.x) ** 2 + (e.y - b.targetEnemy.y) ** 2);
           if (adist <= aoeRange) {
             e.hp -= aoeDmg;
+            totalDamageDealt += aoeDmg;
             showFloat(e.x, e.y - 10, `-${aoeDmg}`, '#f97316');
           }
         }
@@ -757,12 +797,27 @@ function updatePhysics() {
         hp = Math.min(getBaseHP(talentData), hp + b.healBase);
       }
 
+      // 靈木塔：生成臨時障礙（在怪物當前格，持續 5 秒）
+      if (b.spawnWall) {
+        const wx = b.targetEnemy.currentGridX;
+        const wy = b.targetEnemy.currentGridY;
+        const isFreeCell = grid[wx][wy] === 0 && !tempWalls.some(w => w.x === wx && w.y === wy);
+        if (isFreeCell && validatePlacement(wx, wy)) {
+          grid[wx][wy] = 1;
+          tempWalls.push({ x: wx, y: wy, lifetime: 300 }); // 5秒 (300幀)
+          updateAllEnemyPaths();
+          showFloat(b.targetEnemy.x, b.targetEnemy.y - 16, '🌿 纏縛！', '#4ade80', 13);
+        }
+      }
+
       // 檢查目標死亡
       if (b.targetEnemy.hp <= 0) {
         const eidx = enemies.findIndex(e => e.id === b.targetEnemy.id);
         if (eidx !== -1) {
           gold += b.targetEnemy.goldAward;
           killCount++;
+          currentKillStreak++;
+          if (currentKillStreak > maxKillStreak) maxKillStreak = currentKillStreak;
           showFloat(b.targetEnemy.x, b.targetEnemy.y, `+${b.targetEnemy.goldAward}g`, '#f59e0b');
           enemies.splice(eidx, 1);
           updateUI();
@@ -795,6 +850,17 @@ function updatePhysics() {
     ft.y -= 0.5; ft.life--; ft.alpha = ft.life / 45;
     if (ft.life <= 0) floatingTexts.splice(i, 1);
   }
+
+  // 5. 臨時障礙倒計時
+  for (let i = tempWalls.length - 1; i >= 0; i--) {
+    tempWalls[i].lifetime--;
+    if (tempWalls[i].lifetime <= 0) {
+      const tw = tempWalls[i];
+      grid[tw.x][tw.y] = 0;
+      tempWalls.splice(i, 1);
+      updateAllEnemyPaths();
+    }
+  }
 }
 
 // ============================================================
@@ -816,6 +882,8 @@ function endBattle(isVictory: boolean) {
   document.getElementById('goWaveVal')!.textContent = wave.toString();
   document.getElementById('goKillVal')!.textContent = killCount.toString();
   document.getElementById('goTalentVal')!.textContent = `+${earned}`;
+  document.getElementById('goDamageVal')!.textContent = totalDamageDealt.toLocaleString();
+  document.getElementById('goStreakVal')!.textContent = maxKillStreak.toString();
 
   switchScene('GAME_OVER');
 }
@@ -823,9 +891,17 @@ function endBattle(isVictory: boolean) {
 function checkWaveEnd() {
   if (enemies.length === 0 && isWaveActive) {
     isWaveActive = false;
+    currentKillStreak = 0; // 波次間重置連殺計數
     showFloat(640, 320, '波次防禦成功！', '#10b981');
     gold += 15 + wave * 3;
     updateUI();
+    // 達到最大波次則勝利
+    if (wave >= MAX_WAVES) {
+      setTimeout(() => endBattle(true), 1500);
+    } else {
+      // 禁止超過最大波次
+      btnStartWave.disabled = wave >= MAX_WAVES;
+    }
   }
 }
 
@@ -867,6 +943,19 @@ function renderGame() {
       ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2;
       ctx.strokeRect(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
+  }
+
+  // 臨時障礙（靈木塔效果）
+  for (const tw of tempWalls) {
+    ctx.save();
+    const alpha = Math.min(1, tw.lifetime / 60); // 最後 1 秒漸隱
+    ctx.globalAlpha = 0.55 * alpha;
+    ctx.fillStyle = '#4ade80';
+    ctx.fillRect(tw.x * TILE_SIZE, tw.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1;
+    ctx.strokeRect(tw.x * TILE_SIZE, tw.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    ctx.restore();
   }
 
   // 怪物（使用像素精靈）
@@ -974,7 +1063,26 @@ function updateUI() {
   goldVal.textContent = gold.toString();
   waveVal.textContent = wave.toString();
   killVal.textContent = killCount.toString();
-  btnStartWave.disabled = isWaveActive;
+  btnStartWave.disabled = isWaveActive || wave >= MAX_WAVES;
+  updateWaveProgress();
+}
+
+function updateWaveProgress() {
+  if (!isWaveActive) {
+    waveProgressLabel.textContent = '待機中';
+    waveEnemyCount.textContent = '';
+    waveProgressFill.style.width = '0%';
+    waveProgressFill.classList.add('idle');
+    return;
+  }
+  waveProgressFill.classList.remove('idle');
+  const alive = enemies.length;
+  // remaining = 已生成中還活著的 + 尚未生成的 (waveTotal - waveSpawned)
+  const remaining = alive + Math.max(0, waveTotal - waveSpawned);
+  const pct = waveTotal > 0 ? (1 - remaining / waveTotal) * 100 : 100;
+  waveProgressFill.style.width = `${Math.min(100, pct)}%`;
+  waveProgressLabel.textContent = `波次 ${wave} 進行中`;
+  waveEnemyCount.textContent = remaining > 0 ? `剩餘 ${remaining} 隻` : '即將結束...';
 }
 
 // ============================================================

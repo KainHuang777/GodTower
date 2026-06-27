@@ -132,6 +132,22 @@
 
     .instructions { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 2px; }
     .merge-hint { color: #c084fc; font-weight: 500; }
+
+    /* === 波次進度列 === */
+    .wave-progress-bar {
+      display: flex; align-items: center; gap: 8px; margin-top: 4px;
+      font-size: 0.78rem; color: var(--text-muted);
+    }
+    .wave-progress-track {
+      flex: 1; height: 6px; background: #1e293b; border-radius: 3px;
+      border: 1px solid var(--border-color); overflow: hidden;
+    }
+    .wave-progress-fill {
+      height: 100%; background: linear-gradient(to right, #ef4444, #f97316);
+      border-radius: 3px; transition: width 0.15s ease;
+      width: 0%;
+    }
+    .wave-progress-fill.idle { background: #334155; }
   </style>
 </head>
 <body>
@@ -168,6 +184,8 @@
     <div class="gameover-stats">
       <div>存活波次: <span id="goWaveVal" class="highlight">0</span></div>
       <div>擊殺怪物: <span id="goKillVal" class="highlight">0</span></div>
+      <div>最高連殺: <span id="goStreakVal" class="highlight">0</span></div>
+      <div>總傷害輸出: <span id="goDamageVal" class="highlight">0</span></div>
       <div>獲得天賦點: <span id="goTalentVal" class="highlight">0</span></div>
     </div>
     <button id="btnBackToMenu" class="menu-btn primary">返回主介面</button>
@@ -181,7 +199,7 @@
         <div class="stats">
           <div class="stat-item"><span>HP:</span><span id="hpVal" class="stat-val-hp">20</span></div>
           <div class="stat-item"><span>GOLD:</span><span id="goldVal" class="stat-val-gold">60</span></div>
-          <div class="stat-item"><span>WAVE:</span><span id="waveVal" class="stat-val-wave">0</span></div>
+          <div class="stat-item"><span>WAVE:</span><span id="waveVal" class="stat-val-wave">0</span><span style="color:#475569;font-size:0.75rem;">/20</span></div>
           <div class="stat-item"><span>KILL:</span><span id="killVal" class="stat-val-wave">0</span></div>
         </div>
       </div>
@@ -199,7 +217,14 @@
         </div>
       </div>
       <div id="instructionText" class="instructions">
-        選擇砲台後點擊地圖擺放。怪物必須依序碰觸 <span style="color:#f59e0b">❶❷❸❹❺</span> 檢查點，再抵達基地。用砲台築迷宮讓怪物繞最遠的路！
+        選擇砲台後點擊地圖擺放。怪物必須依序碰觸 <span style="color:#f59e0b">❶❷❸❹❺</span> 檢查點，再抵達基地。用砲台築迷宮讓怪物繞最遠的路！<span style="color:#94a3b8;margin-left:8px;">右鍵點擊砲台可快速拆除</span>
+      </div>
+      <div class="wave-progress-bar">
+        <span id="waveProgressLabel">待機中</span>
+        <div class="wave-progress-track">
+          <div id="waveProgressFill" class="wave-progress-fill idle"></div>
+        </div>
+        <span id="waveEnemyCount" style="min-width:60px;text-align:right;"></span>
       </div>
     </div>
   </div>

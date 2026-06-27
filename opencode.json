@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "command": {
+    "dev": {
+      "description": "啟動開發伺服器（支援熱重載）",
+      "template": "npm run dev"
+    },
+    "build": {
+      "description": "TypeScript 編譯 + Vite 生產環境打包",
+      "template": "npm run build"
+    },
+    "preview": {
+      "description": "預覽 production build",
+      "template": "npm run preview"
+    }
+  }
+}
+
