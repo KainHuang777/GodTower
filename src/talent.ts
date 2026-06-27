@@ -12,7 +12,8 @@ export type TalentId =
   | 'gold_1' | 'gold_2'
   | 'precise_1' | 'precise_2' | 'rapid_fire'
   | 'wood_awakening' | 'water_awakening' | 'fire_awakening' | 'earth_awakening' | 'metal_awakening'
-  | 'yin_law' | 'yang_law' | 'taiji_dao';
+  | 'yin_law' | 'yang_law' | 'taiji_dao'
+  | 'wall_discount';
 
 /** 天賦節點定義 */
 export interface TalentNode {
@@ -43,6 +44,7 @@ export const TALENT_TREE: TalentNode[] = [
   { id: 'water_awakening', name: '水行覺醒', description: '解鎖冰凍塔 💧，每級水系塔傷害 +10%', cost: 1, prerequisites: [], category: 'element', maxLevel: 5 },
   { id: 'fire_awakening',  name: '火行覺醒', description: '強化烈焰塔 🔥，每級火系塔傷害 +10% (火系預設解鎖)', cost: 1, prerequisites: [], category: 'element', maxLevel: 5 },
   { id: 'earth_awakening', name: '土行覺醒', description: '強化岩壁塔 ⛰️，每級土系塔效果/傷害 +10% (土系預設解鎖)', cost: 1, prerequisites: [], category: 'element', maxLevel: 5 },
+  { id: 'wall_discount',   name: '築牆工法', description: '使岩壁塔（牆壁）的造價降低至 1g (預設為 2g)', cost: 2, prerequisites: ['earth_awakening'], category: 'element', maxLevel: 1 },
   { id: 'metal_awakening', name: '金行覺醒', description: '解鎖鏡刃塔 ⚔️，每級金系塔傷害 +10%', cost: 1, prerequisites: [], category: 'element', maxLevel: 5 },
 
   // 陰陽解鎖路線
@@ -217,4 +219,11 @@ export function resetTalents(data: TalentSaveData): void {
   data.spentTalentPoints = 0;
   data.talentLevels = {} as Record<TalentId, number>;
   saveTalentData(data);
+}
+
+/** 取得岩壁塔（牆壁）造價（受天賦影響） */
+export function getWallCost(data: TalentSaveData): number {
+  const level = data.talentLevels['wall_discount'] || 0;
+  if (level >= 1) return 1;
+  return 2;
 }

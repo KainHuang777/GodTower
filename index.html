@@ -61,29 +61,379 @@
     .menu-talent-info { color: var(--gold); font-size: 0.9rem; }
 
     /* === 天賦頁 === */
-    #talentScreen {
-      flex-direction: column; align-items: center; gap: 20px;
-      background: radial-gradient(ellipse at center, #1e293b 0%, #0f172a 70%);
-      padding: 40px; overflow-y: auto;
+    #talentScreen.active {
+      display: flex;
     }
-    .talent-header { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 900px; }
+    #talentScreen {
+      flex-direction: column; align-items: center;
+      justify-content: flex-start; gap: 15px;
+      background: radial-gradient(ellipse at center, #1e293b 0%, #0f172a 70%);
+      padding: 30px 40px; overflow-y: auto;
+      height: 100%;
+      box-sizing: border-box;
+    }
+    .talent-header { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1024px; }
     .talent-header h2 { font-size: 1.8rem; background: linear-gradient(to right, #fbbf24, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .talent-points-display { font-size: 1.1rem; color: var(--gold); }
-    .talent-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; max-width: 900px; width: 100%;
+    
+    .talent-tree-wrapper {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 10px 0;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      scrollbar-width: thin;
+      scrollbar-color: #6366f1 #1e293b;
     }
-    .talent-category-title { grid-column: 1 / -1; font-size: 1rem; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-top: 10px; }
-    .talent-node {
-      background: #1e293b; border: 2px solid var(--border-color); border-radius: 10px;
-      padding: 12px; cursor: pointer; transition: all 0.2s; text-align: center;
+    .talent-tree-wrapper::-webkit-scrollbar {
+      height: 8px;
     }
-    .talent-node:hover { border-color: #475569; transform: translateY(-1px); }
-    .talent-node.unlocked { border-color: var(--accent); background: rgba(16, 185, 129, 0.1); }
-    .talent-node.available { border-color: var(--gold); box-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
-    .talent-node.locked { opacity: 0.5; cursor: not-allowed; }
-    .talent-node .t-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
-    .talent-node .t-desc { font-size: 0.75rem; color: var(--text-muted); }
-    .talent-node .t-cost { font-size: 0.8rem; color: var(--gold); margin-top: 6px; }
+    .talent-tree-wrapper::-webkit-scrollbar-track {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    .talent-tree-wrapper::-webkit-scrollbar-thumb {
+      background: #6366f1;
+      border-radius: 4px;
+    }
+    .talent-tree-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 10px 20px;
+      width: max-content;
+    }
+    /* === 天賦分支快速導覽列 === */
+    .talent-nav {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: 100%;
+    }
+    .talent-nav-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      white-space: nowrap;
+      margin-right: 4px;
+    }
+    .talent-nav-btn {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1.5px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 5px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      backdrop-filter: blur(4px);
+    }
+    .talent-nav-btn:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: var(--primary);
+      color: var(--text-color);
+      transform: translateY(-1px);
+    }
+    .talent-nav-btn.active {
+      background: rgba(99, 102, 241, 0.3);
+      border-color: var(--primary);
+      color: #a5b4fc;
+      box-shadow: 0 0 8px rgba(99, 102, 241, 0.35);
+    }
+    .talent-track {
+      display: flex;
+      align-items: center;
+      background: rgba(30, 41, 59, 0.45);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px 16px;
+      gap: 20px;
+      backdrop-filter: blur(4px);
+    }
+    .track-label {
+      writing-mode: vertical-lr;
+      text-orientation: mixed;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      border-right: 2px dashed var(--border-color);
+      padding-right: 12px;
+      text-align: center;
+      letter-spacing: 4px;
+      line-height: 1.2;
+    }
+    .track-paths {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex-grow: 1;
+    }
+    .path-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .path-row-grid {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .grid-cell-flow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(30, 41, 59, 0.6);
+      padding: 6px 12px;
+      border-radius: 10px;
+      border: 1px dashed rgba(245, 158, 11, 0.35);
+    }
+    .path-row-merge {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .merge-sources {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .merge-connector {
+      display: flex;
+      align-items: center;
+    }
+    .merge-arrows {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      justify-content: center;
+    }
+    .path-branch {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .branch-top, .branch-bottom {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .talent-arrow {
+      font-size: 1.6rem;
+      color: var(--text-muted);
+      opacity: 0.25;
+      transition: all 0.3s ease;
+      user-select: none;
+    }
+    .talent-arrow.active {
+      color: var(--gold);
+      opacity: 1.0;
+      text-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+    }
+    .talent-card {
+      display: flex;
+      align-items: center;
+      background: #1e293b;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px 14px;
+      width: 250px;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      user-select: none;
+    }
+    .talent-card:hover {
+      border-color: #475569;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+    .talent-card.locked {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .talent-card.unlocked {
+      border-color: var(--accent);
+      background: rgba(16, 185, 129, 0.06);
+    }
+    .talent-card.available {
+      border-color: var(--gold);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+    }
+    .talent-card.available:hover {
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.45);
+    }
+    .talent-icon {
+      font-size: 2.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+    }
+    .talent-card-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex-grow: 1;
+      text-align: left;
+    }
+    .talent-card-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--text-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .talent-card-level {
+      font-size: 0.8rem;
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .talent-card-desc {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+    .talent-card-cost {
+      font-size: 0.72rem;
+      color: var(--gold);
+      margin-top: 1px;
+      font-weight: 500;
+    }
+    .talent-card-prereq {
+      font-size: 0.68rem;
+      color: #f97316;
+      font-weight: 600;
+      margin-top: 2px;
+      line-height: 1.3;
+      opacity: 0.9;
+    }
+
+    /* === 關卡選擇頁 === */
+    #levelSelectScreen.active {
+      display: flex;
+    }
+    #levelSelectScreen {
+      flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 20px;
+      background: radial-gradient(ellipse at center, #1e293b 0%, #0f172a 70%);
+      padding: 40px; overflow-y: auto;
+      height: 100%;
+      box-sizing: border-box;
+    }
+    .level-header { width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .level-header h2 { font-size: 1.8rem; background: linear-gradient(to right, #6366f1, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 20px;
+    }
+    .level-card {
+      background: #1e293b;
+      border: 2px solid var(--border-color);
+      border-radius: 14px;
+      padding: 20px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.25s ease;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+    }
+    .level-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-4px);
+      box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25);
+    }
+    .level-badge {
+      align-self: flex-start;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 12px;
+      color: #fff;
+    }
+    .badge-tutorial { background: #8b5cf6; }
+    .badge-easy { background: #10b981; }
+    .badge-normal { background: #f59e0b; }
+    .badge-hard { background: #ef4444; }
+    .badge-custom { background: #6366f1; }
+    
+    .level-title { font-size: 1.15rem; font-weight: 700; color: var(--text-color); }
+    .level-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; flex-grow: 1; }
+    .level-info { font-size: 0.72rem; color: var(--gold); border-top: 1px dashed var(--border-color); padding-top: 8px; }
+    .level-card-actions { display: flex; gap: 6px; margin-top: 4px; }
+    .level-card-actions .btn-delete {
+      background: #7f1d1d; border: 1px solid #ef4444; color: #fca5a5; font-size: 0.7rem;
+      padding: 3px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+    }
+    .level-card-actions .btn-delete:hover { background: #991b1b; }
+
+    /* === 地圖編輯器 === */
+    #mapEditorScene.active { display: flex; }
+    #mapEditorScene {
+      flex-direction: column; align-items: center;
+      background: radial-gradient(ellipse at center, #1e293b 0%, #0f172a 70%);
+      padding: 12px; gap: 8px; height: 100%; box-sizing: border-box; overflow: auto;
+    }
+    .editor-header {
+      width: 100%; max-width: 1304px;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .editor-header h2 {
+      font-size: 1.4rem; margin: 0;
+      background: linear-gradient(to right, #a78bfa, #38bdf8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .editor-name-input {
+      background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px;
+      color: var(--text-color); padding: 6px 12px; font-size: 0.9rem; width: 220px;
+      outline: none;
+    }
+    .editor-name-input:focus { border-color: var(--primary); }
+    .editor-toolbar {
+      width: 100%; max-width: 1304px;
+      display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    }
+    .editor-toolbar .tool-btn {
+      background: #1e293b; border: 2px solid var(--border-color); color: var(--text-color);
+      padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.82rem;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .editor-toolbar .tool-btn:hover { border-color: var(--primary); }
+    .editor-toolbar .tool-btn.active {
+      border-color: var(--gold); background: rgba(245, 158, 11, 0.15); color: var(--gold);
+    }
+    .editor-toolbar .tool-sep { flex-grow: 1; }
+    .editor-toolbar .tool-action {
+      background: #0f172a; border: 2px solid var(--primary); color: var(--primary);
+      padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.82rem;
+      font-weight: 600; transition: all 0.2s;
+    }
+    .editor-toolbar .tool-action:hover { background: var(--primary); color: #fff; }
+    .editor-toolbar .tool-action.save { border-color: var(--accent); color: var(--accent); }
+    .editor-toolbar .tool-action.save:hover { background: var(--accent); color: #fff; }
+    .editor-status {
+      width: 100%; max-width: 1304px;
+      font-size: 0.75rem; color: var(--text-muted);
+      display: flex; gap: 16px; flex-wrap: wrap;
+    }
+    .editor-status .status-ok { color: var(--accent); }
+    .editor-status .status-warn { color: #f59e0b; }
 
     /* === 結算畫面 === */
     #gameOverScreen {
@@ -166,6 +516,15 @@
       transform: scale(1.1);
       box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
     }
+    .header-panel select.btn {
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      height: 32px;
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      color: var(--text-color);
+    }
   </style>
 </head>
 <body>
@@ -184,6 +543,44 @@
     </div>
   </div>
 
+  <!-- ===== 場景 1.5: 關卡選擇 ===== -->
+  <div id="levelSelectScreen" class="scene">
+    <div class="level-header">
+      <h2>🗺️ 選擇戰鬥關卡</h2>
+      <div style="display:flex; gap:8px;">
+        <button id="btnCreateMap" class="menu-btn" style="padding: 8px 16px; font-size: 0.9rem; background: #4f46e5; border-color: #6366f1;">🛠️ 自建地圖</button>
+        <button id="btnBackFromLevel" class="menu-btn" style="padding: 8px 16px; font-size: 0.9rem;">← 返回主選單</button>
+      </div>
+    </div>
+    <div class="level-grid" id="levelGrid">
+      <!-- 關卡卡片由 JS 動態生成 -->
+    </div>
+  </div>
+
+  <!-- ===== 場景 1.6: 地圖編輯器 ===== -->
+  <div id="mapEditorScene" class="scene">
+    <div class="editor-header">
+      <h2>🛠️ 地圖編輯器</h2>
+      <input id="editorMapName" class="editor-name-input" type="text" placeholder="輸入地圖名稱..." maxlength="30">
+      <button id="btnBackFromEditor" class="menu-btn" style="padding: 8px 16px; font-size: 0.9rem;">← 返回關卡選擇</button>
+    </div>
+    <div class="editor-toolbar">
+      <button class="tool-btn active" data-editor-tool="obstacle">⛰️ 障礙物</button>
+      <button class="tool-btn" data-editor-tool="spawn">📍 起點</button>
+      <button class="tool-btn" data-editor-tool="base">🏠 終點</button>
+      <button class="tool-btn" data-editor-tool="waypoint">🏁 檢查點</button>
+      <button class="tool-btn" data-editor-tool="eraser">🧹 橡皮擦</button>
+      <div class="tool-sep"></div>
+      <button id="btnEditorValidate" class="tool-action">✅ 驗證路徑</button>
+      <button id="btnEditorClear" class="tool-action">🗑️ 清空</button>
+      <button id="btnEditorSave" class="tool-action save">💾 儲存地圖</button>
+    </div>
+    <canvas id="editorCanvas" width="1280" height="640"></canvas>
+    <div class="editor-status" id="editorStatus">
+      <!-- 由 JS 動態更新 -->
+    </div>
+  </div>
+
   <!-- ===== 場景 2: 天賦頁 ===== -->
   <div id="talentScreen" class="scene">
     <div class="talent-header">
@@ -193,10 +590,95 @@
         <button id="btnResetTalents" class="btn" style="margin-left:12px;">🔄 重置天賦</button>
       </div>
     </div>
-    <div id="talentGrid" class="talent-grid">
-      <!-- 動態生成 -->
+    <!-- ===== Track 快速導覽列 ===== -->
+    <div class="talent-nav" id="talentNav">
+      <span class="talent-nav-label">跳至分支：</span>
+      <button class="talent-nav-btn active" data-track="track-base">🛡️ 基礎強化</button>
+      <button class="talent-nav-btn" data-track="track-attack">⚔️ 攻擊強化</button>
+      <button class="talent-nav-btn" data-track="track-element">🌿 五行覺醒</button>
+      <button class="talent-nav-btn" data-track="track-yinyang">☯️ 陰陽解鎖</button>
     </div>
-    <button id="btnBackFromTalent" class="menu-btn" style="margin-top:20px;">← 返回主介面</button>
+    <div class="talent-tree-wrapper">
+      <div class="talent-tree-container">
+        
+        <!-- Track 1: 🛡️ 基礎強化 -->
+        <div id="track-base" class="talent-track">
+          <div class="track-label">🛡️<br>基<br>礎<br>強<br>化</div>
+          <div class="track-paths">
+            <div class="path-row">
+              <div class="talent-card" data-id="fortress_1"></div>
+              <div class="talent-arrow" data-from="fortress_1" data-to="fortress_2">➜</div>
+              <div class="talent-card" data-id="fortress_2"></div>
+            </div>
+            <div class="path-row">
+              <div class="talent-card" data-id="gold_1"></div>
+              <div class="talent-arrow" data-from="gold_1" data-to="gold_2">➜</div>
+              <div class="talent-card" data-id="gold_2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Track 2: ⚔️ 攻擊強化 -->
+        <div id="track-attack" class="talent-track">
+          <div class="track-label">⚔️<br>攻<br>擊<br>強<br>化</div>
+          <div class="track-paths">
+            <div class="path-row">
+              <div class="talent-card" data-id="precise_1"></div>
+              <div class="path-branch">
+                <div class="branch-top">
+                  <div class="talent-arrow" data-from="precise_1" data-to="precise_2">➜</div>
+                  <div class="talent-card" data-id="precise_2"></div>
+                </div>
+                <div class="branch-bottom">
+                  <div class="talent-arrow" data-from="precise_1" data-to="rapid_fire">➜</div>
+                  <div class="talent-card" data-id="rapid_fire"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Track 3: 🌿 五行覺醒 -->
+        <div id="track-element" class="talent-track">
+          <div class="track-label">🌿<br>五<br>行<br>覺<br>醒</div>
+          <div class="track-paths">
+            <div class="path-row-grid">
+              <div class="grid-cell"><div class="talent-card" data-id="wood_awakening"></div></div>
+              <div class="grid-cell"><div class="talent-card" data-id="water_awakening"></div></div>
+              <div class="grid-cell"><div class="talent-card" data-id="fire_awakening"></div></div>
+              <div class="grid-cell-flow">
+                <div class="talent-card" data-id="earth_awakening"></div>
+                <div class="talent-arrow" data-from="earth_awakening" data-to="wall_discount">➜</div>
+                <div class="talent-card" data-id="wall_discount"></div>
+              </div>
+              <div class="grid-cell"><div class="talent-card" data-id="metal_awakening"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Track 4: ☯️ 陰陽解鎖 -->
+        <div id="track-yinyang" class="talent-track">
+          <div class="track-label">☯️<br>陰<br>陽<br>解<br>鎖</div>
+          <div class="track-paths">
+            <div class="path-row-merge">
+              <div class="merge-sources">
+                <div class="talent-card" data-id="yin_law"></div>
+                <div class="talent-card" data-id="yang_law"></div>
+              </div>
+              <div class="merge-connector">
+                <div class="merge-arrows">
+                  <div class="talent-arrow" data-from="yin_law" data-to="taiji_dao">➜</div>
+                  <div class="talent-arrow" data-from="yang_law" data-to="taiji_dao">➜</div>
+                </div>
+              </div>
+              <div class="talent-card" data-id="taiji_dao"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <button id="btnBackFromTalent" class="menu-btn" style="margin-top:15px; margin-bottom:10px;">← 返回主介面</button>
   </div>
 
   <!-- ===== 場景 3: 結算畫面 ===== -->
@@ -216,7 +698,23 @@
   <div id="battleScene" class="scene">
     <div class="game-container">
       <div class="header-panel">
-        <h1>五行迷宮塔防</h1>
+        <div style="display:flex; align-items:center; gap:16px;">
+          <h1>五行迷宮塔防</h1>
+          <div style="display:flex; gap:8px;">
+            <select id="selectTheme" class="btn">
+              <option value="scifi">🛸 暗黑科幻</option>
+              <option value="chinese">🏮 古典中式</option>
+              <option value="ink">🖌️ 山水墨畫</option>
+              <option value="starry">🌌 璀璨星空</option>
+            </select>
+            <select id="selectWeather" class="btn">
+              <option value="none">☀️ 晴空萬里</option>
+              <option value="rain">🌧️ 煙雨濛濛</option>
+              <option value="fog">🌫️ 迷霧繚繞</option>
+              <option value="thunder">⚡ 狂風暴雷</option>
+            </select>
+          </div>
+        </div>
         <div class="stats">
           <div class="stat-item"><span>HP:</span><span id="hpVal" class="stat-val-hp">20</span></div>
           <div class="stat-item"><span>GOLD:</span><span id="goldVal" class="stat-val-gold">60</span></div>

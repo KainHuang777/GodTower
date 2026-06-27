@@ -193,6 +193,10 @@ def get_fire_rate_multiplier(levels: dict) -> float:
     return max(0.5, mult)
 
 
+def get_wall_cost(levels: dict) -> int:
+    return 1 if levels.get("wall_discount", 0) >= 1 else 2
+
+
 # ─────────────────────────────────────────────────────────────
 #  Minimal A* for path validation
 # ─────────────────────────────────────────────────────────────
@@ -428,6 +432,39 @@ def test_astar_pathfinding(r: TestResult):
     path2 = astar(grid, SPAWN_POINT, (40, 20))
     r.check(path2 is not None, "Path found around partial wall")
 
+    # ── 5. Map preset obstacles (value = 2) blocking pathing ──
+    print(info("5. Map obstacles (value = 2) block pathfinding"))
+    grid = make_grid()
+    for col in range(COLS):
+        grid[col][20] = 2  # preset obstacles across the entire middle row
+    path_blocked_obs = astar(grid, SPAWN_POINT, BASE_POINT)
+    r.check(path_blocked_obs is None, "A* pathfinding correctly blocked by preset obstacles (value=2)")
+
+    # ── 6. Multi-waypoint sequence path validation (Map Editor style) ──
+    print(info("6. Multi-waypoint path validation (Map Editor)"))
+    grid = make_grid()
+    spawn = (5, 20)
+    base = (75, 20)
+    wps = [(20, 10), (40, 30), (60, 10)]
+    
+    # Check if a valid sequence connects
+    def check_seq(g, s, b, waypoints):
+        prev = s
+        for tgt in waypoints + [b]:
+            p = astar(g, prev, tgt)
+            if p is None:
+                return False
+            prev = tgt
+        return True
+
+    # Valid scenario
+    r.check(check_seq(grid, spawn, base, wps) is True, "Valid custom map passes multi-waypoint validation")
+
+    # Blocked scenario (completely surround waypoint 0)
+    for dx, dy in [(-1,0), (1,0), (0,-1), (0,1)]:
+        grid[wps[0][0] + dx][wps[0][1] + dy] = 2
+    r.check(check_seq(grid, spawn, base, wps) is False, "Custom map with blocked waypoint fails validation")
+
 
 def test_tower_system(r: TestResult):
     """Tower placement, sell price, merge recipes, element bonus."""
@@ -550,6 +587,7 @@ def test_talent_system(r: TestResult):
         "precise_2":  ["precise_1"],
         "rapid_fire": ["precise_1"],
         "taiji_dao":  ["yin_law", "yang_law"],
+        "wall_discount": ["earth_awakening"],
     }
     levels = {}
     # taiji_dao needs both yin_law and yang_law
@@ -560,6 +598,19 @@ def test_talent_system(r: TestResult):
     levels = {"yin_law": 1, "yang_law": 1}
     met = all(levels.get(p, 0) >= 1 for p in prereqs)
     r.check(met, "taiji_dao unlocked after both prerequisites met")
+
+    # ── 8. Wall discount talent ──
+    print(info("8. Wall discount talent — wall cost decrease"))
+    levels = {}
+    r.check(get_wall_cost(levels) == 2, "Default wall cost is 2")
+    levels =Met = levels.get("earth_awakening", 0) >= 1
+    r.check(not Met, "wall_discount blocked without earth_awakening")
+    levels = {"earth_awakening": 1}
+    Met = levels.get("earth_awakening", 0) >= 1
+    r.check(Met, "wall_discount unlocked with earth_awakening")
+    
+    levels = {"wall_discount": 1}
+    r.check(get_wall_cost(levels) == 1, "Discounted wall cost is 1")
 
 
 def test_enemy_defs(r: TestResult):

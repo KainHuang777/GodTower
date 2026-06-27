@@ -1,3 +1,77 @@
+2026-06-27 (第二十五次更新)
+- Refactored Tutorial Level map obstacles and added tower placement guide:
+  1. Updated obstacles layout in src/maps.ts: Added a long horizontal barrier (row 15, col 0..55) and vertical guides. This forces enemies from Spawn (5,20) to walk all the way right to waypoint 3's area (x=56+) first, bypass the obstacle, and walk left to reach waypoint 1 (20,10).
+  2. Implemented customized tutorial text inside refreshToolSelection() in main.ts, guiding the player to build towers at the key bottleneck coordinate (58, 17) to maximize damage efficiency across multiple pathing phases.
+  3. Added a glowing dash-bordered rectangle guide for (58, 17) with "💡 推薦建造點" text helper in renderGame() during the BATTLE scene when currentMap is 'tutorial'.
+
+2026-06-27 (第二十四次更新)
+- Designed and added pathfinding unit tests in test_cli.py:
+  1. Added test case for map preset obstacles (value = 2) blocking A* pathfinding.
+  2. Added test cases for multi-waypoint sequence path validation (Map Editor route checking logic) under both valid and blocked layout configurations.
+  3. Ran test suite successfully with all 230/230 tests passing.
+
+2026-06-27 (第二十三次更新)
+- Updated README.md documentation:
+  1. Added custom map editor to the overview description.
+  2. Updated scene routing map diagram with LEVEL_SELECT and MAP_EDITOR scenes.
+  3. Documented maps.ts module in the project structure folder list.
+
+2026-06-27 (第二十二次更新)
+- Implemented Phase 5-2 Custom Map Editor:
+  1. Extended src/maps.ts: Added loadCustomMaps, saveCustomMaps, deleteCustomMap and extended difficulty type to support '自訂'.
+  2. Implemented Map Editor Scene (#mapEditorScene) in index.html: Added canvas (#editorCanvas), map name input, brush tools (📍 Spawn, 🏠 Base, 🏁 Waypoints, ⛰️ Obstacles, 🧹 Eraser), Validate, Clear, and Save buttons.
+  3. Developed full editor logic in main.ts: Implemented initEditor, startEditorLoop, renderEditor, editorClickAt (brush placement), updateEditorStatus, and editorValidatePath (A* path verification).
+  4. Handled multi-map integration: Merged built-in MAPS with localStorage custom maps in renderLevelSelectScreen(), with individual delete button to remove custom map records.
+  5. Added '🛠️ 自建地圖' entry button on the level selection header in index.html.
+  6. Updated ROADMAP.md and marked P5-2 Map Editor task as completed.
+
+2026-06-27 (第二十一次更新)
+- Implemented Phase 5 Multi-Map Selection System and Tutorial level:
+  1. Created new module src/maps.ts defining layouts, difficulty tags, descriptions, starting points, base points, waypoints, and preset terrain obstacles for 4 levels (Tutorial, Easy, Hard, Medium).
+  2. Implemented Level Select scene (#levelSelectScreen) in index.html with CSS grids, difficulty badges, hover transitions, and a Back button.
+  3. Integrated map layouts dynamically: Wires start menu "⚔️ 開始遊戲" to "LEVEL_SELECT" scene, and dynamically generates cards from MAPS configuration.
+  4. Configured Tutorial Map (W-shape corridor) with two preset U-shaped boulder wall obstacles blocking pathing to direct enemies to go in and out of checkpoints, demonstrating maximum damage efficiency.
+  5. Updated main.ts: startBattle() loads spawn/base/waypoints and fills grid[x][y] = 2 for obstacles. astarFind() blocks on grid !== 0. handleSell() blocks obstacle sells with a Tip.
+  6. Implemented theme-aware obstacle drawing (drawObstacle()) in renderGame(): renders glowing neon blocks in Scifi theme, brass-rimmed bricks in Chinese, ink-washed stones in Ink, and purple quartz meteorites in Starry theme.
+  7. Updated ROADMAP.md and marked the Phase 5 Multi-Map Selection task as completed.
+
+2026-06-27 (第二十次更新)
+- Implemented prerequisite display on locked talent cards:
+  1. In renderTalentScreen(), dynamically compute unmet prerequisites for each talent node (prerequisites where talentLevels[pid] < 1).
+  2. Render a '🔒 需解鎖：[名稱]' text inside the card HTML as .talent-card-prereq when any prerequisites are unmet.
+  3. Added .talent-card-prereq CSS style (orange #f97316, 0.68rem) in index.html to visually distinguish the requirement hint from cost and description text.
+
+2026-06-27 (第十九次更新)
+- Refactored Talent Screen UX to fix two layout issues:
+  1. Fixed horizontal scroll empty space: Changed .talent-tree-wrapper from fixed 'max-width: 1024px' to 'max-width: 100%', and changed .talent-tree-container from 'min-width: max-content' to 'width: max-content'. This ensures the scrollbar range precisely matches the actual content width with no blank draggable space beyond content.
+  2. Added Track Navigator pill-button bar: Inserted a '#talentNav' navigation bar between the talent header and the tree wrapper, containing 4 pill buttons (🛡️ 基礎強化, ⚔️ 攻擊強化, 🌿 五行覺醒, ☯️ 陰陽解鎖). Clicking a button smoothly scrolls the talent screen to the corresponding track via scrollIntoView. Added IntersectionObserver to automatically sync active highlight state with the visible track.
+  3. Assigned id attributes (track-base, track-attack, track-element, track-yinyang) to all four talent-track elements for precise scroll targeting.
+
+2026-06-27 (第十八次更新)
+- Fixed the layout initialization issue where the game started stuck on the talent screen:
+  1. Relocated 'display: flex' from the base '#talentScreen' ID selector rule to a new '#talentScreen.active' class rule.
+  2. This prevents the high-specificity ID selector rule from overriding the default scene hiding rule '.scene { display: none }', successfully restoring proper scene transitions and the main loop entrance.
+
+2026-06-27 (第十七次更新)
+- Adjusted Talent Screen CSS constraints, changing overflow to 'overflow-y: auto' and setting 'height: 100%' to ensure vertical scrolling works on all display resolutions.
+- Fixed a Flexbox scrolling bug on #talentScreen by adding 'display: flex' and 'justify-content: flex-start' to override centering alignment, resolving the vertical scroll block issue.
+- Redesigned and modernized the Meta-progression Talent Screen UI:
+  1. Converted the talent node layout from a generic grid into 4 horizontally extending paths (Base Upgrades, Attack Skills, Wuxing Awakenings, and Yin-Yang Secrets).
+  2. The Talent Screen height is now locked to prevent vertical scrolling, allowing smooth horizontal scrolling dynamically tracking the tracks.
+  3. Enlarged talent icons (emoji font-size 2.2rem) and titles, and added delicate responsive card states (glowing gold borders for 'available', green for 'unlocked', dimmed card opacity for 'locked').
+  4. Implemented interactive connection paths: arrows (➜) linking prerequisite chains now dynamically light up gold when a preceding talent is unlocked.
+- Added a new master Wuxing talent "Wall discount" (築牆工法):
+  1. Positioned right after "Earth Awakening" in the element path, unlocking it reduces Wall (Rock wall) cost from 2g to 1g.
+  2. Implemented cost deduct adjustments in main.ts placement and store definition, ensuring correct sell refunds.
+  3. Added Python CLI mirroring implementations and regression assertions (all 227/227 tests passed).
+
+2026-06-27 (第十六次更新)
+- Implement map visual themes and dynamic weather overlay system for Phase 4:
+  1. Added Map Themes: Chinese (Crimson & Gold imperial theme), Ink (traditional ink painting wash style on paper background), and Starry (dark starry night with twinkle background stars that scroll and scale naturally with the map camera).
+  2. Added Weather Effects: Rain (falling slanted rain droplets), Fog (drifting low-opacity cloud overlays), and Thunderstorm (rain combined with lightning screen flashes and random branching electric bolts).
+  3. Integrated dropdown selects in index.html battle UI header panel for seamless real-time switching between map themes and weather effects.
+  4. Verified all changes via success compilation (npm run build) and python CLI regression tests.
+
 2026-06-27 (第十五次更新)
 - 建立 CLI 測試工具 `test_cli.py`：一支純 Python CLI 工具，無需瀏覽器或 DOM，鏡像 TypeScript 遊戲核心邏輯。提供三個選單入口：(1) Battle Flow Test（戰鬥主流程）、(2) Full Feature Test（全功能測試所有 8 套件）、(3) Specific Feature Test（指定套件）。包含 8 個測試套件：波次配置、A* 尋路、砲台系統、天賦系統、怪物定義、波次配置、粒子系統及 AOE 擊殺修復驗證（Bug #14）。
 - 修正 `test_cli.py` 中的測試邏輯：(1) 修正 Python 3.8/3.9 舊版本的 `|` 聯集型別語法為相容寫法以防止 `TypeError`；(2) 修正 `test_battle_flow` 中的 HP 縮放測試，使其動態取得當前波次第一個怪物類型的 `baseHp`，防止因特定波次無小蛇（snake）而拋出 `StopIteration` 異常；(3) 修正 `test_aoe_kill_fix` 測試資料中火蜥蜴（salamander）的 `hp` 設定值（自 5 修改為 0），使其能如期判定為死亡以符合死亡數與金幣獲得數的斷言；(4) 修正 `test_wave_config` 中波次數量遞增測試，過濾飛行怪與 Boss 怪，改為僅統計陸地怪（ground enemies）數量以驗證陸地怪物的持續增長，避免因特定波次無飛行怪所致之總數量正常波動觸發斷言失敗。

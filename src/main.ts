@@ -4,8 +4,9 @@
 
 import { BASE_TOWERS, getTowerDef, getSameMergeResult, getCrossRecipeResult, getElementBonus, getSellPrice, type TowerDef, type TowerTypeId, type Element } from './towers';
 import { ENEMY_DEFS, getWaveConfig, type EnemyTypeId } from './enemies';
-import { loadTalentData, getAvailablePoints, canUnlockTalent, unlockTalent, calcTalentPointsEarned, addTalentPoints, getBaseHP, getStartGold, getDamageMultiplier, getTowerElementDamageMultiplier, getFireRateMultiplier, isTowerUnlocked, resetTalents, TALENT_TREE, type TalentSaveData } from './talent';
+import { loadTalentData, getAvailablePoints, canUnlockTalent, unlockTalent, calcTalentPointsEarned, addTalentPoints, getBaseHP, getStartGold, getDamageMultiplier, getTowerElementDamageMultiplier, getFireRateMultiplier, isTowerUnlocked, resetTalents, TALENT_TREE, getWallCost, type TalentSaveData, type TalentId } from './talent';
 import { initSprites, drawEnemySprite, drawTowerSprite, preloadImage } from './sprites';
+import { MAPS, loadCustomMaps, saveCustomMaps, deleteCustomMap, type MapConfig } from './maps';
 
 // --- 常數 ---
 const COLS = 80;
@@ -14,16 +15,28 @@ const TILE_SIZE = 16;
 
 interface Point { x: number; y: number; }
 
-const SPAWN_POINT: Point = { x: 0, y: 20 };
-const BASE_POINT: Point = { x: 79, y: 20 };
-const WAYPOINTS: Point[] = [
+// --- 遊戲地圖變數 ---
+let currentMap: MapConfig = MAPS[1]; // 預設為簡單關卡
+let SPAWN_POINT: Point = { x: 0, y: 20 };
+let BASE_POINT: Point = { x: 79, y: 20 };
+let WAYPOINTS: Point[] = [
   { x: 13, y: 8 }, { x: 26, y: 32 }, { x: 40, y: 8 }, { x: 53, y: 32 }, { x: 66, y: 15 }
 ];
 
 // --- 場景管理 ---
-type GameScene = 'MAIN_MENU' | 'TALENT_SCREEN' | 'BATTLE' | 'GAME_OVER';
+type GameScene = 'MAIN_MENU' | 'LEVEL_SELECT' | 'MAP_EDITOR' | 'TALENT_SCREEN' | 'BATTLE' | 'GAME_OVER';
 let currentScene: GameScene = 'MAIN_MENU';
 let animFrameId: number | null = null;
+
+// --- 地圖編輯器狀態 ---
+type EditorTool = 'spawn' | 'base' | 'waypoint' | 'obstacle' | 'eraser';
+let editorTool: EditorTool = 'obstacle';
+let editorGrid: number[][] = [];
+let editorSpawn: Point | null = null;
+let editorBase: Point | null = null;
+let editorWaypoints: Point[] = [];
+let editorAnimId: number | null = null;
+let editorMouseDown = false;
 
 // --- 遊戲狀態 ---
 let hp = 20;
@@ -116,6 +129,36 @@ let spawnTimers: ReturnType<typeof setInterval>[] = [];
 let routePreviewTimer = 0;
 let cachedPreviewRoute: Point[] = [];
 
+// --- 地圖主題與動態天氣變數 (Phase 4) ---
+type ThemeId = 'scifi' | 'chinese' | 'ink' | 'starry';
+type WeatherId = 'none' | 'rain' | 'fog' | 'thunder';
+
+let currentTheme: ThemeId = 'scifi';
+let currentWeather: WeatherId = 'none';
+
+interface BgStar {
+  x: number;
+  y: number;
+  size: number;
+  alpha: number;
+  alphaSpeed: number;
+}
+let bgStars: BgStar[] = [];
+
+interface WeatherParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  alpha: number;
+  length?: number;
+}
+let weatherParticles: WeatherParticle[] = [];
+let lightningTimer = 0;
+let lightningActive = 0; // > 0 表示閃電亮起幀數
+let lightningPaths: Point[][] = [];
+
 // --- 地圖平移與縮放變數 (Phase 4) ---
 let mapScale = 1.0;
 let mapOffsetX = 0;
@@ -161,9 +204,18 @@ const towerButtonsContainer = document.getElementById('towerButtons')!;
 const waveProgressFill = document.getElementById('waveProgressFill')!;
 const waveProgressLabel = document.getElementById('waveProgressLabel')!;
 const waveEnemyCount = document.getElementById('waveEnemyCount')!;
+const selectTheme = document.getElementById('selectTheme') as HTMLSelectElement;
+const selectWeather = document.getElementById('selectWeather') as HTMLSelectElement;
 
 // 場景元素
 const mainMenuEl = document.getElementById('mainMenu')!;
+const levelSelectScreenEl = document.getElementById('levelSelectScreen')!;
+const levelGridEl = document.getElementById('levelGrid')!;
+const mapEditorSceneEl = document.getElementById('mapEditorScene')!;
+const editorCanvasEl = document.getElementById('editorCanvas') as HTMLCanvasElement;
+const editorCtx = editorCanvasEl.getContext('2d')!;
+const editorStatusEl = document.getElementById('editorStatus')!;
+const editorMapNameInput = document.getElementById('editorMapName') as HTMLInputElement;
 const talentScreenEl = document.getElementById('talentScreen')!;
 const gameOverScreenEl = document.getElementById('gameOverScreen')!;
 const battleSceneEl = document.getElementById('battleScene')!;
@@ -175,15 +227,31 @@ const battleSceneEl = document.getElementById('battleScene')!;
 function switchScene(scene: GameScene) {
   currentScene = scene;
   mainMenuEl.classList.remove('active');
+  levelSelectScreenEl.classList.remove('active');
+  mapEditorSceneEl.classList.remove('active');
   talentScreenEl.classList.remove('active');
   gameOverScreenEl.classList.remove('active');
   battleSceneEl.classList.remove('active');
+
+  // 離開編輯器時停止其渲染迴圈
+  if (scene !== 'MAP_EDITOR' && editorAnimId) {
+    cancelAnimationFrame(editorAnimId);
+    editorAnimId = null;
+  }
 
   switch (scene) {
     case 'MAIN_MENU':
       mainMenuEl.classList.add('active');
       if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
       refreshMenuTalentInfo();
+      break;
+    case 'LEVEL_SELECT':
+      levelSelectScreenEl.classList.add('active');
+      renderLevelSelectScreen();
+      break;
+    case 'MAP_EDITOR':
+      mapEditorSceneEl.classList.add('active');
+      initEditor();
       break;
     case 'TALENT_SCREEN':
       talentScreenEl.classList.add('active');
@@ -211,60 +279,445 @@ function refreshMenuTalentInfo() {
   info.textContent = total > 0 ? `🌟 天賦點: ${pts} 可用 / ${total} 總計` : '尚未獲得天賦點';
 }
 
+function renderLevelSelectScreen() {
+  levelGridEl.innerHTML = '';
+  const allMaps = [...MAPS, ...loadCustomMaps()];
+  allMaps.forEach(map => {
+    const card = document.createElement('div');
+    card.className = 'level-card';
+    
+    let badgeClass = 'badge-easy';
+    if (map.difficulty === '教學') badgeClass = 'badge-tutorial';
+    else if (map.difficulty === '中等') badgeClass = 'badge-normal';
+    else if (map.difficulty === '困難') badgeClass = 'badge-hard';
+    else if (map.difficulty === '自訂') badgeClass = 'badge-custom';
+    
+    const isCustom = map.difficulty === '自訂';
+    card.innerHTML = `
+      <span class="level-badge ${badgeClass}">${map.difficulty}</span>
+      <div class="level-title">${map.name}</div>
+      <div class="level-desc">${map.description}</div>
+      <div class="level-info">
+        📍 起點: (${map.spawnPoint.x}, ${map.spawnPoint.y}) &nbsp;&nbsp; 
+        🏠 終點: (${map.basePoint.x}, ${map.basePoint.y}) <br>
+        🏁 檢查點: ${map.waypoints.length} 個 &nbsp;&nbsp;
+        ⛰️ 障礙物: ${map.obstacles.length} 個
+      </div>
+      ${isCustom ? '<div class="level-card-actions"><button class="btn-delete" data-delete-map="' + map.id + '">🗑️ 刪除</button></div>' : ''}
+    `;
+    
+    card.addEventListener('click', (e) => {
+      // 防止點擊刪除按鈕時觸發卡片點擊
+      if ((e.target as HTMLElement).hasAttribute('data-delete-map')) return;
+      playSFX('click');
+      currentMap = map;
+      switchScene('BATTLE');
+    });
+
+    // 自訂地圖的刪除按鈕
+    if (isCustom) {
+      const delBtn = card.querySelector('.btn-delete');
+      if (delBtn) {
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (confirm(`確定要刪除自訂地圖「${map.name}」嗎？`)) {
+            deleteCustomMap(map.id);
+            renderLevelSelectScreen(); // 重新渲染列表
+          }
+        });
+      }
+    }
+    
+    levelGridEl.appendChild(card);
+  });
+}
+
+// ============================================================
+// 1.5 地圖編輯器
+// ============================================================
+
+function initEditor() {
+  editorGrid = Array.from({ length: COLS }, () => Array(ROWS).fill(0));
+  editorSpawn = null;
+  editorBase = null;
+  editorWaypoints = [];
+  editorTool = 'obstacle';
+  editorMapNameInput.value = '';
+  editorMouseDown = false;
+  
+  // 重設工具按鈕高亮
+  document.querySelectorAll('[data-editor-tool]').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-editor-tool') === 'obstacle');
+  });
+  
+  updateEditorStatus();
+  startEditorLoop();
+}
+
+function startEditorLoop() {
+  if (editorAnimId) cancelAnimationFrame(editorAnimId);
+  function loop() {
+    if (currentScene !== 'MAP_EDITOR') return;
+    renderEditor();
+    editorAnimId = requestAnimationFrame(loop);
+  }
+  editorAnimId = requestAnimationFrame(loop);
+}
+
+function renderEditor() {
+  const ctx = editorCtx;
+  const W = editorCanvasEl.width;
+  const H = editorCanvasEl.height;
+  
+  // 背景
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(0, 0, W, H);
+
+  // 網格線
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x * TILE_SIZE, 0); ctx.lineTo(x * TILE_SIZE, ROWS * TILE_SIZE); ctx.stroke(); }
+  for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * TILE_SIZE); ctx.lineTo(COLS * TILE_SIZE, y * TILE_SIZE); ctx.stroke(); }
+
+  // 障礙物
+  for (let x = 0; x < COLS; x++) {
+    for (let y = 0; y < ROWS; y++) {
+      if (editorGrid[x][y] === 2) {
+        ctx.fillStyle = '#1e293b';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        ctx.fillStyle = '#06b6d4';
+        ctx.fillRect(x * TILE_SIZE + 6, y * TILE_SIZE + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+      }
+    }
+  }
+
+  // 起點
+  if (editorSpawn) {
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(editorSpawn.x * TILE_SIZE, editorSpawn.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px Outfit, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('S', editorSpawn.x * TILE_SIZE + TILE_SIZE / 2, editorSpawn.y * TILE_SIZE + TILE_SIZE / 2);
+  }
+
+  // 終點
+  if (editorBase) {
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(editorBase.x * TILE_SIZE, editorBase.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px Outfit, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('B', editorBase.x * TILE_SIZE + TILE_SIZE / 2, editorBase.y * TILE_SIZE + TILE_SIZE / 2);
+  }
+
+  // 檢查點
+  editorWaypoints.forEach((wp, idx) => {
+    ctx.beginPath();
+    ctx.arc(wp.x * TILE_SIZE + TILE_SIZE / 2, wp.y * TILE_SIZE + TILE_SIZE / 2, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#f59e0b'; ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Outfit, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText((idx + 1).toString(), wp.x * TILE_SIZE + TILE_SIZE / 2, wp.y * TILE_SIZE + TILE_SIZE / 2);
+  });
+
+  // 當前工具提示（左上角）
+  const toolNames: Record<EditorTool, string> = {
+    spawn: '📍 起點', base: '🏠 終點', waypoint: '🏁 檢查點',
+    obstacle: '⛰️ 障礙物', eraser: '🧹 橡皮擦'
+  };
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(4, 4, 130, 22);
+  ctx.fillStyle = '#e2e8f0'; ctx.font = '12px Outfit, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(`工具: ${toolNames[editorTool]}`, 10, 9);
+}
+
+function editorClickAt(gx: number, gy: number, isRightClick: boolean) {
+  if (gx < 0 || gx >= COLS || gy < 0 || gy >= ROWS) return;
+
+  if (isRightClick) {
+    // 右鍵：在 waypoint 模式下刪除檢查點；在 obstacle 模式下擦除障礙物
+    const wpIdx = editorWaypoints.findIndex(w => w.x === gx && w.y === gy);
+    if (wpIdx !== -1) {
+      editorWaypoints.splice(wpIdx, 1);
+    } else if (editorGrid[gx][gy] === 2) {
+      editorGrid[gx][gy] = 0;
+    }
+    updateEditorStatus();
+    return;
+  }
+
+  // 左鍵操作
+  switch (editorTool) {
+    case 'spawn':
+      // 清除舊起點格子
+      if (editorSpawn && editorGrid[editorSpawn.x]?.[editorSpawn.y] === 2) {
+        // 不清除障礙物
+      }
+      editorSpawn = { x: gx, y: gy };
+      editorGrid[gx][gy] = 0; // 確保起點不在障礙上
+      break;
+    case 'base':
+      editorBase = { x: gx, y: gy };
+      editorGrid[gx][gy] = 0;
+      break;
+    case 'waypoint':
+      // 不重複放置
+      if (editorWaypoints.some(w => w.x === gx && w.y === gy)) break;
+      if (editorWaypoints.length >= 8) break;
+      editorGrid[gx][gy] = 0;
+      editorWaypoints.push({ x: gx, y: gy });
+      break;
+    case 'obstacle':
+      // 不覆蓋起終點和檢查點
+      if (editorSpawn && editorSpawn.x === gx && editorSpawn.y === gy) break;
+      if (editorBase && editorBase.x === gx && editorBase.y === gy) break;
+      if (editorWaypoints.some(w => w.x === gx && w.y === gy)) break;
+      editorGrid[gx][gy] = 2;
+      break;
+    case 'eraser':
+      editorGrid[gx][gy] = 0;
+      if (editorSpawn && editorSpawn.x === gx && editorSpawn.y === gy) editorSpawn = null;
+      if (editorBase && editorBase.x === gx && editorBase.y === gy) editorBase = null;
+      const ewIdx = editorWaypoints.findIndex(w => w.x === gx && w.y === gy);
+      if (ewIdx !== -1) editorWaypoints.splice(ewIdx, 1);
+      break;
+  }
+  updateEditorStatus();
+}
+
+function updateEditorStatus() {
+  const parts: string[] = [];
+  parts.push(editorSpawn ? `<span class="status-ok">📍 起點 ✔</span>` : `<span class="status-warn">📍 起點 ✘</span>`);
+  parts.push(editorBase ? `<span class="status-ok">🏠 終點 ✔</span>` : `<span class="status-warn">🏠 終點 ✘</span>`);
+  parts.push(editorWaypoints.length > 0
+    ? `<span class="status-ok">🏁 檢查點: ${editorWaypoints.length} 個</span>`
+    : `<span class="status-warn">🏁 檢查點: 0 個（至少 1 個）</span>`);
+  
+  let obsCnt = 0;
+  for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) if (editorGrid[x]?.[y] === 2) obsCnt++;
+  parts.push(`⛰️ 障礙物: ${obsCnt} 個`);
+  editorStatusEl.innerHTML = parts.join(' &nbsp;|&nbsp; ');
+}
+
+function editorValidatePath(): boolean {
+  if (!editorSpawn || !editorBase || editorWaypoints.length === 0) return false;
+
+  // 暫時將 grid 設為 editorGrid 的值來做 A* 驗證
+  const backupGrid = grid.map(col => [...col]);
+  for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) grid[x][y] = editorGrid[x]?.[y] || 0;
+  
+  let valid = true;
+  let prev = editorSpawn;
+  for (let i = 0; i <= editorWaypoints.length; i++) {
+    const target = i === editorWaypoints.length ? editorBase : editorWaypoints[i];
+    if (!astarFind(prev, target)) { valid = false; break; }
+    prev = target;
+  }
+
+  // 還原 grid
+  for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) grid[x][y] = backupGrid[x][y];
+  return valid;
+}
+
+function editorSave() {
+  const name = editorMapNameInput.value.trim();
+  if (!name) { alert('請輸入地圖名稱！'); return; }
+  if (!editorSpawn) { alert('請設定起點！'); return; }
+  if (!editorBase) { alert('請設定終點！'); return; }
+  if (editorWaypoints.length === 0) { alert('請至少設定 1 個檢查點！'); return; }
+  if (!editorValidatePath()) {
+    alert('路徑驗證失敗！怪物無法從起點經過所有檢查點到達終點，請調整障礙物位置。');
+    return;
+  }
+
+  const obstacles: { x: number; y: number }[] = [];
+  for (let x = 0; x < COLS; x++) {
+    for (let y = 0; y < ROWS; y++) {
+      if (editorGrid[x]?.[y] === 2) obstacles.push({ x, y });
+    }
+  }
+
+  const newMap: MapConfig = {
+    id: `custom_${Date.now()}`,
+    name,
+    difficulty: '自訂',
+    description: `玩家自建地圖：${editorWaypoints.length} 個檢查點、${obstacles.length} 個障礙物。`,
+    spawnPoint: { ...editorSpawn },
+    basePoint: { ...editorBase },
+    waypoints: editorWaypoints.map(w => ({ ...w })),
+    obstacles
+  };
+
+  const existing = loadCustomMaps();
+  existing.push(newMap);
+  saveCustomMaps(existing);
+  alert(`地圖「${name}」已儲存！`);
+  switchScene('LEVEL_SELECT');
+}
+
+// 編輯器 Canvas 事件綁定
+editorCanvasEl.addEventListener('mousedown', (e) => {
+  if (currentScene !== 'MAP_EDITOR') return;
+  e.preventDefault();
+  editorMouseDown = true;
+  const rect = editorCanvasEl.getBoundingClientRect();
+  const gx = Math.floor((e.clientX - rect.left) / TILE_SIZE);
+  const gy = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+  editorClickAt(gx, gy, e.button === 2);
+});
+
+editorCanvasEl.addEventListener('mousemove', (e) => {
+  if (currentScene !== 'MAP_EDITOR' || !editorMouseDown) return;
+  if (editorTool !== 'obstacle' && editorTool !== 'eraser') return; // 只有障礙物和橡皮擦支持拖曳繪製
+  const rect = editorCanvasEl.getBoundingClientRect();
+  const gx = Math.floor((e.clientX - rect.left) / TILE_SIZE);
+  const gy = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+  editorClickAt(gx, gy, false);
+});
+
+editorCanvasEl.addEventListener('mouseup', () => { editorMouseDown = false; });
+editorCanvasEl.addEventListener('mouseleave', () => { editorMouseDown = false; });
+editorCanvasEl.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+
+// 編輯器工具列按鈕切換
+document.querySelectorAll<HTMLButtonElement>('[data-editor-tool]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tool = btn.getAttribute('data-editor-tool') as EditorTool;
+    if (!tool) return;
+    editorTool = tool;
+    document.querySelectorAll('[data-editor-tool]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// 編輯器動作按鈕
+document.getElementById('btnEditorValidate')!.addEventListener('click', () => {
+  if (editorValidatePath()) {
+    alert('✅ 路徑驗證通過！怪物可以從起點經所有檢查點抵達終點。');
+  } else {
+    alert('❌ 路徑驗證失敗！請確認起點、終點、檢查點都已設定，且路線暢通無阻。');
+  }
+});
+
+document.getElementById('btnEditorClear')!.addEventListener('click', () => {
+  if (confirm('確定要清空目前的編輯內容嗎？')) {
+    initEditor();
+  }
+});
+
+document.getElementById('btnEditorSave')!.addEventListener('click', () => { editorSave(); });
+document.getElementById('btnBackFromEditor')!.addEventListener('click', () => { playSFX('click'); switchScene('LEVEL_SELECT'); });
+document.getElementById('btnCreateMap')!.addEventListener('click', () => { playSFX('click'); switchScene('MAP_EDITOR'); });
+
 // ============================================================
 // 2. 天賦頁面渲染
 // ============================================================
 
 function renderTalentScreen() {
-  const grid = document.getElementById('talentGrid')!;
-  grid.innerHTML = '';
   document.getElementById('talentPointsVal')!.textContent = getAvailablePoints(talentData).toString();
 
-  const categories: { key: string; label: string }[] = [
-    { key: 'base', label: '🛡️ 基礎強化' },
-    { key: 'attack', label: '⚔️ 攻擊強化' },
-    { key: 'element', label: '🌿 五行解鎖' },
-    { key: 'yinyang', label: '☯️ 陰陽解鎖' },
-  ];
+  const cards = document.querySelectorAll('.talent-card');
+  cards.forEach(cardEl => {
+    const tid = cardEl.getAttribute('data-id') as TalentId;
+    const node = TALENT_TREE.find(t => t.id === tid);
+    if (!node) return;
 
-  for (const cat of categories) {
-    const titleEl = document.createElement('div');
-    titleEl.className = 'talent-category-title';
-    titleEl.textContent = cat.label;
-    grid.appendChild(titleEl);
+    const level = talentData.talentLevels[tid] || 0;
+    const isMax = level >= node.maxLevel;
+    const canUpgrade = canUnlockTalent(talentData, tid);
 
-    const nodes = TALENT_TREE.filter(t => t.category === cat.key);
-    for (const node of nodes) {
-      const el = document.createElement('div');
-      el.className = 'talent-node';
-
-      const level = talentData.talentLevels[node.id] || 0;
-      const isMax = level >= node.maxLevel;
-      const canUpgrade = canUnlockTalent(talentData, node.id);
-
-      if (level === 0) {
-        if (canUpgrade) el.classList.add('available');
-        else el.classList.add('locked');
-      } else {
-        el.classList.add('unlocked');
-        if (canUpgrade && !isMax) el.classList.add('available');
-      }
-
-      el.innerHTML = `
-        <div class="t-name">${node.name} <span style="font-size:0.8rem;color:#f59e0b;">(Lv.${level}/${node.maxLevel})</span></div>
-        <div class="t-desc">${node.description}</div>
-        <div class="t-cost">${isMax ? '✨ 已滿級' : `升級花費: ${node.cost} 點`}</div>
-      `;
-
-      if (canUpgrade && !isMax) {
-        el.addEventListener('click', () => {
-          unlockTalent(talentData, node.id);
-          renderTalentScreen();
-        });
-      }
-
-      grid.appendChild(el);
+    // 更新樣式類別
+    cardEl.className = 'talent-card';
+    if (level === 0) {
+      if (canUpgrade) cardEl.classList.add('available');
+      else cardEl.classList.add('locked');
+    } else {
+      cardEl.classList.add('unlocked');
+      if (canUpgrade && !isMax) cardEl.classList.add('available');
     }
+
+    // 根據天賦 ID 取得大圖示 emoji
+    const emojiMap: Record<TalentId, string> = {
+      fortress_1: '🛡️', fortress_2: '🏰',
+      gold_1: '💰', gold_2: '🪙',
+      precise_1: '🎯', precise_2: '⚔️', rapid_fire: '⚡',
+      wood_awakening: '🌿', water_awakening: '💧', fire_awakening: '🔥',
+      earth_awakening: '⛰️', metal_awakening: '⚔️',
+      yin_law: '🌑', yang_law: '☀️', taiji_dao: '☯️',
+      wall_discount: '🧱'
+    };
+    const emoji = emojiMap[tid] || '✨';
+
+    // 計算未滿足的前置條件文字
+    let prereqHtml = '';
+    if (node.prerequisites.length > 0) {
+      const unmetPrereqs = node.prerequisites.filter(
+        pid => (talentData.talentLevels[pid] || 0) < 1
+      );
+      if (unmetPrereqs.length > 0) {
+        const prereqNames = unmetPrereqs.map(pid => {
+          const prereqNode = TALENT_TREE.find(t => t.id === pid);
+          return prereqNode ? prereqNode.name : pid;
+        });
+        prereqHtml = `<div class="talent-card-prereq">🔒 需解鎖：${prereqNames.join('、')}</div>`;
+      }
+    }
+
+    cardEl.innerHTML = `
+      <div class="talent-icon">${emoji}</div>
+      <div class="talent-card-info">
+        <div class="talent-card-title">
+          <span>${node.name}</span>
+          <span class="talent-card-level">Lv.${level}/${node.maxLevel}</span>
+        </div>
+        <div class="talent-card-desc">${node.description}</div>
+        ${prereqHtml}
+        <div class="talent-card-cost">${isMax ? '✨ 已滿級' : `升級花費: ${node.cost} 點`}</div>
+      </div>
+    `;
+
+
+    // 重設並重新綁定點擊事件
+    const htmlEl = cardEl as HTMLElement;
+    htmlEl.onclick = null;
+    if (canUpgrade && !isMax) {
+      htmlEl.onclick = () => {
+        playSFX('click');
+        unlockTalent(talentData, tid);
+        renderTalentScreen();
+      };
+    }
+  });
+
+  // 更新所有箭頭的 active 狀態
+  const arrows = document.querySelectorAll('.talent-arrow');
+  arrows.forEach(arrowEl => {
+    const fromId = arrowEl.getAttribute('data-from') as TalentId;
+    const fromLvl = talentData.talentLevels[fromId] || 0;
+    if (fromLvl >= 1) {
+      arrowEl.classList.add('active');
+    } else {
+      arrowEl.classList.remove('active');
+    }
+  });
+}
+
+function initBgStars() {
+  bgStars = [];
+  const starCount = 80;
+  for (let i = 0; i < starCount; i++) {
+    bgStars.push({
+      x: Math.random() * (COLS * TILE_SIZE),
+      y: Math.random() * (ROWS * TILE_SIZE),
+      size: 0.5 + Math.random() * 1.5,
+      alpha: Math.random(),
+      alphaSpeed: 0.005 + Math.random() * 0.015
+    });
   }
 }
 
@@ -273,6 +726,11 @@ function renderTalentScreen() {
 // ============================================================
 
 function startBattle() {
+  // 讀取地圖配置
+  SPAWN_POINT = currentMap.spawnPoint;
+  BASE_POINT = currentMap.basePoint;
+  WAYPOINTS = currentMap.waypoints;
+
   // 讀取天賦效果
   hp = getBaseHP(talentData);
   gold = getStartGold(talentData);
@@ -296,8 +754,20 @@ function startBattle() {
   waveTotal = 0;
   waveSpawned = 0;
 
-  // 清空網格
+  // 清空網格並放置預設障礙物
   for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) grid[x][y] = 0;
+  for (const obs of currentMap.obstacles) {
+    if (obs.x >= 0 && obs.x < COLS && obs.y >= 0 && obs.y < ROWS) {
+      grid[obs.x][obs.y] = 2; // 2 代表天然地形障礙物
+    }
+  }
+
+  // 初始化星空背景與天氣粒子
+  initBgStars();
+  weatherParticles = [];
+  lightningActive = 0;
+  currentTheme = (selectTheme.value as ThemeId) || 'scifi';
+  currentWeather = (selectWeather.value as WeatherId) || 'none';
 
   // 動態生成砲台按鈕
   buildTowerButtons();
@@ -322,7 +792,8 @@ function buildTowerButtons() {
     btn.className = 'btn';
     btn.setAttribute('data-tool', tid);
     btn.disabled = !unlocked;
-    btn.textContent = `${def.emoji} ${def.name} (${def.cost}g)`;
+    const cost = tid === 'earth' ? getWallCost(talentData) : def.cost;
+    btn.textContent = `${def.emoji} ${def.name} (${cost}g)`;
     if (!unlocked) btn.title = '需先在天賦頁解鎖';
     btn.addEventListener('click', () => {
       if (!unlocked) return;
@@ -349,7 +820,11 @@ function refreshToolSelection() {
   } else if (selectedTool === 'sell') {
     instructionText.textContent = '💰 拆除模式：點擊砲台將其拆除並退回部分金幣';
   } else {
-    instructionText.innerHTML = '選擇砲台後點擊地圖擺放。怪物依序碰觸 <span style="color:#f59e0b">❶❷❸❹❺</span> 檢查點再抵達基地。用砲台築迷宮！';
+    if (currentMap && currentMap.id === 'tutorial') {
+      instructionText.innerHTML = '🎓 <span style="color:#fbbf24; font-weight:bold;">教學引導：</span>因橫向長牆阻擋，怪物必須先向右繞過 3 號點入口才進入 1 號點。推薦在右側瓶頸 <span style="color:#38bdf8; font-weight:bold;">(58, 17)</span> 建造攻擊塔，讓怪物在三個尋路階段反覆受擊！';
+    } else {
+      instructionText.innerHTML = '選擇砲台後點擊地圖擺放。怪物依序碰觸 <span style="color:#f59e0b">❶❷❸❹❺</span> 檢查點再抵達基地。用砲台築迷宮！';
+    }
   }
 }
 
@@ -400,7 +875,7 @@ function astarFind(start: Point, end: Point, isFlying: boolean = false, blockedX
     for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
       const nx = cur.x + dx, ny = cur.y + dy;
       if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
-      if (grid[nx][ny] === 1 || (nx === blockedX && ny === blockedY)) continue;
+      if (grid[nx][ny] !== 0 || (nx === blockedX && ny === blockedY)) continue;
       const nKey = `${nx},${ny}`;
       if (closedSet.has(nKey)) continue;
       const g = cur.g + 1;
@@ -503,7 +978,8 @@ function handleBuild(x: number, y: number) {
   if (grid[x][y] !== 0) { showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '已有建物', '#ef4444', 15); return; }
   const def = BASE_TOWERS[selectedTool];
   if (!def) return;
-  if (gold < def.cost) { showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '金幣不足', '#ef4444', 15); return; }
+  const cost = selectedTool === 'earth' ? getWallCost(talentData) : def.cost;
+  if (gold < cost) { showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '金幣不足', '#ef4444', 15); return; }
 
   if (def.isWall && !validatePlacement(x, y)) {
     showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '不能堵死怪物！', '#ef4444', 15);
@@ -511,13 +987,17 @@ function handleBuild(x: number, y: number) {
   }
 
   grid[x][y] = def.isWall ? 1 : 0;
-  towers.push({ id: nextTowerId++, x, y, typeId: def.id, def: { ...def }, cooldown: 0 });
-  gold -= def.cost;
+  towers.push({ id: nextTowerId++, x, y, typeId: def.id, def: { ...def, cost }, cooldown: 0 });
+  gold -= cost;
   updateUI();
   if (def.isWall) updateAllEnemyPaths();
 }
 
 function handleSell(x: number, y: number) {
+  if (grid[x][y] === 2) {
+    showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '天然障礙物無法拆除', '#ef4444', 15);
+    return;
+  }
   const idx = towers.findIndex(t => t.x === x && t.y === y);
   if (idx === -1) return;
   const tower = towers[idx];
@@ -953,6 +1433,120 @@ function updatePhysics() {
 
   // 6. 更新粒子特效 (Phase 4)
   updateParticles();
+
+  // 7. 更新背景星星與天氣 (Phase 4)
+  updateBgStars();
+  updateWeather();
+}
+
+function updateBgStars() {
+  for (const star of bgStars) {
+    star.alpha += star.alphaSpeed;
+    if (star.alpha > 1.0 || star.alpha < 0.2) {
+      star.alphaSpeed = -star.alphaSpeed;
+    }
+  }
+}
+
+function updateWeather() {
+  // 更新閃電計時
+  if (currentWeather === 'thunder') {
+    if (lightningActive > 0) {
+      lightningActive--;
+    } else {
+      if (lightningTimer > 0) {
+        lightningTimer--;
+      } else {
+        // 觸發閃電機率
+        if (Math.random() < 0.005) {
+          lightningActive = 10 + Math.floor(Math.random() * 15); // 閃電持續 10-25 幀
+          lightningTimer = 180 + Math.floor(Math.random() * 240); // 隨機 3~7 秒冷卻
+          generateLightningPaths();
+        }
+      }
+    }
+  } else {
+    lightningActive = 0;
+  }
+
+  // 更新天氣粒子
+  if (currentWeather === 'none') {
+    weatherParticles = [];
+    return;
+  }
+
+  // 1. 產生新粒子
+  if (currentWeather === 'rain' || currentWeather === 'thunder') {
+    // 雨/雷雨：每幀產生雨粒子
+    const spawnCount = currentWeather === 'thunder' ? 4 : 2;
+    for (let i = 0; i < spawnCount; i++) {
+      weatherParticles.push({
+        x: Math.random() * canvas.width,
+        y: -10,
+        vx: -1.5 - Math.random() * 1.5,
+        vy: 8 + Math.random() * 4,
+        size: 1 + Math.random() * 1.5,
+        alpha: 0.3 + Math.random() * 0.4,
+        length: 12 + Math.random() * 15
+      });
+    }
+  } else if (currentWeather === 'fog') {
+    // 霧氣粒子初始化與定時補充
+    if (weatherParticles.length < 25) {
+      const isInit = weatherParticles.length === 0;
+      const spawnCount = isInit ? 25 : 1;
+      for (let i = 0; i < spawnCount; i++) {
+        weatherParticles.push({
+          x: isInit ? Math.random() * canvas.width : -120,
+          y: Math.random() * canvas.height,
+          vx: 0.2 + Math.random() * 0.4,
+          vy: (Math.random() - 0.5) * 0.1,
+          size: 80 + Math.random() * 80,
+          alpha: 0.02 + Math.random() * 0.05
+        });
+      }
+    }
+  }
+
+  // 2. 移動並過濾粒子
+  for (let i = weatherParticles.length - 1; i >= 0; i--) {
+    const p = weatherParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+
+    // 邊界檢查
+    if (currentWeather === 'rain' || currentWeather === 'thunder') {
+      if (p.y > canvas.height + 20 || p.x < -20) {
+        weatherParticles.splice(i, 1);
+      }
+    } else if (currentWeather === 'fog') {
+      if (p.x > canvas.width + 150) {
+        weatherParticles.splice(i, 1);
+      }
+    }
+  }
+}
+
+function generateLightningPaths() {
+  lightningPaths = [];
+  const pathCount = 1 + Math.floor(Math.random() * 2);
+  for (let p = 0; p < pathCount; p++) {
+    const path: Point[] = [];
+    let curX = 100 + Math.random() * (canvas.width - 200);
+    let curY = 0;
+    path.push({ x: curX, y: curY });
+    
+    const segmentCount = 6 + Math.floor(Math.random() * 6);
+    const targetY = canvas.height * 0.6 + Math.random() * (canvas.height * 0.4);
+    const dy = targetY / segmentCount;
+    
+    for (let i = 0; i < segmentCount; i++) {
+      curY += dy;
+      curX += (Math.random() - 0.5) * 60;
+      path.push({ x: curX, y: curY });
+    }
+    lightningPaths.push(path);
+  }
 }
 
 // ============================================================
@@ -1002,30 +1596,111 @@ function checkWaveEnd() {
 // ============================================================
 
 function renderGame() {
-  ctx.fillStyle = '#020617';
+  let bgFillStyle = '#020617';
+  let gridStrokeStyle = '#1e293b';
+  
+  if (currentTheme === 'chinese') {
+    bgFillStyle = '#2b0909';
+    gridStrokeStyle = '#6b1d1d';
+  } else if (currentTheme === 'ink') {
+    bgFillStyle = '#f8fafc';
+    gridStrokeStyle = '#e2e8f0';
+  } else if (currentTheme === 'starry') {
+    bgFillStyle = '#060a16';
+    gridStrokeStyle = '#131e3a';
+  }
+  
+  ctx.fillStyle = bgFillStyle;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.save();
   ctx.translate(mapOffsetX, mapOffsetY);
   ctx.scale(mapScale, mapScale);
 
+  // 繪製璀璨星空的背景星星 (會隨地圖一起滾動和放大縮小)
+  if (currentTheme === 'starry') {
+    for (const star of bgStars) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   // 網格線
-  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 0.5;
-  for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x * TILE_SIZE, 0); ctx.lineTo(x * TILE_SIZE, canvas.height); ctx.stroke(); }
-  for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * TILE_SIZE); ctx.lineTo(canvas.width, y * TILE_SIZE); ctx.stroke(); }
+  ctx.strokeStyle = gridStrokeStyle; ctx.lineWidth = 0.5;
+  for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x * TILE_SIZE, 0); ctx.lineTo(x * TILE_SIZE, ROWS * TILE_SIZE); ctx.stroke(); }
+  for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * TILE_SIZE); ctx.lineTo(COLS * TILE_SIZE, y * TILE_SIZE); ctx.stroke(); }
+
+  // 繪製地圖預設地形障礙物
+  for (let x = 0; x < COLS; x++) {
+    for (let y = 0; y < ROWS; y++) {
+      if (grid[x][y] === 2) {
+        drawObstacle(ctx, x * TILE_SIZE, y * TILE_SIZE);
+      }
+    }
+  }
+
+  // 在教學關卡繪製推薦建造位置的高亮提示
+  if (currentMap && currentMap.id === 'tutorial') {
+    ctx.save();
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    const rx = 58 * TILE_SIZE;
+    const ry = 17 * TILE_SIZE;
+    ctx.strokeRect(rx, ry, TILE_SIZE, TILE_SIZE);
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('💡 推薦建造點', rx - 18, ry - 4);
+    ctx.restore();
+  }
 
   // 起點 / 終點
-  ctx.fillStyle = '#22c55e';
+  let spawnColor = '#22c55e';
+  let baseColor = '#ef4444';
+  if (currentTheme === 'chinese') {
+    spawnColor = '#fbbf24'; // 帝王金起點
+    baseColor = '#dc2626'; // 宮殿紅終點
+  } else if (currentTheme === 'ink') {
+    spawnColor = '#475569'; // 墨灰起點
+    baseColor = '#0f172a'; // 濃墨終點
+  } else if (currentTheme === 'starry') {
+    spawnColor = '#06b6d4'; // 青色星雲
+    baseColor = '#ec4899'; // 粉色超新星
+  }
+
+  ctx.fillStyle = spawnColor;
   ctx.fillRect(SPAWN_POINT.x * TILE_SIZE, SPAWN_POINT.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-  ctx.fillStyle = '#ef4444';
+  ctx.fillStyle = baseColor;
   ctx.fillRect(BASE_POINT.x * TILE_SIZE, BASE_POINT.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
   // 檢查點
   WAYPOINTS.forEach((wp, idx) => {
     ctx.beginPath();
     ctx.arc(wp.x * TILE_SIZE + TILE_SIZE / 2, wp.y * TILE_SIZE + TILE_SIZE / 2, 10, 0, Math.PI * 2);
-    ctx.fillStyle = '#f59e0b'; ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif';
+    
+    let wpBg = '#f59e0b';
+    let wpFg = '#fff';
+    
+    if (currentTheme === 'chinese') {
+      wpBg = '#ea580c';
+    } else if (currentTheme === 'ink') {
+      wpBg = '#334155';
+    } else if (currentTheme === 'starry') {
+      wpBg = '#8b5cf6';
+    }
+    
+    ctx.fillStyle = wpBg; ctx.fill();
+    
+    if (currentTheme === 'ink') {
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    
+    ctx.fillStyle = wpFg; ctx.font = 'bold 11px Outfit, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText((idx + 1).toString(), wp.x * TILE_SIZE + TILE_SIZE / 2, wp.y * TILE_SIZE + TILE_SIZE / 2);
   });
@@ -1116,6 +1791,59 @@ function renderGame() {
 
   ctx.restore(); // 結束地圖相關縮放與平移 (Phase 4)
 
+  // === 繪製天氣特效 Overlay ===
+  if (currentWeather === 'rain' || currentWeather === 'thunder') {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(156, 163, 175, 0.4)';
+    for (const p of weatherParticles) {
+      ctx.lineWidth = p.size;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + p.vx * 1.5, p.y + p.vy * 1.5);
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (currentWeather === 'fog') {
+    ctx.save();
+    for (const p of weatherParticles) {
+      const radGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+      radGrad.addColorStop(0, `rgba(226, 232, 240, ${p.alpha})`);
+      radGrad.addColorStop(0.5, `rgba(226, 232, 240, ${p.alpha * 0.5})`);
+      radGrad.addColorStop(1, 'rgba(226, 232, 240, 0)');
+      ctx.fillStyle = radGrad;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 繪製雷電效果
+  if (currentWeather === 'thunder' && lightningActive > 0) {
+    ctx.save();
+    if (Math.random() < 0.7) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.15 + Math.random() * 0.25})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    ctx.strokeStyle = 'rgba(224, 242, 254, 0.9)';
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#e0f2fe';
+    ctx.lineWidth = 2.5 + Math.random() * 2;
+    
+    for (const path of lightningPaths) {
+      if (path.length > 0) {
+        ctx.beginPath();
+        ctx.moveTo(path[0].x, path[0].y);
+        for (let i = 1; i < path.length; i++) {
+          ctx.lineTo(path[i].x, path[i].y);
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
   // 繪製阻塞警告文字（固定在畫布中心，不受平移和縮放影響）
   if (routePreviewTimer > 0 && cachedPreviewRoute.length === 0) {
     ctx.save();
@@ -1203,9 +1931,56 @@ function updateParticles() {
   }
 }
 
-// ============================================================
-// 10. UI 工具函數
-// ============================================================
+function drawObstacle(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.save();
+  if (currentTheme === 'scifi') {
+    // 藍色高科技合金柱
+    ctx.fillStyle = '#1e293b';
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+    ctx.strokeRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+    ctx.fillStyle = '#06b6d4';
+    ctx.fillRect(x + 6, y + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+  } else if (currentTheme === 'chinese') {
+    // 古風暗紅色石墩
+    ctx.fillStyle = '#7f1d1d';
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1;
+    ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+    ctx.strokeRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+    ctx.beginPath();
+    ctx.moveTo(x + TILE_SIZE / 2, y + 2);
+    ctx.lineTo(x + TILE_SIZE / 2, y + TILE_SIZE - 2);
+    ctx.moveTo(x + 2, y + TILE_SIZE / 2);
+    ctx.lineTo(x + TILE_SIZE - 2, y + TILE_SIZE / 2);
+    ctx.stroke();
+  } else if (currentTheme === 'ink') {
+    // 濃墨山石
+    ctx.fillStyle = '#475569';
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE / 2 - 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else if (currentTheme === 'starry') {
+    // 紫色晶體隕石
+    ctx.fillStyle = '#4c1d95';
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 8, y + 1);
+    ctx.lineTo(x + 15, y + 6);
+    ctx.lineTo(x + 13, y + 14);
+    ctx.lineTo(x + 3, y + 14);
+    ctx.lineTo(x + 1, y + 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 
 function drawRoutePreview() {
   if (cachedPreviewRoute.length === 0) {
@@ -1281,7 +2056,8 @@ function updateWaveProgress() {
 // ============================================================
 
 // 主介面按鈕
-document.getElementById('btnStartGame')!.addEventListener('click', () => { playSFX('click'); switchScene('BATTLE'); });
+document.getElementById('btnStartGame')!.addEventListener('click', () => { playSFX('click'); switchScene('LEVEL_SELECT'); });
+document.getElementById('btnBackFromLevel')!.addEventListener('click', () => { playSFX('click'); switchScene('MAIN_MENU'); });
 document.getElementById('btnTalent')!.addEventListener('click', () => { playSFX('click'); switchScene('TALENT_SCREEN'); });
 document.getElementById('btnBackFromTalent')!.addEventListener('click', () => { playSFX('click'); switchScene('MAIN_MENU'); });
 document.getElementById('btnBackToMenu')!.addEventListener('click', () => { playSFX('click'); switchScene('MAIN_MENU'); });
@@ -1343,10 +2119,68 @@ btnShowRoute.addEventListener('click', () => {
   routePreviewTimer = 180; // 3 秒
 });
 
+selectTheme.addEventListener('change', () => {
+  currentTheme = selectTheme.value as ThemeId;
+  playSFX('click');
+});
+
+selectWeather.addEventListener('change', () => {
+  currentWeather = selectWeather.value as WeatherId;
+  playSFX('click');
+  if (currentWeather === 'thunder') {
+    lightningTimer = 60 + Math.random() * 120;
+  }
+});
+
 // 初始化
 talentData = loadTalentData();
 initSprites();
 refreshMenuTalentInfo();
+
+// ============================================================
+// 天賦分支快速導覽列事件綁定
+// ============================================================
+(function initTalentNav() {
+  const navBtns = document.querySelectorAll<HTMLButtonElement>('#talentNav .talent-nav-btn');
+  navBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const trackId = btn.getAttribute('data-track');
+      if (!trackId) return;
+
+      // 高亮點擊的按鈕
+      navBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // 平滑捲動至對應分支
+      const trackEl = document.getElementById(trackId);
+      if (trackEl) {
+        trackEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // 使用 IntersectionObserver 自動更新高亮：當 track 進入視野時同步按鈕狀態
+  const trackIds = ['track-base', 'track-attack', 'track-element', 'track-yinyang'];
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        navBtns.forEach(b => {
+          if (b.getAttribute('data-track') === id) {
+            b.classList.add('active');
+          } else {
+            b.classList.remove('active');
+          }
+        });
+      }
+    });
+  }, { threshold: 0.4 });
+
+  trackIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+})();
 
 // ============================================================
 // 11. 行動裝置與手勢拖曳平移、雙指縮放處理 (Phase 4)
