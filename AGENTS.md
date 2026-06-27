@@ -40,3 +40,17 @@ index.html     — 入口頁面
 ## 場景管理
 - `MAIN_MENU` / `TALENT_SCREEN` / `BATTLE` / `GAME_OVER` 四場景
 - 以 CSS `display: none / flex` 切換
+
+## OpenCode 配置規範
+- `opencode.json` 必須符合官方 Schema 規格。使用 `command` 物件來配置自訂快捷命令，而非已棄用或錯誤的 `customCommands` 陣列。
+- 每個自訂命令物件應包含 `description`（說明）與 `template`（要執行的命令內容）欄位。
+- 隨附的 `verify_opencode.py` 驗證腳本必須保持與 `command` 物件格式一致的檢驗邏輯。
+
+## 防禦性資產載入 (Assets Fallback)
+- 為了維持 Vibecoding 快速迭代下的系統穩定性，所有前端外置資產（如 Stable Diffusion 產生的圖片、背景音樂、SFX 音效）之載入必須設計 **Fallback 機制**。
+- 若外部資源缺失或載入失敗（如 `Image.onload` / `onerror` 或 `audio.play().catch()`），必須能安全且無縫地回退到原生像素精靈矩陣或 Emoji 渲染，不可中斷遊戲流程。
+
+## 執行權限限制處理
+- 當前 Agent 在部分 Windows 開發環境下，執行 `run_command` 終端機指令會被系統拒絕（出現 `Access is denied` 錯誤）。
+- 遇此環境限制時，Agent 應主動將寫好的測試腳本或 Git 命令整理成清晰的指令列，引導使用者在本地端手動執行。
+

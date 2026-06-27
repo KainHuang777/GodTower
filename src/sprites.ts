@@ -10,6 +10,27 @@ import type { TowerTypeId } from './towers';
 /** 精靈快取 */
 const spriteCache = new Map<string, HTMLCanvasElement>();
 
+/** 圖片資產快取 (Phase 4 高品質美術資源) */
+const imageAssetCache = new Map<string, HTMLImageElement>();
+
+/** 預載入單張高品質圖片資產（若載入失敗則維持 Fallback） */
+export function preloadImage(key: string, src: string): Promise<void> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => {
+      imageAssetCache.set(key, img);
+      resolve();
+    };
+    img.onerror = () => {
+      // 載入失敗只輸出警告，不阻礙遊戲啟動，繼續使用預設像素 Fallback
+      console.warn(`[Asset Loader] High-res image not found: ${src}, using pixel art fallback.`);
+      resolve();
+    };
+  });
+}
+
+
 /** 像素精靈矩陣型別 */
 type SpriteMatrix = number[][];
 
@@ -340,10 +361,19 @@ export function initSprites(): void {
 
 /** 繪製怪物精靈 */
 export function drawEnemySprite(ctx: CanvasRenderingContext2D, enemyType: EnemyTypeId, x: number, y: number): void {
-  const key = `enemy_${enemyType}`;
-  const cvs = spriteCache.get(key);
+  const imgKey = `enemy_${enemyType}`;
+  const img = imageAssetCache.get(imgKey);
+  
+  if (img && img.complete && img.naturalWidth !== 0) {
+    // 優先以高品質 SD 圖片繪製（置中對齊，通常怪物尺寸設為 32x32 或與像素版大小相當）
+    const targetSize = enemyType.startsWith('boss') ? 48 : 32;
+    ctx.drawImage(img, x - targetSize / 2, y - targetSize / 2, targetSize, targetSize);
+    return;
+  }
+
+  // Fallback: 原始內建像素精靈
+  const cvs = spriteCache.get(imgKey);
   if (cvs) {
-    // 以中心點繪製
     ctx.drawImage(cvs, x - cvs.width / 2, y - cvs.height / 2);
   }
 }
@@ -360,18 +390,42 @@ export function drawTowerSprite(ctx: CanvasRenderingContext2D, towerType: TowerT
   };
   if (recipeMap[towerType]) baseType = recipeMap[towerType];
 
-  const key = `tower_${baseType}`;
-  const cvs = spriteCache.get(key);
+  const imgKey = `tower_${towerType}`; // 優先搜尋特定型號的高品質圖 (例如 fire_2)
+  let img = imageAssetCache.get(imgKey);
+  if (!img) {
+    img = imageAssetCache.get(`tower_${baseType}`); // 其次搜尋基礎型號 (例如 fire)
+  }
+
+  if (img && img.complete && img.naturalWidth !== 0) {
+    // 優先以高品質 SD 圖片繪製 (64x64 等比例縮放繪製到網格中，網格大小為 16px)
+    // 為了保持防禦塔的立體感與可讀性，我們繪製 20px * 20px 並作微調偏移
+    ctx.drawImage(img, x - 2, y - 4, 20, 20);
+    drawTowerLevelStars(ctx, towerType, x, y, recipeMap);
+    return;
+  }
+
+  // Fallback: 原始內建像素精靈
+  const cvs = spriteCache.get(`tower_${baseType}`);
   if (cvs) {
     ctx.drawImage(cvs, x, y);
-
-    // 合成塔加等級星星標記
-    const level = towerType.endsWith('_2') ? 2 : (recipeMap[towerType] ? 3 : 1);
-    if (level > 1) {
-      ctx.fillStyle = '#fde047';
-      ctx.font = 'bold 8px sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText('★'.repeat(Math.min(level, 3)), x + 15, y + 8);
-    }
+    drawTowerLevelStars(ctx, towerType, x, y, recipeMap);
   }
 }
+
+/** 繪製防禦塔星級 (等級標記) */
+function drawTowerLevelStars(
+  ctx: CanvasRenderingContext2D, 
+  towerType: TowerTypeId, 
+  x: number, 
+  y: number,
+  recipeMap: Record<string, string>
+): void {
+  const level = towerType.endsWith('_2') ? 2 : (recipeMap[towerType] ? 3 : 1);
+  if (level > 1) {
+    ctx.fillStyle = '#fde047';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('★'.repeat(Math.min(level, 3)), x + 15, y + 8);
+  }
+}
+

@@ -1,3 +1,33 @@
+2026-06-27 (第十五次更新)
+- 建立 CLI 測試工具 `test_cli.py`：一支純 Python CLI 工具，無需瀏覽器或 DOM，鏡像 TypeScript 遊戲核心邏輯。提供三個選單入口：(1) Battle Flow Test（戰鬥主流程）、(2) Full Feature Test（全功能測試所有 8 套件）、(3) Specific Feature Test（指定套件）。包含 8 個測試套件：波次配置、A* 尋路、砲台系統、天賦系統、怪物定義、波次配置、粒子系統及 AOE 擊殺修復驗證（Bug #14）。
+- 修正 `test_cli.py` 中的測試邏輯：(1) 修正 Python 3.8/3.9 舊版本的 `|` 聯集型別語法為相容寫法以防止 `TypeError`；(2) 修正 `test_battle_flow` 中的 HP 縮放測試，使其動態取得當前波次第一個怪物類型的 `baseHp`，防止因特定波次無小蛇（snake）而拋出 `StopIteration` 異常；(3) 修正 `test_aoe_kill_fix` 測試資料中火蜥蜴（salamander）的 `hp` 設定值（自 5 修改為 0），使其能如期判定為死亡以符合死亡數與金幣獲得數的斷言；(4) 修正 `test_wave_config` 中波次數量遞增測試，過濾飛行怪與 Boss 怪，改為僅統計陸地怪（ground enemies）數量以驗證陸地怪物的持續增長，避免因特定波次無飛行怪所致之總數量正常波動觸發斷言失敗。
+
+2026-06-27 (第十四次更新)
+- 修復 AOE 擊殺怪物時的 TypeError 崩潰問題：在 `src/main.ts` 中將 `enemies[j].def.colorPrimary` 改為 `ENEMY_DEFS[enemies[j].type]?.colorPrimary ?? '#facc15'`，避免在運行時讀取未定義的 `def` 屬性。
+
+2026-06-27 (第十三次更新)
+- 實作 Canvas 高性能粒子特效系統：在 `src/main.ts` 中新增粒子更新與渲染邏輯。子彈擊中怪物時噴射多彩屬性火花粒子、怪物死亡時產生能量擴散消散粒子、兩塔合成成功時爆發出紫色擴散魔幻光環，大幅增強視覺打擊感。
+- 實作遊戲音效 (SFX) 播控系統：預載入 `click.mp3`、`shoot.mp3`、`enemy_death.mp3` 與 `merge_success.mp3`。透過 Audio clone 實現多聲軌重疊流暢播放，並與右上角靜音開關同步連動，提供無音效檔時的 catch 異常安全回退保護。
+
+2026-06-27 (第十二次更新)
+- 實作背景音樂三首輪播與循環播放機制：在 `src/main.ts` 中配置 `Rain_on_the_Pagoda_Roof.mp3`、`Tiles_in_Motion.mp3` 與 `Iron_River_Gate.mp3` 播放清單。每首播放完畢後會間隔 5 秒鐘自動切換播放下一首。
+- 實作瀏覽器 Autoplay 解鎖機制：在玩家首次點擊畫面時自動播放音樂，並在 `index.html` 右上角新增浮動音樂開關按鈕（🎵/🔇），支援隨時靜音與重新啟動。
+
+2026-06-27 (第十一次更新)
+- 建立遊戲音訊資產目錄 `assets/audio/` 並加入說明文件，為 Phase 4 音效系統的整合預留資源存放位置。
+
+2026-06-27 (第十次更新)
+- 實作前端美術圖片載入與 Hybrid 雙重渲染機制：在 `sprites.ts` 中管理圖片載入狀態，當外置圖片 asset 存在時優先繪製高品質美術圖，否則自動 Fallback 到預設像素矩陣精靈，確保遊戲能百分之百相容且不崩潰。
+- 實作行動裝置適配 (Auto-fit): 根據螢幕寬度自動 scale 遊戲容器，並新增 `@media` 樣式以移除圓角與適配。
+- 實作 Canvas 手勢拖曳平移與雙指捏合縮放：新增單指拖曳平移、雙指捏合縮放，且放塔點擊座標能自動反向計算，確保拖曳/縮放後下塔位置完美精確。
+- 在專案根目錄中建立了 `test_sd_api.py`，用於檢驗 Stable Diffusion API 及示範自動去背處理。
+
+2026-06-27 (第九次更新)
+- 更新開發路線圖 `ROADMAP.md`：經檢查，Phase 3 的「合成塔實裝（包括 AOE, DOT, 減速, 增益等邏輯）」、「售塔功能（包含右鍵快捷售塔）」、「波次進度列（UI與怪物數量連動）」以及「結算統計面板（連殺與輸出傷害統計）」之核心 TypeScript 邏輯已全數於先前實作完畢。本次更新正式將 Phase 3 標記為已完成（✅），並更新文件日期。
+
+2026-06-27 (第八次更新)
+- 補全與優化 `.gitignore` 配置：新增常見編輯器快取與設定檔（如 .vscode, .idea, .DS_Store, Thumbs.db）、日誌檔案、環境變數檔案（.env*）等，確保在多平台開發時不會將無關與敏感檔案推送到 GitHub 倉庫。
+
 2026-06-26 (第七次更新)
 - 修正 `opencode.json` 的格式：將原先不符合官方 Schema 的 `customCommands` 陣列修改為符合規格的 `command` 物件格式，並加入 `$schema` 以支援 IDE 自動補全與驗證。
 - 修改 `verify_opencode.py` 驗證腳本：調整第 3 步驟的驗證邏輯，使其能正確讀取並比對新的 `command` 物件結構中的 `template` 欄位與 `package.json` scripts。

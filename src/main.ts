@@ -5,7 +5,7 @@
 import { BASE_TOWERS, getTowerDef, getSameMergeResult, getCrossRecipeResult, getElementBonus, getSellPrice, type TowerDef, type TowerTypeId, type Element } from './towers';
 import { ENEMY_DEFS, getWaveConfig, type EnemyTypeId } from './enemies';
 import { loadTalentData, getAvailablePoints, canUnlockTalent, unlockTalent, calcTalentPointsEarned, addTalentPoints, getBaseHP, getStartGold, getDamageMultiplier, getTowerElementDamageMultiplier, getFireRateMultiplier, isTowerUnlocked, resetTalents, TALENT_TREE, type TalentSaveData } from './talent';
-import { initSprites, drawEnemySprite, drawTowerSprite } from './sprites';
+import { initSprites, drawEnemySprite, drawTowerSprite, preloadImage } from './sprites';
 
 // --- 常數 ---
 const COLS = 80;
@@ -94,6 +94,20 @@ let bullets: Bullet[] = [];
 let floatingTexts: FloatingText[] = [];
 let tempWalls: TempWall[] = [];
 let nextEnemyId = 1;
+
+// --- 粒子特效系統介面與變數 (Phase 4) ---
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  color: string;
+  alpha: number;
+  size: number;
+  life: number;
+  maxLife: number;
+}
+let particles: Particle[] = [];
 let nextTowerId = 1;
 let selectedTool: string = 'earth'; // 預設選擇岩壁塔
 let mergeMode = false;
@@ -101,6 +115,30 @@ let mergeFirstTower: Tower | null = null;
 let spawnTimers: ReturnType<typeof setInterval>[] = [];
 let routePreviewTimer = 0;
 let cachedPreviewRoute: Point[] = [];
+
+// --- 地圖平移與縮放變數 (Phase 4) ---
+let mapScale = 1.0;
+let mapOffsetX = 0;
+let mapOffsetY = 0;
+let isDraggingMap = false;
+let isPointerDown = false;
+let startPointerX = 0;
+let startPointerY = 0;
+const dragThreshold = 5;
+let lastTouchDist = 0;
+
+// --- 背景音樂播放控制變數 (Phase 4) ---
+const BGM_PLAYLIST = [
+  'assets/audio/Rain_on_the_Pagoda_Roof.mp3',
+  'assets/audio/Tiles_in_Motion.mp3',
+  'assets/audio/Iron_River_Gate.mp3'
+];
+let currentBgmIndex = 0;
+let bgmAudio: HTMLAudioElement | null = null;
+let bgmTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let isMusicEnabled = true;
+let hasUserInteracted = false;
+
 
 // --- 波次進度追蹤 ---
 let waveTotal = 0;    // 本波應生成總怪物數
@@ -154,6 +192,10 @@ function switchScene(scene: GameScene) {
     case 'BATTLE':
       battleSceneEl.classList.add('active');
       startBattle();
+      mapScale = 1.0;
+      mapOffsetX = 0;
+      mapOffsetY = 0;
+      resizeGameContainer();
       break;
     case 'GAME_OVER':
       gameOverScreenEl.classList.add('active');
@@ -408,9 +450,23 @@ function updateAllEnemyPaths() {
 
 canvas.addEventListener('click', (e) => {
   if (currentScene !== 'BATTLE') return;
+
+  // 如果剛剛是拖曳地圖，則這次點擊不觸發放置或售塔
+  if (isDraggingMap) {
+    isDraggingMap = false;
+    return;
+  }
+
   const rect = canvas.getBoundingClientRect();
-  const gx = Math.max(0, Math.min(COLS - 1, Math.floor((e.clientX - rect.left) / TILE_SIZE)));
-  const gy = Math.max(0, Math.min(ROWS - 1, Math.floor((e.clientY - rect.top) / TILE_SIZE)));
+  const clickX = e.clientX - rect.left;
+  const clickY = e.clientY - rect.top;
+
+  // 反向換算地圖平移與縮放後的座標
+  const worldX = (clickX - mapOffsetX) / mapScale;
+  const worldY = (clickY - mapOffsetY) / mapScale;
+
+  const gx = Math.max(0, Math.min(COLS - 1, Math.floor(worldX / TILE_SIZE)));
+  const gy = Math.max(0, Math.min(ROWS - 1, Math.floor(worldY / TILE_SIZE)));
 
   if (mergeMode) {
     handleMergeClick(gx, gy);
@@ -430,9 +486,16 @@ canvas.addEventListener('click', (e) => {
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   if (currentScene !== 'BATTLE') return;
+  
   const rect = canvas.getBoundingClientRect();
-  const gx = Math.max(0, Math.min(COLS - 1, Math.floor((e.clientX - rect.left) / TILE_SIZE)));
-  const gy = Math.max(0, Math.min(ROWS - 1, Math.floor((e.clientY - rect.top) / TILE_SIZE)));
+  const clickX = e.clientX - rect.left;
+  const clickY = e.clientY - rect.top;
+
+  const worldX = (clickX - mapOffsetX) / mapScale;
+  const worldY = (clickY - mapOffsetY) / mapScale;
+
+  const gx = Math.max(0, Math.min(COLS - 1, Math.floor(worldX / TILE_SIZE)));
+  const gy = Math.max(0, Math.min(ROWS - 1, Math.floor(worldY / TILE_SIZE)));
   handleSell(gx, gy);
 });
 
@@ -536,6 +599,8 @@ function performMerge(tower1: Tower, tower2: Tower, resultId: TowerTypeId) {
 
   updateAllEnemyPaths();
   showFloat(tower1.x * TILE_SIZE + 8, tower1.y * TILE_SIZE, `✨ ${resultDef.name}`, '#c084fc', 16);
+  createMergeParticles(tower1.x * TILE_SIZE + TILE_SIZE / 2, tower1.y * TILE_SIZE + TILE_SIZE / 2);
+  playSFX('merge_success');
 }
 
 // ============================================================
@@ -546,6 +611,7 @@ const MAX_WAVES = 20; // 通關波次
 
 btnStartWave.addEventListener('click', () => {
   if (isWaveActive || currentScene !== 'BATTLE') return;
+  playSFX('click');
   wave++;
   isWaveActive = true;
   updateUI();
@@ -723,6 +789,8 @@ function updatePhysics() {
         spawnWall: tower.def.spawnWall,
       });
 
+      playSFX('shoot');
+
       tower.cooldown = Math.floor(tower.def.fireRate * frMult);
     }
   }
@@ -765,6 +833,14 @@ function updatePhysics() {
       b.targetEnemy.hp -= dmg;
       totalDamageDealt += dmg;
       showFloat(b.targetEnemy.x, b.targetEnemy.y - 10, `-${dmg}`, '#ef4444');
+
+      // 產生屬性對應的擊中粒子
+      const bulletColors: Record<string, string> = {
+        fire: '#f97316', water: '#38bdf8', wood: '#4ade80',
+        earth: '#d97706', metal: '#e5e7eb', yin: '#a855f7', yang: '#fde047'
+      };
+      const hitColor = bulletColors[b.element] ?? '#facc15';
+      createHitParticles(b.targetEnemy.x, b.targetEnemy.y, hitColor);
 
       // 減速效果
       if (b.slowPct && b.slowDuration) {
@@ -819,7 +895,17 @@ function updatePhysics() {
           currentKillStreak++;
           if (currentKillStreak > maxKillStreak) maxKillStreak = currentKillStreak;
           showFloat(b.targetEnemy.x, b.targetEnemy.y, `+${b.targetEnemy.goldAward}g`, '#f59e0b');
+          
+          // 產生死亡爆炸粒子
+          const bulletColors: Record<string, string> = {
+            fire: '#f97316', water: '#38bdf8', wood: '#4ade80',
+            earth: '#d97706', metal: '#e5e7eb', yin: '#a855f7', yang: '#fde047'
+          };
+          const hitColor = bulletColors[b.element] ?? '#facc15';
+          createDeathParticles(b.targetEnemy.x, b.targetEnemy.y, hitColor);
+
           enemies.splice(eidx, 1);
+          playSFX('enemy_death');
           updateUI();
           checkWaveEnd();
         }
@@ -831,7 +917,10 @@ function updatePhysics() {
           gold += enemies[j].goldAward;
           killCount++;
           showFloat(enemies[j].x, enemies[j].y, `+${enemies[j].goldAward}g`, '#f59e0b');
+          const pColor = ENEMY_DEFS[enemies[j].type]?.colorPrimary ?? '#facc15';
+          createDeathParticles(enemies[j].x, enemies[j].y, pColor);
           enemies.splice(j, 1);
+          playSFX('enemy_death');
           updateUI();
         }
       }
@@ -861,6 +950,9 @@ function updatePhysics() {
       updateAllEnemyPaths();
     }
   }
+
+  // 6. 更新粒子特效 (Phase 4)
+  updateParticles();
 }
 
 // ============================================================
@@ -912,6 +1004,10 @@ function checkWaveEnd() {
 function renderGame() {
   ctx.fillStyle = '#020617';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.translate(mapOffsetX, mapOffsetY);
+  ctx.scale(mapScale, mapScale);
 
   // 網格線
   ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 0.5;
@@ -1001,8 +1097,109 @@ function renderGame() {
     ctx.restore();
   }
 
+  // 粒子特效 (Phase 4)
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = p.alpha;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.shadowBlur = 4;
+    ctx.shadowColor = p.color;
+    ctx.fill();
+    ctx.restore();
+  }
+
   if (routePreviewTimer > 0) {
     drawRoutePreview();
+  }
+
+  ctx.restore(); // 結束地圖相關縮放與平移 (Phase 4)
+
+  // 繪製阻塞警告文字（固定在畫布中心，不受平移和縮放影響）
+  if (routePreviewTimer > 0 && cachedPreviewRoute.length === 0) {
+    ctx.save();
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 16px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚠️ 路線被完全阻塞！無法通往基地', canvas.width / 2, canvas.height / 2);
+    ctx.restore();
+  }
+}
+
+// ============================================================
+// 粒子特效輔助函數 (Phase 4)
+// ============================================================
+
+function createHitParticles(x: number, y: number, color: string) {
+  const count = 8 + Math.floor(Math.random() * 5);
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 3;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      color,
+      alpha: 1.0,
+      size: 2 + Math.random() * 3,
+      life: 0,
+      maxLife: 20 + Math.floor(Math.random() * 15)
+    });
+  }
+}
+
+function createDeathParticles(x: number, y: number, color: string) {
+  const count = 15 + Math.floor(Math.random() * 10);
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.5 + Math.random() * 4;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      color,
+      alpha: 1.0,
+      size: 3 + Math.random() * 4,
+      life: 0,
+      maxLife: 30 + Math.floor(Math.random() * 20)
+    });
+  }
+}
+
+function createMergeParticles(x: number, y: number) {
+  const count = 36;
+  const radius = 8;
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    const speed = 1.8;
+    particles.push({
+      x: x + Math.cos(angle) * radius,
+      y: y + Math.sin(angle) * radius,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      color: '#c084fc',
+      alpha: 1.0,
+      size: 3,
+      life: 0,
+      maxLife: 40
+    });
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life++;
+    if (p.life >= p.maxLife) {
+      particles.splice(i, 1);
+      continue;
+    }
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.95;
+    p.vy *= 0.95;
+    p.alpha = 1.0 - p.life / p.maxLife;
   }
 }
 
@@ -1012,12 +1209,6 @@ function renderGame() {
 
 function drawRoutePreview() {
   if (cachedPreviewRoute.length === 0) {
-    ctx.save();
-    ctx.fillStyle = '#ef4444';
-    ctx.font = 'bold 16px Outfit, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('⚠️ 路線被完全阻塞！無法通往基地', canvas.width / 2, canvas.height / 2);
-    ctx.restore();
     return;
   }
 
@@ -1090,10 +1281,10 @@ function updateWaveProgress() {
 // ============================================================
 
 // 主介面按鈕
-document.getElementById('btnStartGame')!.addEventListener('click', () => switchScene('BATTLE'));
-document.getElementById('btnTalent')!.addEventListener('click', () => switchScene('TALENT_SCREEN'));
-document.getElementById('btnBackFromTalent')!.addEventListener('click', () => switchScene('MAIN_MENU'));
-document.getElementById('btnBackToMenu')!.addEventListener('click', () => switchScene('MAIN_MENU'));
+document.getElementById('btnStartGame')!.addEventListener('click', () => { playSFX('click'); switchScene('BATTLE'); });
+document.getElementById('btnTalent')!.addEventListener('click', () => { playSFX('click'); switchScene('TALENT_SCREEN'); });
+document.getElementById('btnBackFromTalent')!.addEventListener('click', () => { playSFX('click'); switchScene('MAIN_MENU'); });
+document.getElementById('btnBackToMenu')!.addEventListener('click', () => { playSFX('click'); switchScene('MAIN_MENU'); });
 document.getElementById('btnResetTalents')!.addEventListener('click', () => {
   if (confirm('確定要重置所有天賦嗎？已花費的天賦點將全部退回。')) {
     resetTalents(talentData);
@@ -1103,23 +1294,27 @@ document.getElementById('btnResetTalents')!.addEventListener('click', () => {
 
 // 戰鬥場景按鈕
 btnMerge.addEventListener('click', () => {
+  playSFX('click');
   mergeMode = !mergeMode;
   mergeFirstTower = null;
   if (mergeMode) selectedTool = '';
   refreshToolSelection();
 });
 btnSell.addEventListener('click', () => {
+  playSFX('click');
   mergeMode = false; mergeFirstTower = null;
   selectedTool = 'sell';
   refreshToolSelection();
 });
 btnQuitBattle.addEventListener('click', () => {
+  playSFX('click');
   if (confirm('確定放棄本局嗎？將進行天賦結算。')) {
     endBattle(false);
   }
 });
 
 btnShowRoute.addEventListener('click', () => {
+  playSFX('click');
   let fullPath: Point[] = [];
   let currentStart = SPAWN_POINT;
   const targets = [...WAYPOINTS, BASE_POINT];
@@ -1152,3 +1347,251 @@ btnShowRoute.addEventListener('click', () => {
 talentData = loadTalentData();
 initSprites();
 refreshMenuTalentInfo();
+
+// ============================================================
+// 11. 行動裝置與手勢拖曳平移、雙指縮放處理 (Phase 4)
+// ============================================================
+
+// Auto-fit 縮放整個 game-container
+function resizeGameContainer() {
+  const container = document.querySelector('.game-container') as HTMLElement;
+  if (!container) return;
+  const windowWidth = window.innerWidth;
+  const baseWidth = 1304; // 1280px + padding + border
+  const baseHeight = 780; // 大致的總高度
+
+  if (windowWidth < baseWidth) {
+    const scale = windowWidth / baseWidth;
+    container.style.transform = `scale(${scale})`;
+    container.style.transformOrigin = 'top center';
+    if (container.parentElement) {
+      container.parentElement.style.height = `${baseHeight * scale}px`;
+    }
+  } else {
+    container.style.transform = '';
+    container.style.transformOrigin = '';
+    if (container.parentElement) {
+      container.parentElement.style.height = '';
+    }
+  }
+}
+window.addEventListener('resize', resizeGameContainer);
+
+// 滑鼠/觸控拖曳平移與縮放實現
+function handlePointerDown(clientX: number, clientY: number) {
+  isPointerDown = true;
+  startPointerX = clientX;
+  startPointerY = clientY;
+  isDraggingMap = false;
+}
+
+function handlePointerMove(clientX: number, clientY: number) {
+  if (!isPointerDown) return;
+  const dx = clientX - startPointerX;
+  const dy = clientY - startPointerY;
+
+  if (!isDraggingMap && (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold)) {
+    isDraggingMap = true;
+  }
+
+  if (isDraggingMap) {
+    mapOffsetX += dx;
+    mapOffsetY += dy;
+
+    // 限制拖曳邊界，避免完全拖出視野
+    const limitX = canvas.width * mapScale - canvas.width;
+    const limitY = canvas.height * mapScale - canvas.height;
+    mapOffsetX = Math.max(-limitX - 100, Math.min(100, mapOffsetX));
+    mapOffsetY = Math.max(-limitY - 100, Math.min(100, mapOffsetY));
+
+    startPointerX = clientX;
+    startPointerY = clientY;
+  }
+}
+
+function handlePointerUp() {
+  isPointerDown = false;
+}
+
+// 註冊滑鼠事件
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button === 0) { // 左鍵
+    handlePointerDown(e.clientX, e.clientY);
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  handlePointerMove(e.clientX, e.clientY);
+});
+
+window.addEventListener('mouseup', () => {
+  handlePointerUp();
+});
+
+// 註冊觸控事件（包含雙指捏合縮放）
+canvas.addEventListener('touchstart', (e) => {
+  if (currentScene !== 'BATTLE') return;
+  if (e.touches.length === 1) {
+    handlePointerDown(e.touches[0].clientX, e.touches[0].clientY);
+  } else if (e.touches.length === 2) {
+    isPointerDown = false;
+    isDraggingMap = true; // 雙指操作時禁止下塔
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+  }
+}, { passive: true });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (currentScene !== 'BATTLE') return;
+  if (e.touches.length === 1) {
+    handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (lastTouchDist > 0) {
+      const factor = dist / lastTouchDist;
+      const newScale = Math.max(0.5, Math.min(3.0, mapScale * factor));
+
+      const rect = canvas.getBoundingClientRect();
+      const centerX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+      const centerY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+
+      const worldX = (centerX - mapOffsetX) / mapScale;
+      const worldY = (centerY - mapOffsetY) / mapScale;
+
+      mapScale = newScale;
+      mapOffsetX = centerX - worldX * mapScale;
+      mapOffsetY = centerY - worldY * mapScale;
+    }
+    lastTouchDist = dist;
+  }
+}, { passive: true });
+
+canvas.addEventListener('touchend', () => {
+  handlePointerUp();
+  lastTouchDist = 0;
+});
+
+// ============================================================
+// 12. 遊戲音效與播控系統 (Phase 4)
+// ============================================================
+
+const sfxAssets: Record<string, HTMLAudioElement> = {};
+
+function initSFX() {
+  const list = {
+    click: 'assets/audio/click.mp3',
+    shoot: 'assets/audio/shoot.mp3',
+    enemy_death: 'assets/audio/enemy_death.mp3',
+    merge_success: 'assets/audio/merge_success.mp3'
+  };
+  
+  for (const [key, path] of Object.entries(list)) {
+    const audio = new Audio(path);
+    audio.preload = 'auto';
+    sfxAssets[key] = audio;
+  }
+}
+
+function playSFX(type: 'click' | 'shoot' | 'enemy_death' | 'merge_success') {
+  if (!isMusicEnabled) return; // 與靜音開關連動
+  
+  const baseAudio = sfxAssets[type];
+  if (!baseAudio) return;
+  
+  const clone = baseAudio.cloneNode(true) as HTMLAudioElement;
+  clone.volume = type === 'shoot' ? 0.2 : 0.45;
+  clone.play().catch(() => {
+    // 默默捕獲錯誤，防止資源不存在或瀏覽器策略導致中斷
+  });
+}
+
+// ============================================================
+// 13. 背景音樂輪播與控制 (Phase 4)
+// ============================================================
+
+function playNextBGM() {
+  if (!isMusicEnabled) return;
+  stopBGM();
+
+  const track = BGM_PLAYLIST[currentBgmIndex];
+  bgmAudio = new Audio(track);
+  bgmAudio.volume = 0.35; // 35% 音量
+
+  bgmAudio.addEventListener('ended', () => {
+    // 播放結束後，間隔 5 秒播放下一首
+    currentBgmIndex = (currentBgmIndex + 1) % BGM_PLAYLIST.length;
+    bgmTimeoutId = setTimeout(() => {
+      playNextBGM();
+    }, 5000); // 5000 毫秒 = 5 秒
+  });
+
+  bgmAudio.play().catch((err) => {
+    console.warn('[BGM] 自動播放被瀏覽器阻擋，等待玩家點擊解鎖：', err);
+  });
+}
+
+function stopBGM() {
+  if (bgmAudio) {
+    bgmAudio.pause();
+    bgmAudio = null;
+  }
+  if (bgmTimeoutId) {
+    clearTimeout(bgmTimeoutId);
+    bgmTimeoutId = null;
+  }
+}
+
+// 註冊第一次點擊畫面任何地方以解鎖音訊自動播放
+function initBgmUnlocker() {
+  const unlock = () => {
+    if (hasUserInteracted) return;
+    hasUserInteracted = true;
+    initSFX(); // 初始化遊戲音效
+    playNextBGM();
+    window.removeEventListener('click', unlock);
+    window.removeEventListener('touchstart', unlock);
+  };
+  window.addEventListener('click', unlock);
+  window.addEventListener('touchstart', unlock);
+}
+initBgmUnlocker();
+
+// 註冊靜音/播控按鈕事件
+const btnToggleMusic = document.getElementById('btnToggleMusic')!;
+if (btnToggleMusic) {
+  btnToggleMusic.addEventListener('click', (e) => {
+    e.stopPropagation();
+    isMusicEnabled = !isMusicEnabled;
+    if (isMusicEnabled) {
+      btnToggleMusic.textContent = '🎵';
+      btnToggleMusic.style.borderColor = '#6366f1';
+      if (hasUserInteracted) {
+        playNextBGM();
+      }
+    } else {
+      btnToggleMusic.textContent = '🔇';
+      btnToggleMusic.style.borderColor = '#ef4444';
+      stopBGM();
+    }
+  });
+}
+
+// 異步背景載入高品質美術資源 (Phase 4 SD 產圖)
+async function loadHighResAssets() {
+  const enemies = ['snake', 'fly', 'salamander', 'water_spirit', 'golem', 'beetle', 'boss_dragon'];
+  const towers = ['fire', 'water', 'wood', 'earth', 'metal', 'yin', 'yang', 'fire_2', 'water_2', 'wood_2', 'earth_2', 'metal_2', 'yin_2', 'yang_2'];
+  
+  const promises: Promise<void>[] = [];
+  for (const e of enemies) {
+    promises.push(preloadImage(`enemy_${e}`, `assets/enemies/${e}_transparent.png`));
+  }
+  for (const t of towers) {
+    promises.push(preloadImage(`tower_${t}`, `assets/towers/${t}_transparent.png`));
+  }
+  await Promise.all(promises);
+}
+loadHighResAssets();

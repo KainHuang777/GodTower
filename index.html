@@ -148,9 +148,30 @@
       width: 0%;
     }
     .wave-progress-fill.idle { background: #334155; }
+
+    /* === 行動裝置適配與去邊框 (Phase 4) === */
+    @media (max-width: 1300px) {
+      body {
+        padding: 4px;
+        justify-content: flex-start;
+        overflow-y: auto;
+      }
+      .game-container {
+        border-radius: 8px;
+        width: 100%;
+        max-width: 1304px;
+      }
+    }
+    #btnToggleMusic:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    }
   </style>
 </head>
 <body>
+
+  <!-- ===== 浮動背景音樂開關 (Phase 4) ===== -->
+  <button id="btnToggleMusic" style="position: fixed; top: 16px; right: 16px; z-index: 9999; font-size: 1.2rem; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(30, 41, 59, 0.85); border: 2px solid #6366f1; color: #f8fafc; cursor: pointer; backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s;">🎵</button>
 
   <!-- ===== 場景 1: 主介面 ===== -->
   <div id="mainMenu" class="scene active">
