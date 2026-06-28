@@ -1,3 +1,148 @@
+2026-06-28 (56th Update)
+- Established versioning system starting at V0.1.0 (currently aligned to V0.155 / 55th Update).
+  1. UI implementation: Added gameVersion div under the mainMenu subtitle in index.html, populated dynamically via GAME_VERSION in main.ts.
+  2. Rule enforcement: Sub-version increments on each subsequent update. V [major].[minor] will only increment if a /release command is explicitly given.
+  3. Synced package.json version to 0.1.55.
+
+2026-06-28 (55th Update)
+- Implemented Dead Cells style modern pixel mix visual upgrades in the main game.
+  1. Default zoom: Auto-zooms mapScale to 2.0 and centers vertical offset to -320 when starting BATTLE on 80x40 large maps, rendering 16px sprites at 32px size for clarity.
+  2. Scroll zoom: Registered desktop mouse wheel event listener on canvas to pan/scale around cursor.
+  3. Element trail bullets: Remade bullets into glowing element cores with multi-stage alpha fading trails tracing target direction.
+  4. Base shadows: Added translucent base shadow ellipses underneath pixel enemies to remove float feeling.
+  5. Sprite glowing outlines: Applied element-specific shadowBlur glows on pixel towers/enemies and a bright red glow on hit-flashing.
+  6. Death shockwaves: Spawn expanding colored shockwave rings on monster deaths.
+
+2026-06-28 (54th Update)
+- Created showcase.html: Standalone visual quality showcase page to validate the visual ceiling of existing 16×16 pixel sprite matrices.
+  1. Renders all sprites at 4× scale (sprites.ts-compatible drawPixelSprite logic ported to vanilla JS).
+  2. Tower display: Three Lv1 towers (Fire/Water/Yang) with shadowBlur glow, breathing squash/stretch animation, orbiting element particles; one Lv2 Fire tower (16×24 isometric sprite) with level star indicator.
+  3. Enemy display: Snake (2-frame walk) and Dragon Boss (2-frame wing flap) with sway animation; automatic hit-flash (white fill + red shadowBlur) + squash + element particle burst every 2.2s.
+  4. Bullet effects: 5 element-typed bullets (fire/water/wood/metal/yin) with radialGradient cores, element-color shadowBlur halos, and 6-step pixel trail.
+  5. Hit/explosion panel: Click-triggered or auto-demo particle burst (16 colored pixels + white core pixels) + ring shockwave with animated radius expansion.
+  6. Full battle scene demo (960×300): 3 towers auto-target and fire at 3 moving enemies; complete VFX pipeline: bullet homing trail → hit particle burst → white flash + squash → death explosion (ring + scatter) → HP bar depletion → enemy auto-respawn.
+  Purpose: Verify that the current sprite design quality is bounded by TILE_SIZE (16px display) not the matrix art detail, and establish baseline for deciding next steps (sprite redesign vs. effect layer upgrade vs. tile size increase).
+
+2026-06-28 (53rd Update)
+- Synced README.md and ROADMAP.md with latest development states.
+  1. Updated README.md to describe pixel art visuals (Option D), coordinate viewport mapping, Audio Pool fallback system, and directional path overlay.
+  2. Updated ROADMAP.md to document completed Phase 4.5 (Pixel Art Visuals) and Phase 4.6 (Adaptive Scale & Audio Pool).
+
+2026-06-28 (52nd Update)
+- Implemented Static Audio Pool & BGM Loading Fallback System.
+  1. Resolved WebMediaPlayer instances leak: Replaced dynamic cloneNode audio creation in playSFX with a static HTML5 Audio pool cache (sfxAssets) capped at 10 active instances per SFX type. Handled automatic fallback recycling, completely resolving Chrome's "too many WebMediaPlayers" warning and improving runtime rendering performance.
+  2. Implemented BGM error handling inside playNextBGM: Added error listener to HTMLAudioElement. When target music resource is missing or blocks loading, the player automatically stops and advances to the next track.
+  3. Added BGM error count boundary protection: Automatically shuts down background audio loading if consecutive errors exceed BGM_PLAYLIST length, avoiding deadlocks or loop errors.
+
+2026-06-28 (51st Update)
+- Upgraded Battle Route Preview & Permanent Path Tiles Color Contrast with Directional Indicators.
+  1. Redesigned path tile palettes in src/sprites.ts: Updated TILE_SCIFI_PATH_PALETTE and TILE_STARRY_PATH_PALETTE to map cyan highlight indexes (#06b6d4, #0891b2) to amber/orange colors (#f59e0b, #d97706), cleanly contrasting path tiles against blue obstacles.
+  2. Implemented permanent subtle directional arrow guidelines: Added cachedFullPath variable in main.ts and drawing overlay logic in drawMap, rendering a 25% transparent golden guide line with white micro arrows flowing constantly in the monster's path direction.
+  3. Refactored interactive route preview in main.ts: Redesigned drawRoutePreview to paint an amber glowing line with white direction arrows, both synced to Date.now() for seamless layout integration.
+
+2026-06-28 (50th Update)
+- Resolved Mouse Click & Touch Coordinate Mismatch under CSS Layout Scale.
+  1. Implemented physical-to-logical viewport mapping on canvas interaction listeners: Multiplied Client position relative offsets by canvas resolution scaling factor (width/rect.width and height/rect.height) inside main.ts click and contextmenu events.
+  2. Applied coordinate mapping adjustments to Map Editor: Corrected pointer coordinates calculations for editorCanvasEl mousedown and mousemove listeners to match grid tile bounds when scale is applied.
+  3. Corrected pinch-to-zoom center point targeting: Added proportional coordinate translation to dual-finger center calculations in touchmove event.
+
+2026-06-28 (49th Update)
+- Implemented Dual-Axis Adaptive Sizing for Game Viewport & Fixed Test Level Bottom Panel Obstruction.
+  1. Refactored resizeGameContainer in src/main.ts: Introduced dual-axis scaling (scaleX and scaleY matching viewport width and height dimensions) to prevent UI truncation on smaller display setups.
+  2. Integrated dynamic layout base-height metrics: Configured a taller default baseHeight (830px) specifically for 'test_level' (due to extra #testControls options wrapping and extending grid bounds), reverting to 780px for normal stages.
+  3. Added margin padding safeguards: Applied 12px padding window bounds buffers to scale computations to avoid extreme screen boundary collisions.
+
+2026-06-28 (48th Update)
+- Expanded Test Level permissions & added target-spawn debug controls.
+  1. Opened build permissions for all basic and recipe-merged towers in Test Level: Configured buildTowerButtons to bypass isTowerUnlocked, and performMerge to bypass taiji_dao talent checks when currentMap is 'test_level'.
+  2. Replaced immune target logic with full damage calculation in Test Level: Removed map checks in updatePhysics so spawned test monsters correctly receive damage, slow effects, and DOT ticks from towers.
+  3. Implemented a dynamic target-spawn debugger UI: Added #testControls in index.html, containing a monster selection dropdown list and a Spawn button. Bound event listener in src/main.ts to call spawnTestEnemy, generating a designated monster at SPAWN_POINT instantly.
+
+2026-06-28 (47th Update)
+- Redesigned Level 1 Basic Towers with element-only minimalist icons.
+  1. Completely removed the heavy gray brick bases/boxes from Level 1 towers in src/sprites.ts to eliminate unnecessary pixel noise and clutter.
+  2. Recrafted 7 basic towers (fire, water, wood, earth, metal, yin, yang) into high-contrast, minimalist symbols representing their raw elements (e.g. pure flame for Fire, crystal drop for Water, clean leaf for Wood) to optimize battlefield scan-ability and pixel art clarity.
+  3. Restructured F0 & F1 frame matrices for these elements to create subtle breathing and pulsing motions during idle state.
+
+2026-06-28 (46th Update)
+- Overhauled Level 3 recipe-based merged towers pixel visuals & reverted in-game gold upgrade system.
+  1. Reverted all in-game gold tower upgrade modifications in src/main.ts, src/towers.ts, and index.html (removed star rating system, upgrade button, key bindings, range ring highlight, and upgrade refund formulas) to preserve code cleanliness.
+  2. Hand-designed 6 unique 16x24 isometric 2.5D pixel art matrices with 2-frame breathing animations for Level 3 recipe-merged towers (wood_fire, fire_earth, earth_metal, metal_water, water_wood, yin_yang) in src/sprites.ts.
+  3. Configured TOWER_SPRITE_MAP to support recipe-merged tower asset keys, and updated drawTowerSprite rendering logic to bypass recipe base mapping for these high-tier towers while correctly displaying their '★★★' level markings.
+
+2026-06-28 (45th Update)
+- Implemented In-Game Tower Upgrade & Star-Rating System.
+  1. Modified Tower interface in src/main.ts: Added star rating (star, default 1, max 5) and spentUpgradeGold properties to track tower enhancement status.
+  2. Implemented dynamic attribute calculation: Created applyTowerStarAttributes to compute enhanced damage (+20% per star), range (+0.2 grid per star), and fireRate (-4% cooldown frames per star) on target tower instance dynamically. Added upgrade logic to exclude pure walls ('earth') from upgrades.
+  3. Structured upgrade cost, sell refunds, and merge refund formulas: Configured upgrade cost as `materialCost * 0.6 * currentStar`. Added 70% refund of spent upgrade gold upon selling towers. Enabled merge star inheritance (inherits higher star) and refunded 70% of spent upgrade gold of the consumed tower if its star was equal or lower, transferring upgrade progress losslessly.
+  4. Implemented Selected Tower visual indicators: Added transparent range preview ring matching the element theme color, and a high-contrast selected border when clicking a tower. Added yellow retro '★n' star indicators rendered right above enhanced towers.
+  5. Implemented interactive controls & key bindings: Integrated dynamic Update button in control HUD. Added [U] key to trigger upgrade and [S] key to trigger sell refunds.
+
+2026-06-28 (44th Update)
+- Implemented Zero-Filter Runtime Performance Optimization & Battle Diagnostics HUD.
+  1. Baked outlines into offscreen sprite generation in prerenderSprite: Moved element-specific outlines and shadow offsets into the prerendering phase. Completely eliminated the expensive drop-shadow filters from drawTowerSprite and drawEnemySprite, reducing runtime GPU usage.
+  2. Pre-generated hit-flash sprite cache: Created an offscreen '_flash' (white/red overlay) canvas for every sprite during prerendering. Removed the brightness/contrast filters on hit, replacing them with a fast texture blit of the pre-rendered white sprite.
+  3. Implemented hardware-accelerated highres overlays: Applied source-atop composite blend overlays for highres hit flashing, bypassing CSS canvas filters.
+  4. Created Battle Diagnostics HUD panel: Implemented realtime counters for FPS, Render Latency (ms), and Draw Calls in battle. Added an "Export Profile" button to print a formatted JSON report (Console Table) containing active counts and sprite cache lists.
+
+2026-06-28 (43rd Update)
+- Implemented Dual-Track Hand-drawn Monster Visual Overhaul (Option D Part 2).
+  1. Re-designed 6 common monsters in Chibi Flat style: Extracted 16x16 chibi grid specs from the cat reference image (large head proportion, flat colors, 2-tone minimal shadow, strong outline). Applied this aesthetic to Snake, Fly, Salamander, Water Spirit, Golem, and Beetle, reducing visual clutter when multiple units gather.
+  2. Re-designed Boss Dragon in Volumetric 16x24 style: Upgraded the boss dragon model to a detailed 16x24 isometric flying asset. Utilized 45-degree multi-tone volumetric shading and selective outlines (golden flares, deep crimson shades) to give the boss extreme 3D depth and presence.
+
+2026-06-28 (42nd Update)
+- Implemented Multi-level Hand-drawn Isometric Tower Progression (Option D).
+  1. Implemented L2 tall tower offset logic in drawTowerSprite: Computed dynamic drawY offset as `y - (cvs.height - 16) * scale` to support towers taller than 16px. This forces towers to grow vertically upwards while anchoring their bottom base securely on grid boundaries.
+  2. Designed Level 2 custom tower assets: Created 7 unique, highly-detailed 16x24 isometric pixel art matrices for Level 2 merged towers (Fire, Water, Wood, Earth, Metal, Yin, Yang). Added thematic particle structures and light flares to the upper sections.
+  3. Integrated L2 assets into TOWER_SPRITE_MAP: Registered new L2 configurations (`fire_2`, `water_2`, etc.) to trigger automatic caching and sprite loading when merging/synthesizing towers in battle.
+
+2026-06-28 (41st Update)
+- Upgraded Art Visual Hierarchy and Firing Recoil/Hit Squash Physics (Option A & B).
+  1. Implemented background noise desaturation: Reduced the lightness and saturation of all map theme palettes (Sci-Fi, Chinese Wood, Ink Splatted, Starry Nebula) by 25%. This establishes a clear visual hierarchy, allowing sprites and health bars to stand out cleanly.
+  2. Implemented 45-degree volumetric light shading: Upgraded all 7 enemy types (snake, fly, salamander, water_spirit, golem, beetle, boss_dragon) and all 7 element towers (Fire, Water, Wood, Earth, Metal, Yin, Yang) with high-contrast palettes, adding distinct volumetric shading and 3D silhouette pop.
+  3. Added turret recoil physics simulation: Added recoilY property to towers and simulated spring-damper recoil decay (decay 0.82) when firing bullets.
+  4. Added hit squash-and-stretch deformation: Added squashX/squashY properties to enemies and simulated elastic squeeze/stretch shape recovery (ratio 1.35:0.65, damper 0.15) when taking damage.
+  5. Implemented parabolic pixel splatter particle system: Added gravity physics, custom drags, and square block rendering to Particle system. Triggered 3-5 square pixel splatters on hit and 8-10 on death, greatly enhancing battle juice.
+
+2026-06-28 (40th Update)
+- Implemented Retro Pixel Style Visual Polish & Procedural Map Decorators.
+  1. Implemented Smart Outline shader in prerenderSprite: Automatically outlines non-transparent pixels of 16x16 cached sprites with a dark slate gray (#0f172a) stroke, making pixel art stand out pop on all maps.
+  2. Added procedural Squash & Stretch animation in drawTowerSprite: Configured a time-based sine scaling with an anchor point on the tower's base center, giving retro towers a lively bouncy breathing animation.
+  3. Added procedural Sway movement animation in drawEnemySprite: Introduced a rotation sway oscillation (+-7 degrees) for moving enemies, rendering cute organic walking patterns.
+  4. Implemented procedural ground tile decorators: Created mossy wood (Chinese), ink splattered paper (Ink), and star studded nebula (Starry) ground tile variants. Configured cell coordinates hash to randomly distribute decorator tiles with a 20% point-density chance, breaking tile repetition.
+
+2026-06-28 (39th Update)
+- Upgraded Stable Diffusion Asset Generator Quality & Prompts.
+  1. Refactored prompts in sd_batch_generate.py: Enhanced positive prefix to target 'classic 16-bit pixel art', 'flat colors', and 'clean contours'. Added dynamic perspective pre-prompts for defense towers to enforce 'isometric projection' and 'orthographic view'.
+  2. Upgraded negative prompts: Added 'blurry', 'anti-aliased pixels', and 'smooth gradients' to negative tags, forcing SD to output clean, sharp-edged game sprites.
+  3. Implemented smart keying edge-feathering algorithm: Rewrote remove_white_background to measure color differences, performing Alpha value linear decay for semi-transparent edges in range [200, 230] to eliminate rough white outline glows on dark background.
+  4. Fixed Python script Windows compatibility: Cleaned all terminal prints to standard ASCII, avoiding CP950 UnicodeEncodeError crashes on Chinese PowerShell terminals.
+
+2026-06-28 (38th Update)
+- Upgraded Art Asset Specifications & Fixed Spritesheet Slice Misidentification.
+  1. Fixed spritesheet slice misidentification in sprites.ts: Added square check. If width equals height and width is not the unit slice size (64px/96px), it's treated as a single asset. This successfully prevents existing 512x512 PNGs from being sliced incorrectly.
+  2. Implemented asset optimization script (downscale_sprites.py): Wrote a Python script utilizing Pillow to batch scale all 27 existing 512x512/768x768 PNGs down to 64x64/96x96 px. Successfully optimized all files, reducing directory size by over 95%.
+  3. Upgraded SD generation workflow: Modified sd_batch_generate.py to automatically downscale output image to 64px (normal) or 96px (Boss) right before saving, standardizing future assets.
+
+2026-06-28 (37th Update)
+- Implemented Multi-row Grid Spritesheet & Directional/State Animation.
+  1. Implemented directional enemy animation mapping: Added vx, vy velocity vectors tracking to Enemy movement in main.ts. Spritesheet row is dynamically mapped in drawEnemySprite based on direction (Row 0=Down/Front, Row 1=Up/Back, Row 2=Left, Row 3=Right).
+  2. Implemented tower state animation mapping: Enabled state-aware row selection in drawTowerSprite based on weapon firing cooldown (Row 1=Attacking, Row 0=Breathing/Idle).
+  3. Structured Grid Spritesheet slicing: Unified cell slice bounds to 64px for standard units and 96px for Boss dragon. Supports multi-row grid sprite sheets dynamically.
+
+2026-06-28 (36th Update)
+- Implemented Hybrid 64x64 / 96x96 Spritesheet Animation System.
+  1. Added smart aspect-ratio detection: Programmatically analyzes image dimensions of external assets (such as 64x64 or 96x96 px PNGs) inside drawEnemySprite and drawTowerSprite.
+  2. Implemented frame cropping: Automatically identifies horizontal spritesheets (e.g., 128x64 or 256x64) and performs dynamic cropping (cols = width / height) for animation cycles.
+  3. Integrated smooth timing cycles: Enemies loop through frames at 180ms intervals, and towers breathe at 350ms intervals, scaling assets beautifully onto the 16x16/22x22 grid.
+
+2026-06-28 (35th Update)
+- Implemented Phase 4.5: Native Pixel Art & Visual Tiling Upgrade.
+  1. Upgraded enemy sprites: Unified all 7 enemy sprite matrices to 16x16 resolution with multi-frame walking/flying animations (2-4 frames). Included dynamic frame indexing based on system clock.
+  2. Upgraded tower sprites: Added 2-frame subtle breathing/glowing animations to all 7 base towers.
+  3. Implemented dynamic path tiling: Added path grid cache updated automatically upon tower placements/sold. Introduced 16x16 pixel floor tiles (path and ground) for 4 distinct map themes (scifi, chinese, ink, starry).
+  4. Rewrote battle rendering loop: Tiled map tiles across the 80x40 canvas grid. Layered stardust and particle effects over corresponding tiles for enhanced depth.
+
 2026-06-28 (第三十四次更新)
 - 移除主選單與天賦系統大圖生成腳本與相關排版變更：
   1. 還原 index.html：移除先前新增的雙欄分欄、裝飾插圖標籤、懸浮動畫、發光層與相關 CSS 樣式，使主選單與天賦頁面恢復至原先清爽、置中的核心像素功能佈局。

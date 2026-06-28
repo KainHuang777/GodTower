@@ -5,8 +5,9 @@
 import { BASE_TOWERS, getTowerDef, getSameMergeResult, getCrossRecipeResult, getElementBonus, getSellPrice, type TowerDef, type TowerTypeId, type Element } from './towers';
 import { ENEMY_DEFS, getWaveConfig, type EnemyTypeId } from './enemies';
 import { loadTalentData, getAvailablePoints, canUnlockTalent, unlockTalent, calcTalentPointsEarned, addTalentPoints, getBaseHP, getStartGold, getDamageMultiplier, getTowerElementDamageMultiplier, getFireRateMultiplier, isTowerUnlocked, resetTalents, TALENT_TREE, getWallCost, type TalentSaveData, type TalentId } from './talent';
-import { initSprites, drawEnemySprite, drawTowerSprite, preloadImage } from './sprites';
+import { initSprites, drawEnemySprite, drawTowerSprite, preloadImage, drawTile, spriteCache } from './sprites';
 import { MAPS, loadCustomMaps, saveCustomMaps, deleteCustomMap, type MapConfig } from './maps';
+import releaseNotesText from '../Releasenote.md?raw';
 
 // --- 常數 (在此改為可變動，以適應測試關卡放大) ---
 let COLS = 80;
@@ -67,6 +68,10 @@ interface Enemy {
   slowDuration: number;
   dotDamage: number; dotDuration: number;
   hitFlashFrame: number; // 剩餘受擊閃爍幀數
+  vx: number;
+  vy: number;
+  squashX: number;
+  squashY: number;
 }
 
 interface Tower {
@@ -75,6 +80,7 @@ interface Tower {
   typeId: TowerTypeId;
   def: TowerDef;
   cooldown: number;
+  recoilY: number;
 }
 
 interface Bullet {
@@ -104,6 +110,11 @@ interface TempWall {
 }
 
 let enemies: Enemy[] = [];
+let drawCallCount = 0;
+let isDiagnosticOpen = false;
+let lastFpsUpdateTime = 0;
+let frameCount = 0;
+let currentFps = 60;
 let towers: Tower[] = [];
 let bullets: Bullet[] = [];
 let floatingTexts: FloatingText[] = [];
@@ -121,6 +132,11 @@ interface Particle {
   size: number;
   life: number;
   maxLife: number;
+  gravity?: number;
+  isPixel?: boolean;
+  dragMultiplier?: number;
+  isRing?: boolean;
+  maxRadius?: number;
 }
 let particles: Particle[] = [];
 let nextTowerId = 1;
@@ -189,6 +205,8 @@ let hasUserInteracted = false;
 let waveTotal = 0;    // 本波應生成總怪物數
 let waveSpawned = 0;  // 本波已生成怪物數
 
+const GAME_VERSION = 'V0.20';
+
 // --- DOM 元素 ---
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
@@ -200,6 +218,16 @@ const btnStartWave = document.getElementById('btnStartWave')! as HTMLButtonEleme
 const btnMerge = document.getElementById('btnMerge')!;
 const btnSell = document.getElementById('btnSell')!;
 const btnQuitBattle = document.getElementById('btnQuitBattle')!;
+const btnDiagnostics = document.getElementById('btnDiagnostics')!;
+const diagnosticPanel = document.getElementById('diagnosticPanel')!;
+const btnDiagExport = document.getElementById('btnDiagExport')!;
+const diagFps = document.getElementById('diagFps')!;
+const diagLatency = document.getElementById('diagLatency')!;
+const diagDrawCalls = document.getElementById('diagDrawCalls')!;
+const diagCacheSize = document.getElementById('diagCacheSize')!;
+const diagMonsters = document.getElementById('diagMonsters')!;
+const diagTowers = document.getElementById('diagTowers')!;
+const diagFilterWarning = document.getElementById('diagFilterWarning')!;
 const btnShowRoute = document.getElementById('btnShowRoute')!;
 const instructionText = document.getElementById('instructionText')!;
 const towerButtonsContainer = document.getElementById('towerButtons')!;
@@ -263,9 +291,15 @@ function switchScene(scene: GameScene) {
     case 'BATTLE':
       battleSceneEl.classList.add('active');
       startBattle();
-      mapScale = 1.0;
-      mapOffsetX = 0;
-      mapOffsetY = 0;
+      if (currentMap && currentMap.id === 'test_level') {
+        mapScale = 1.0;
+        mapOffsetX = 0;
+        mapOffsetY = 0;
+      } else {
+        mapScale = 2.0; // 2x zoom for large maps
+        mapOffsetX = 0; // Align left
+        mapOffsetY = -320; // Center Y-axis vertically
+      }
       resizeGameContainer();
       break;
     case 'GAME_OVER':
@@ -570,8 +604,10 @@ editorCanvasEl.addEventListener('mousedown', (e) => {
   e.preventDefault();
   editorMouseDown = true;
   const rect = editorCanvasEl.getBoundingClientRect();
-  const gx = Math.floor((e.clientX - rect.left) / TILE_SIZE);
-  const gy = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+  const clickX = (e.clientX - rect.left) * (editorCanvasEl.width / rect.width);
+  const clickY = (e.clientY - rect.top) * (editorCanvasEl.height / rect.height);
+  const gx = Math.floor(clickX / TILE_SIZE);
+  const gy = Math.floor(clickY / TILE_SIZE);
   editorClickAt(gx, gy, e.button === 2);
 });
 
@@ -579,8 +615,10 @@ editorCanvasEl.addEventListener('mousemove', (e) => {
   if (currentScene !== 'MAP_EDITOR' || !editorMouseDown) return;
   if (editorTool !== 'obstacle' && editorTool !== 'eraser') return; // 只有障礙物和橡皮擦支持拖曳繪製
   const rect = editorCanvasEl.getBoundingClientRect();
-  const gx = Math.floor((e.clientX - rect.left) / TILE_SIZE);
-  const gy = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+  const clickX = (e.clientX - rect.left) * (editorCanvasEl.width / rect.width);
+  const clickY = (e.clientY - rect.top) * (editorCanvasEl.height / rect.height);
+  const gx = Math.floor(clickX / TILE_SIZE);
+  const gy = Math.floor(clickY / TILE_SIZE);
   editorClickAt(gx, gy, false);
 });
 
@@ -795,6 +833,7 @@ function startBattle() {
 
   // 啟動遊戲迴圈
   if (animFrameId) cancelAnimationFrame(animFrameId);
+  recalculatePathTiles();
   gameLoop();
 }
 
@@ -805,14 +844,14 @@ function buildTowerButtons() {
   for (const tid of towerIds) {
     const def = BASE_TOWERS[tid];
     if (!def) continue;
-    const unlocked = isTowerUnlocked(talentData, tid);
+    const unlocked = currentMap.id === 'test_level' ? true : isTowerUnlocked(talentData, tid);
     const btn = document.createElement('button');
     btn.className = 'btn';
     btn.setAttribute('data-tool', tid);
     btn.disabled = !unlocked;
     const cost = tid === 'earth' ? getWallCost(talentData) : def.cost;
     btn.textContent = `${def.emoji} ${def.name} (${cost}g)`;
-    if (!unlocked) btn.title = '需先在天賦頁解鎖';
+    if (!unlocked && currentMap.id !== 'test_level') btn.title = '需先在天賦頁解鎖';
     btn.addEventListener('click', () => {
       if (!unlocked) return;
       mergeMode = false;
@@ -909,6 +948,41 @@ function astarFind(start: Point, end: Point, isFlying: boolean = false, blockedX
   return null;
 }
 
+let cachedPathTiles = new Set<string>();
+let cachedFullPath: Point[] = [];
+
+function recalculatePathTiles() {
+  cachedPathTiles.clear();
+  let fullPath: Point[] = [];
+  let currentStart = SPAWN_POINT;
+  const targets = [...WAYPOINTS, BASE_POINT];
+  let blocked = false;
+  
+  for (const target of targets) {
+    const segment = astarFind(currentStart, target, false);
+    if (segment) {
+      if (fullPath.length > 0) {
+        fullPath = fullPath.concat(segment.slice(1));
+      } else {
+        fullPath = fullPath.concat(segment);
+      }
+      currentStart = target;
+    } else {
+      blocked = true;
+      break;
+    }
+  }
+
+  if (!blocked) {
+    for (const pt of fullPath) {
+      cachedPathTiles.add(`${pt.x},${pt.y}`);
+    }
+    cachedFullPath = fullPath;
+  } else {
+    cachedFullPath = [];
+  }
+}
+
 function validatePlacement(x: number, y: number): boolean {
   if (x === SPAWN_POINT.x && y === SPAWN_POINT.y) return false;
   if (x === BASE_POINT.x && y === BASE_POINT.y) return false;
@@ -935,6 +1009,7 @@ function updateAllEnemyPaths() {
     const path = astarFind({ x: enemy.currentGridX, y: enemy.currentGridY }, target);
     if (path) { enemy.path = path; enemy.pathIndex = 0; }
   }
+  recalculatePathTiles();
 }
 
 // ============================================================
@@ -951,8 +1026,8 @@ canvas.addEventListener('click', (e) => {
   }
 
   const rect = canvas.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const clickY = e.clientY - rect.top;
+  const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
 
   // 反向換算地圖平移與縮放後的座標
   const worldX = (clickX - mapOffsetX) / mapScale;
@@ -981,8 +1056,8 @@ canvas.addEventListener('contextmenu', (e) => {
   if (currentScene !== 'BATTLE') return;
   
   const rect = canvas.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const clickY = e.clientY - rect.top;
+  const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
 
   const worldX = (clickX - mapOffsetX) / mapScale;
   const worldY = (clickY - mapOffsetY) / mapScale;
@@ -1005,7 +1080,7 @@ function handleBuild(x: number, y: number) {
   }
 
   grid[x][y] = def.isWall ? 1 : 0;
-  towers.push({ id: nextTowerId++, x, y, typeId: def.id, def: { ...def, cost }, cooldown: 0 });
+  towers.push({ id: nextTowerId++, x, y, typeId: def.id, def: { ...def, cost }, cooldown: 0, recoilY: 0 });
   if (currentMap.id !== 'test_level') gold -= cost;
   updateUI();
   if (def.isWall) updateAllEnemyPaths();
@@ -1065,9 +1140,9 @@ function handleMergeClick(x: number, y: number) {
   const el2 = clickedTower.def.element;
   const recipeResult = getCrossRecipeResult(el1, el2);
   if (recipeResult) {
-    // 陰陽合成需天賦
+    // 陰陽合成需天賦（測試關卡除外）
     if ((el1 === 'yin' || el1 === 'yang') && (el2 === 'yin' || el2 === 'yang')) {
-      if ((talentData.talentLevels['taiji_dao'] || 0) < 1) {
+      if (currentMap.id !== 'test_level' && (talentData.talentLevels['taiji_dao'] || 0) < 1) {
         showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '需解鎖「太極之道」天賦', '#ef4444', 15);
         mergeFirstTower = null;
         return;
@@ -1148,7 +1223,11 @@ function spawnWave(waveNum: number) {
           path, pathIndex: 0,
           slowDuration: 0,
           dotDamage: 0, dotDuration: 0,
-          hitFlashFrame: 0
+          hitFlashFrame: 0,
+          vx: 0,
+          vy: 0,
+          squashX: 1,
+          squashY: 1
         });
       }
       spawned++;
@@ -1156,6 +1235,49 @@ function spawnWave(waveNum: number) {
     }, cfg.spawnIntervalMs);
     spawnTimers.push(timer);
   }
+}
+
+function spawnTestEnemy(enemyType: EnemyTypeId) {
+  const def = ENEMY_DEFS[enemyType];
+  if (!def) return;
+  const startPos = { ...SPAWN_POINT };
+  const path = astarFind(startPos, WAYPOINTS[0], def.isFlying);
+  if (!path) {
+    showFloat(startPos.x * TILE_SIZE + 8, startPos.y * TILE_SIZE, '起點路徑被堵死！', '#ef4444', 15);
+    return;
+  }
+
+  // 強度計算：基於當前波次（如果波次為 0 則預設為 1）
+  const curWave = wave || 1;
+  const configs = getWaveConfig(curWave);
+  const hpMult = configs[0] ? configs[0].hpMultiplier : 1.0;
+
+  enemies.push({
+    id: nextEnemyId++,
+    type: enemyType,
+    element: def.element,
+    x: startPos.x * TILE_SIZE + TILE_SIZE / 2,
+    y: startPos.y * TILE_SIZE + TILE_SIZE / 2,
+    currentGridX: startPos.x, currentGridY: startPos.y,
+    hp: Math.floor(def.baseHp * hpMult),
+    maxHp: Math.floor(def.baseHp * hpMult),
+    speed: def.speed,
+    baseSpeed: def.speed,
+    goldAward: def.goldAward,
+    isFlying: def.isFlying,
+    waypointIndex: 0,
+    path, pathIndex: 0,
+    slowDuration: 0,
+    dotDamage: 0, dotDuration: 0,
+    hitFlashFrame: 0,
+    vx: 0,
+    vy: 0,
+    squashX: 1,
+    squashY: 1
+  });
+
+  updateUI();
+  showFloat(startPos.x * TILE_SIZE + 8, startPos.y * TILE_SIZE, `Spawned ${def.name}!`, '#8b5cf6', 14);
 }
 
 // ============================================================
@@ -1183,10 +1305,8 @@ function updatePhysics() {
 
     // DOT 傷害
     if (e.dotDuration > 0) {
-      if (currentMap.id !== 'test_level') {
-        e.hp -= e.dotDamage;
-        totalDamageDealt += e.dotDamage;
-      }
+      e.hp -= e.dotDamage;
+      totalDamageDealt += e.dotDamage;
       e.dotDuration--;
       if (e.hp <= 0) {
         gold += e.goldAward;
@@ -1201,15 +1321,20 @@ function updatePhysics() {
       }
     }
 
-    // 遞減受擊高亮幀數
+    // 遞減受擊高亮與形變恢復
     if (e.hitFlashFrame > 0) {
       e.hitFlashFrame--;
     }
+    if (e.squashX === undefined) { e.squashX = 1; e.squashY = 1; }
+    e.squashX += (1 - e.squashX) * 0.15;
+    e.squashY += (1 - e.squashY) * 0.15;
 
     // 減速
     if (e.slowDuration > 0) { e.slowDuration--; e.speed = e.baseSpeed * 0.4; }
     else { e.speed = e.baseSpeed; }
 
+    const prevX = e.x;
+    const prevY = e.y;
     if (e.path && e.pathIndex < e.path.length) {
       const tg = e.path[e.pathIndex];
       const tx = tg.x * TILE_SIZE + TILE_SIZE / 2;
@@ -1244,10 +1369,16 @@ function updatePhysics() {
         e.y += (dy / dist) * e.speed;
       }
     }
+    e.vx = e.x - prevX;
+    e.vy = e.y - prevY;
   }
 
   // 2. 砲台射擊
   for (const tower of towers) {
+    if (tower.recoilY === undefined) tower.recoilY = 0;
+    tower.recoilY *= 0.82;
+    if (tower.recoilY < 0.05) tower.recoilY = 0;
+
     if (tower.def.damage === 0 && !tower.def.buffAllyDmg) continue;
 
     // 鍛造塔 buff 效果（被動，不射擊）
@@ -1300,6 +1431,7 @@ function updatePhysics() {
       playSFX('shoot');
 
       tower.cooldown = Math.floor(tower.def.fireRate * frMult);
+      tower.recoilY = 4.0;
     }
   }
 
@@ -1338,14 +1470,13 @@ function updatePhysics() {
         dmg += Math.floor(b.targetEnemy.maxHp * b.hpPctDamage);
       }
 
-      if (currentMap.id !== 'test_level') {
-        b.targetEnemy.hp -= dmg;
-        totalDamageDealt += dmg;
-        showFloat(b.targetEnemy.x, b.targetEnemy.y - 10, `-${dmg}`, '#ef4444');
-      } else {
-        showFloat(b.targetEnemy.x, b.targetEnemy.y - 10, '免疫', '#38bdf8');
-      }
+      b.targetEnemy.hp -= dmg;
+      totalDamageDealt += dmg;
+      showFloat(b.targetEnemy.x, b.targetEnemy.y - 10, `-${dmg}`, '#ef4444');
+      
       b.targetEnemy.hitFlashFrame = 6;
+      b.targetEnemy.squashX = 1.35;
+      b.targetEnemy.squashY = 0.65;
 
       // 產生屬性對應的擊中粒子
       const bulletColors: Record<string, string> = {
@@ -1354,6 +1485,7 @@ function updatePhysics() {
       };
       const hitColor = bulletColors[b.element] ?? '#facc15';
       createHitParticles(b.targetEnemy.x, b.targetEnemy.y, hitColor);
+      createSplatterParticles(b.targetEnemy.x, b.targetEnemy.y, hitColor, 4);
 
       // 減速效果
       if (b.slowPct && b.slowDuration) {
@@ -1374,14 +1506,14 @@ function updatePhysics() {
           if (e.id === b.targetEnemy.id) continue;
           const adist = Math.sqrt((e.x - b.targetEnemy.x) ** 2 + (e.y - b.targetEnemy.y) ** 2);
           if (adist <= aoeRange) {
-            if (currentMap.id !== 'test_level') {
-              e.hp -= aoeDmg;
-              totalDamageDealt += aoeDmg;
-              showFloat(e.x, e.y - 10, `-${aoeDmg}`, '#f97316');
-            } else {
-              showFloat(e.x, e.y - 10, '免疫', '#38bdf8');
-            }
+            e.hp -= aoeDmg;
+            totalDamageDealt += aoeDmg;
+            showFloat(e.x, e.y - 10, `-${aoeDmg}`, '#f97316');
+            
             e.hitFlashFrame = 6;
+            e.squashX = 1.35;
+            e.squashY = 0.65;
+            createSplatterParticles(e.x, e.y, hitColor, 3);
           }
         }
       }
@@ -1414,13 +1546,8 @@ function updatePhysics() {
           if (currentKillStreak > maxKillStreak) maxKillStreak = currentKillStreak;
           showFloat(b.targetEnemy.x, b.targetEnemy.y, `+${b.targetEnemy.goldAward}g`, '#f59e0b');
           
-          // 產生死亡爆炸粒子
-          const bulletColors: Record<string, string> = {
-            fire: '#f97316', water: '#38bdf8', wood: '#4ade80',
-            earth: '#d97706', metal: '#e5e7eb', yin: '#a855f7', yang: '#fde047'
-          };
-          const hitColor = bulletColors[b.element] ?? '#facc15';
           createDeathParticles(b.targetEnemy.x, b.targetEnemy.y, hitColor);
+          createSplatterParticles(b.targetEnemy.x, b.targetEnemy.y, hitColor, 8);
 
           enemies.splice(eidx, 1);
           playSFX('enemy_death');
@@ -1437,6 +1564,7 @@ function updatePhysics() {
           showFloat(enemies[j].x, enemies[j].y, `+${enemies[j].goldAward}g`, '#f59e0b');
           const pColor = ENEMY_DEFS[enemies[j].type]?.colorPrimary ?? '#facc15';
           createDeathParticles(enemies[j].x, enemies[j].y, pColor);
+          createSplatterParticles(enemies[j].x, enemies[j].y, pColor, 8);
           enemies.splice(j, 1);
           playSFX('enemy_death');
           updateUI();
@@ -1636,6 +1764,8 @@ function checkWaveEnd() {
 // ============================================================
 
 function renderGame() {
+  const renderStart = performance.now();
+  drawCallCount = 0;
   let bgFillStyle = '#020617';
   let gridStrokeStyle = '#1e293b';
   
@@ -1657,7 +1787,16 @@ function renderGame() {
   ctx.translate(mapOffsetX, mapOffsetY);
   ctx.scale(mapScale, mapScale);
 
-  // 繪製璀璨星空的背景星星 (會隨地圖一起滾動和放大縮小)
+  // 1. 繪製平鋪地板與路徑 Tile (極致原生像素風方案 D)
+  for (let x = 0; x < COLS; x++) {
+    for (let y = 0; y < ROWS; y++) {
+      const isPath = cachedPathTiles.has(`${x},${y}`);
+      drawTile(ctx, currentTheme, isPath, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE / 16, x, y);
+      drawCallCount++;
+    }
+  }
+
+  // 2. 繪製璀璨星空的背景星星 (疊加在星空地板上，微微閃爍)
   if (currentTheme === 'starry') {
     for (const star of bgStars) {
       ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
@@ -1667,10 +1806,79 @@ function renderGame() {
     }
   }
 
-  // 網格線
+  // 3. 網格線
   ctx.strokeStyle = gridStrokeStyle; ctx.lineWidth = 0.5;
   for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x * TILE_SIZE, 0); ctx.lineTo(x * TILE_SIZE, ROWS * TILE_SIZE); ctx.stroke(); }
   for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * TILE_SIZE); ctx.lineTo(COLS * TILE_SIZE, y * TILE_SIZE); ctx.stroke(); }
+
+  // 4. 繪製常駐的半透明怪物行進路線與方向辨識 (非 MAP_EDITOR 狀態下)
+  if (currentScene === 'BATTLE' && cachedFullPath.length > 0) {
+    const routeScale = TILE_SIZE / 16;
+    ctx.save();
+    ctx.lineWidth = 1.5 * routeScale;
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)'; // 非常低調的 25% 透明金黃色
+    ctx.shadowBlur = 3 * routeScale;
+    ctx.shadowColor = '#f59e0b';
+
+    ctx.beginPath();
+    const startX = cachedFullPath[0].x * TILE_SIZE + TILE_SIZE / 2;
+    const startY = cachedFullPath[0].y * TILE_SIZE + TILE_SIZE / 2;
+    ctx.moveTo(startX, startY);
+
+    for (let i = 1; i < cachedFullPath.length; i++) {
+      const tx = cachedFullPath[i].x * TILE_SIZE + TILE_SIZE / 2;
+      const ty = cachedFullPath[i].y * TILE_SIZE + TILE_SIZE / 2;
+      ctx.lineTo(tx, ty);
+    }
+    ctx.stroke();
+
+    // 繪製微型流動虛線
+    ctx.lineWidth = 1.0 * routeScale;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'; // 半透明白色
+    ctx.setLineDash([4 * routeScale, 10 * routeScale]);
+    ctx.lineDashOffset = -(Date.now() / 25) * routeScale; // 移動速度慢一點，比較低調
+    ctx.stroke();
+
+    // 繪製常駐的方向箭頭
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.shadowBlur = 2 * routeScale;
+    ctx.shadowColor = '#fbbf24';
+
+    const arrowSpacing = 64 * routeScale; // 間距大一點，更加清爽
+    const arrowSize = 2.5 * routeScale; // 箭頭小一點，不遮擋防禦塔
+    const animOffset = (Date.now() / 25) % arrowSpacing;
+
+    for (let i = 0; i < cachedFullPath.length - 1; i++) {
+      const x1 = cachedFullPath[i].x * TILE_SIZE + TILE_SIZE / 2;
+      const y1 = cachedFullPath[i].y * TILE_SIZE + TILE_SIZE / 2;
+      const x2 = cachedFullPath[i+1].x * TILE_SIZE + TILE_SIZE / 2;
+      const y2 = cachedFullPath[i+1].y * TILE_SIZE + TILE_SIZE / 2;
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len === 0) continue;
+
+      const ux = dx / len;
+      const uy = dy / len;
+
+      let dist = animOffset;
+      while (dist < len) {
+        const ax = x1 + ux * dist;
+        const ay = y1 + uy * dist;
+
+        ctx.beginPath();
+        ctx.moveTo(ax + ux * arrowSize * 1.5, ay + uy * arrowSize * 1.5);
+        ctx.lineTo(ax - ux * arrowSize + uy * arrowSize * 0.8, ay - uy * arrowSize - ux * arrowSize * 0.8);
+        ctx.lineTo(ax - ux * arrowSize - uy * arrowSize * 0.8, ay - uy * arrowSize + ux * arrowSize * 0.8);
+        ctx.closePath();
+        ctx.fill();
+
+        dist += arrowSpacing;
+      }
+    }
+    ctx.restore();
+  }
 
   // 繪製地圖預設地形障礙物
   for (let x = 0; x < COLS; x++) {
@@ -1748,7 +1956,8 @@ function renderGame() {
 
   // 砲台（使用像素精靈）
   for (const t of towers) {
-    drawTowerSprite(ctx, t.typeId, t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE / 16, currentStyle);
+    drawTowerSprite(ctx, t.typeId, t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE / 16, currentStyle, t.cooldown, t.def.fireRate, t.recoilY);
+    drawCallCount++;
 
     // 合成模式高亮選中的第一座塔
     if (mergeMode && mergeFirstTower && mergeFirstTower.id === t.id) {
@@ -1767,12 +1976,14 @@ function renderGame() {
     ctx.globalAlpha = alpha;
     ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1 * (TILE_SIZE / 16);
     ctx.strokeRect(tw.x * TILE_SIZE, tw.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    drawCallCount++;
     ctx.restore();
   }
 
   // 怪物（使用像素精靈）
   for (const e of enemies) {
-    drawEnemySprite(ctx, e.type, e.x, e.y, e.hitFlashFrame, TILE_SIZE / 16, currentStyle);
+    drawEnemySprite(ctx, e.type, e.x, e.y, e.hitFlashFrame, TILE_SIZE / 16, currentStyle, e.vx, e.vy, e.squashX, e.squashY);
+    drawCallCount++;
 
     // 血條 (依地圖比例縮放)
     const hpPct = e.hp / e.maxHp;
@@ -1791,15 +2002,63 @@ function renderGame() {
 
   // 子彈
   for (const b of bullets) {
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, 2.5 * (TILE_SIZE / 16), 0, Math.PI * 2);
-    // 根據屬性著色
-    const bulletColors: Record<string, string> = {
-      fire: '#f97316', water: '#38bdf8', wood: '#4ade80',
-      earth: '#d97706', metal: '#e5e7eb', yin: '#a855f7', yang: '#fde047'
+    const bScale = TILE_SIZE / 16;
+    const bulletThemes: Record<string, { core: string; mid: string; glow: string; trail: string; r: number }> = {
+      fire: { core: '#fef08a', mid: '#f97316', glow: '#ef4444', trail: '#7f1c1d', r: 5 },
+      water: { core: '#ffffff', mid: '#60a5fa', glow: '#2563eb', trail: '#1e3a8a', r: 4 },
+      wood: { core: '#a7f3d0', mid: '#22c55e', glow: '#166534', trail: '#052e16', r: 4 },
+      metal: { core: '#ffffff', mid: '#cbd5e1', glow: '#94a3b8', trail: '#475569', r: 5 },
+      yin: { core: '#ffffff', mid: '#d8b4fe', glow: '#a855f7', trail: '#3b0764', r: 4 },
+      yang: { core: '#ffffff', mid: '#fef08a', glow: '#fbbf24', trail: '#854d0e', r: 5 },
+      earth: { core: '#fef08a', mid: '#f59e0b', glow: '#d97706', trail: '#78350f', r: 5 }
     };
-    ctx.fillStyle = bulletColors[b.element] ?? '#facc15';
+    const theme = bulletThemes[b.element] || bulletThemes.fire;
+    
+    // 計算面向目標的追蹤方向以生成拖影
+    let ux = 1;
+    let uy = 0;
+    if (b.targetEnemy) {
+      const dx = b.targetEnemy.x - b.x;
+      const dy = b.targetEnemy.y - b.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 0) {
+        ux = dx / dist;
+        uy = dy / dist;
+      }
+    }
+    
+    // 1. 繪製多段追蹤拖影
+    for (let i = 1; i < 5; i++) {
+      const tx = b.x - i * 5 * bScale * ux;
+      const ty = b.y - i * 5 * bScale * uy;
+      const alpha = (1.0 - i / 5) * 0.65;
+      const radius = (theme.r * (1.0 - i / 5) + 1.0) * bScale;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.shadowBlur = 6 * bScale;
+      ctx.shadowColor = theme.glow;
+      ctx.fillStyle = theme.trail;
+      ctx.beginPath();
+      ctx.arc(tx, ty, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    
+    // 2. 繪製發光核心
+    ctx.save();
+    ctx.shadowBlur = 15 * bScale;
+    ctx.shadowColor = theme.glow;
+    const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, theme.r * bScale);
+    g.addColorStop(0, theme.core);
+    g.addColorStop(0.5, theme.mid);
+    g.addColorStop(1, theme.glow);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, theme.r * bScale, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+    
+    drawCallCount++;
   }
 
   // 飄字
@@ -1811,6 +2070,7 @@ function renderGame() {
     ctx.fillStyle = ft.color;
     ctx.textAlign = 'center';
     ctx.fillText(ft.text, ft.x, ft.y);
+    drawCallCount++;
     ctx.restore();
   }
 
@@ -1818,12 +2078,29 @@ function renderGame() {
   for (const p of particles) {
     ctx.save();
     ctx.globalAlpha = p.alpha;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx.fillStyle = p.color;
-    ctx.shadowBlur = 4;
-    ctx.shadowColor = p.color;
-    ctx.fill();
+    if (p.isRing) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 2 * (TILE_SIZE / 16);
+      ctx.shadowBlur = 12 * (TILE_SIZE / 16);
+      ctx.shadowColor = p.color;
+      ctx.stroke();
+      drawCallCount++;
+    } else if (p.isPixel) {
+      // 懷舊硬派像素粒子：繪製正方形，不加發光陰影
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      drawCallCount++;
+    } else {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.shadowBlur = 4 * (TILE_SIZE / 16);
+      ctx.shadowColor = p.color;
+      ctx.fill();
+      drawCallCount++;
+    }
     ctx.restore();
   }
 
@@ -1895,11 +2172,51 @@ function renderGame() {
     ctx.fillText('⚠️ 路線被完全阻塞！無法通往基地', canvas.width / 2, canvas.height / 2);
     ctx.restore();
   }
+
+  // 性能監控指標更新
+  const latency = performance.now() - renderStart;
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsUpdateTime > 1000) {
+    currentFps = Math.round((frameCount * 1000) / (now - lastFpsUpdateTime));
+    frameCount = 0;
+    lastFpsUpdateTime = now;
+  }
+
+  if (isDiagnosticOpen) {
+    diagFps.textContent = currentFps.toString();
+    diagLatency.textContent = latency.toFixed(1) + ' ms';
+    diagDrawCalls.textContent = drawCallCount.toString();
+    diagCacheSize.textContent = spriteCache.size.toString();
+    diagMonsters.textContent = enemies.length.toString();
+    diagTowers.textContent = towers.length.toString();
+    diagFilterWarning.textContent = '0'; // 所有主渲染濾鏡已完全移除快取化，調用次數為 0
+  }
 }
 
 // ============================================================
 // 粒子特效輔助函數 (Phase 4)
 // ============================================================
+
+function createSplatterParticles(x: number, y: number, color: string, count: number = 4) {
+  const pScale = TILE_SIZE / 16;
+  for (let i = 0; i < count; i++) {
+    const vx = (Math.random() - 0.5) * 3 * pScale;
+    const vy = (-1.5 - Math.random() * 2.5) * pScale;
+    particles.push({
+      x, y,
+      vx, vy,
+      color,
+      alpha: 1.0,
+      size: (1.5 + Math.random() * 2) * pScale,
+      life: 0,
+      maxLife: 20 + Math.floor(Math.random() * 15),
+      gravity: 0.18 * pScale,
+      isPixel: true,
+      dragMultiplier: 0.98
+    });
+  }
+}
 
 function createHitParticles(x: number, y: number, color: string) {
   const pScale = TILE_SIZE / 16;
@@ -1937,6 +2254,18 @@ function createDeathParticles(x: number, y: number, color: string) {
       maxLife: 30 + Math.floor(Math.random() * 20)
     });
   }
+  // 額外生成一圈元素色環狀死亡衝擊波
+  particles.push({
+    x, y,
+    vx: 0, vy: 0,
+    color,
+    alpha: 1.0,
+    size: 4 * pScale,
+    life: 0,
+    maxLife: 35,
+    isRing: true,
+    maxRadius: 60 * pScale
+  });
 }
 
 function createMergeParticles(x: number, y: number) {
@@ -1968,10 +2297,20 @@ function updateParticles() {
       particles.splice(i, 1);
       continue;
     }
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vx *= 0.95;
-    p.vy *= 0.95;
+    
+    if (p.isRing) {
+      p.size += (p.maxRadius! - p.size) * 0.15;
+    } else {
+      if (p.gravity !== undefined) {
+        p.vy += p.gravity;
+      }
+      p.x += p.vx;
+      p.y += p.vy;
+      const drag = p.dragMultiplier !== undefined ? p.dragMultiplier : 0.95;
+      p.vx *= drag;
+      p.vy *= drag;
+    }
+    
     p.alpha = 1.0 - p.life / p.maxLife;
   }
 }
@@ -2034,10 +2373,12 @@ function drawRoutePreview() {
 
   const routeScale = TILE_SIZE / 16;
   ctx.save();
+  
+  // 設定高對比度、與 Sci-Fi 藍色障礙物對比強烈的霓虹金黃/橘黃色路線
   ctx.lineWidth = 4 * routeScale;
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.8)';
+  ctx.strokeStyle = 'rgba(245, 158, 11, 0.75)'; // 橘黃色半透明
   ctx.shadowBlur = 8 * routeScale;
-  ctx.shadowColor = '#38bdf8';
+  ctx.shadowColor = '#f59e0b'; // 黃金霓虹光
 
   if (routePreviewTimer < 60) {
     ctx.globalAlpha = routePreviewTimer / 60;
@@ -2045,6 +2386,7 @@ function drawRoutePreview() {
     ctx.globalAlpha = 1.0;
   }
 
+  // 1. 繪製路徑底線
   ctx.beginPath();
   const startX = cachedPreviewRoute[0].x * TILE_SIZE + TILE_SIZE / 2;
   const startY = cachedPreviewRoute[0].y * TILE_SIZE + TILE_SIZE / 2;
@@ -2057,12 +2399,57 @@ function drawRoutePreview() {
   }
   ctx.stroke();
 
-  // 繪製發光虛線流動點效果
+  // 2. 繪製黃金流動虛線 (流動方向與怪物前進方向一致)
   ctx.lineWidth = 2 * routeScale;
   ctx.strokeStyle = '#ffffff';
   ctx.setLineDash([6 * routeScale, 12 * routeScale]);
-  ctx.lineDashOffset = -routePreviewTimer * 1.5 * routeScale;
+  ctx.lineDashOffset = -(Date.now() / 15) * routeScale;
   ctx.stroke();
+
+  // 3. 繪製沿著路徑前進的方向箭頭 (Direction Indicators)
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowBlur = 4 * routeScale;
+  ctx.shadowColor = '#fbbf24'; // 亮金色 shadow
+
+  const arrowSpacing = 48 * routeScale; // 箭頭間距
+  const arrowSize = 4 * routeScale; // 箭頭大小
+  const animOffset = (Date.now() / 15) % arrowSpacing; // 箭頭隨時間向前移動
+
+  for (let i = 0; i < cachedPreviewRoute.length - 1; i++) {
+    const x1 = cachedPreviewRoute[i].x * TILE_SIZE + TILE_SIZE / 2;
+    const y1 = cachedPreviewRoute[i].y * TILE_SIZE + TILE_SIZE / 2;
+    const x2 = cachedPreviewRoute[i+1].x * TILE_SIZE + TILE_SIZE / 2;
+    const y2 = cachedPreviewRoute[i+1].y * TILE_SIZE + TILE_SIZE / 2;
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len === 0) continue;
+
+    const ux = dx / len;
+    const uy = dy / len;
+
+    // 在當前路徑段上繪製多個方向箭頭
+    let dist = animOffset;
+    while (dist < len) {
+      const ax = x1 + ux * dist;
+      const ay = y1 + uy * dist;
+
+      // 繪製指向 (ux, uy) 方向的箭頭三角形
+      ctx.beginPath();
+      // 前端點 (指向方向)
+      ctx.moveTo(ax + ux * arrowSize * 1.5, ay + uy * arrowSize * 1.5);
+      // 後左端點
+      ctx.lineTo(ax - ux * arrowSize + uy * arrowSize * 0.8, ay - uy * arrowSize - ux * arrowSize * 0.8);
+      // 後右端點
+      ctx.lineTo(ax - ux * arrowSize - uy * arrowSize * 0.8, ay - uy * arrowSize + ux * arrowSize * 0.8);
+      ctx.closePath();
+      ctx.fill();
+
+      dist += arrowSpacing;
+    }
+  }
+
   ctx.restore();
 }
 
@@ -2077,6 +2464,11 @@ function updateUI() {
   killVal.textContent = killCount.toString();
   btnStartWave.disabled = isWaveActive || (currentMap.id !== 'test_level' && wave >= MAX_WAVES);
   updateWaveProgress();
+
+  const testControls = document.getElementById('testControls');
+  if (testControls) {
+    testControls.style.display = currentMap.id === 'test_level' ? 'flex' : 'none';
+  }
 }
 
 function updateWaveProgress() {
@@ -2133,6 +2525,63 @@ btnQuitBattle.addEventListener('click', () => {
   if (confirm('確定放棄本局嗎？將進行天賦結算。')) {
     endBattle(false);
   }
+});
+
+btnDiagnostics.addEventListener('click', () => {
+  playSFX('click');
+  isDiagnosticOpen = !isDiagnosticOpen;
+  (diagnosticPanel as HTMLElement).style.display = isDiagnosticOpen ? 'block' : 'none';
+  btnDiagnostics.classList.toggle('active', isDiagnosticOpen);
+});
+
+btnDiagExport.addEventListener('click', () => {
+  playSFX('click');
+  const cacheKeys = Array.from(spriteCache.keys());
+  const report = {
+    timestamp: new Date().toISOString(),
+    fps: currentFps,
+    monstersCount: enemies.length,
+    towersCount: towers.length,
+    bulletsCount: bullets.length,
+    particlesCount: particles.length,
+    drawCalls: drawCallCount,
+    spriteCacheSize: spriteCache.size,
+    spriteCacheKeys: cacheKeys,
+    userGold: gold,
+    userHP: hp,
+    currentWave: wave,
+    talentSaveData: loadTalentData(),
+    devicePixelRatio: window.devicePixelRatio,
+    browserAgent: navigator.userAgent
+  };
+  
+  console.group('%c⚙️ Wuxing Maze TD — Performance Diagnostic Profile', 'color: #8b5cf6; font-weight: bold; font-size: 1.15rem;');
+  console.log('%cGeneral Game Stats:', 'color: #38bdf8; font-weight: bold;');
+  console.table({
+    'FPS': report.fps,
+    'Monsters': report.monstersCount,
+    'Towers': report.towersCount,
+    'Bullets': report.bulletsCount,
+    'Particles': report.particlesCount,
+    'Draw Calls (Last Frame)': report.drawCalls,
+    'Cache Canvas Size': report.spriteCacheSize,
+    'HP': report.userHP,
+    'Gold': report.userGold,
+    'Current Wave': report.currentWave
+  });
+  console.log('%cSprite Cache Inventory:', 'color: #fbbf24; font-weight: bold;', report.spriteCacheKeys);
+  console.log('%cComplete Raw Profile Data:', 'color: #10b981; font-weight: bold;', report);
+  console.groupEnd();
+
+  floatingTexts.push({
+    x: canvas.width / 2,
+    y: canvas.height / 2 - 40,
+    text: '📋 性能診斷報告已導出至 Console (F12)！',
+    color: '#fbbf24',
+    alpha: 1.0,
+    life: 120,
+    fontSize: 18
+  });
 });
 
 btnShowRoute.addEventListener('click', () => {
@@ -2284,11 +2733,25 @@ function resizeGameContainer() {
   const container = document.querySelector('.game-container') as HTMLElement;
   if (!container) return;
   const windowWidth = window.innerWidth;
-  const baseWidth = 1304; // 1280px + padding + border
-  const baseHeight = 780; // 大致的總高度
+  const windowHeight = window.innerHeight;
 
-  if (windowWidth < baseWidth) {
-    const scale = windowWidth / baseWidth;
+  const baseWidth = 1304; // 1280px + padding + border
+  // 測試關卡因為有額外的測試工具面板，高度會比較高，給予較大的 baseHeight
+  const isTest = typeof currentMap !== 'undefined' && currentMap && currentMap.id === 'test_level';
+  const baseHeight = isTest ? 830 : 780; 
+
+  const padding = 12; // 留點邊距緩衝
+  const targetWidth = windowWidth - padding * 2;
+  const targetHeight = windowHeight - padding * 2;
+
+  const scaleX = targetWidth / baseWidth;
+  const scaleY = targetHeight / baseHeight;
+
+  // 取較小值，且最大縮放值為 1 (只縮小，不放大)
+  let scale = Math.min(scaleX, scaleY);
+  if (scale > 1) scale = 1;
+
+  if (scale < 1) {
     container.style.transform = `scale(${scale})`;
     container.style.transformOrigin = 'top center';
     if (container.parentElement) {
@@ -2383,8 +2846,10 @@ canvas.addEventListener('touchmove', (e) => {
       const newScale = Math.max(0.5, Math.min(3.0, mapScale * factor));
 
       const rect = canvas.getBoundingClientRect();
-      const centerX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
-      const centerY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+      const rawCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+      const rawCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+      const centerX = rawCenterX * (canvas.width / rect.width);
+      const centerY = rawCenterY * (canvas.height / rect.height);
 
       const worldX = (centerX - mapOffsetX) / mapScale;
       const worldY = (centerY - mapOffsetY) / mapScale;
@@ -2402,43 +2867,81 @@ canvas.addEventListener('touchend', () => {
   lastTouchDist = 0;
 });
 
+canvas.addEventListener('wheel', (e) => {
+  if (currentScene !== 'BATTLE') return;
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const centerX = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const centerY = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  const newScale = Math.max(0.5, Math.min(3.0, mapScale * factor));
+  const worldX = (centerX - mapOffsetX) / mapScale;
+  const worldY = (centerY - mapOffsetY) / mapScale;
+  mapScale = newScale;
+  mapOffsetX = centerX - worldX * mapScale;
+  mapOffsetY = centerY - worldY * mapScale;
+}, { passive: false });
+
 // ============================================================
 // 12. 遊戲音效與播控系統 (Phase 4)
 // ============================================================
 
-const sfxAssets: Record<string, HTMLAudioElement> = {};
+const sfxAssets: Record<string, HTMLAudioElement[]> = {};
+const MAX_POOL_SIZE = 10; // 每種音效最多 10 個實例
+const sfxPaths: Record<string, string> = {
+  click: 'assets/audio/click.mp3',
+  shoot: 'assets/audio/shoot.mp3',
+  enemy_death: 'assets/audio/enemy_death.mp3',
+  merge_success: 'assets/audio/merge_success.mp3'
+};
 
 function initSFX() {
-  const list = {
-    click: 'assets/audio/click.mp3',
-    shoot: 'assets/audio/shoot.mp3',
-    enemy_death: 'assets/audio/enemy_death.mp3',
-    merge_success: 'assets/audio/merge_success.mp3'
-  };
-  
-  for (const [key, path] of Object.entries(list)) {
-    const audio = new Audio(path);
-    audio.preload = 'auto';
-    sfxAssets[key] = audio;
+  // 預先初始化每種音效的播放池 (池中先放 2 個，後續依需生成)
+  for (const [key, path] of Object.entries(sfxPaths)) {
+    sfxAssets[key] = [];
+    for (let i = 0; i < 2; i++) {
+      const audio = new Audio(path);
+      audio.preload = 'auto';
+      sfxAssets[key].push(audio);
+    }
   }
 }
 
 function playSFX(type: 'click' | 'shoot' | 'enemy_death' | 'merge_success') {
   if (!isMusicEnabled) return; // 與靜音開關連動
   
-  const baseAudio = sfxAssets[type];
-  if (!baseAudio) return;
+  const pool = sfxAssets[type];
+  if (!pool) return;
   
-  const clone = baseAudio.cloneNode(true) as HTMLAudioElement;
-  clone.volume = type === 'shoot' ? 0.2 : 0.45;
-  clone.play().catch(() => {
-    // 默默捕獲錯誤，防止資源不存在或瀏覽器策略導致中斷
+  // 1. 尋找池中閒置的 HTMLAudioElement
+  let audioToPlay = pool.find(audio => audio.paused || audio.ended);
+  
+  // 2. 如果都正在播放，且池的大小還沒到上限，則新建一個加入池中
+  if (!audioToPlay && pool.length < MAX_POOL_SIZE) {
+    audioToPlay = new Audio(sfxPaths[type]);
+    audioToPlay.preload = 'auto';
+    pool.push(audioToPlay);
+  }
+  
+  // 3. 如果池已滿，則強制複用最舊（第一個）的 HTMLAudioElement
+  if (!audioToPlay) {
+    audioToPlay = pool[0];
+    audioToPlay.pause();
+  }
+  
+  // 4. 播放音效
+  audioToPlay.volume = type === 'shoot' ? 0.2 : 0.45;
+  audioToPlay.currentTime = 0;
+  audioToPlay.play().catch(() => {
+    // 默默捕獲錯誤，防止資源不存在或瀏覽器安全策略導致中斷
   });
 }
 
 // ============================================================
 // 13. 背景音樂輪播與控制 (Phase 4)
 // ============================================================
+
+let bgmErrorCount = 0; // 全域變數，紀錄連續 BGM 錯誤次數
 
 function playNextBGM() {
   if (!isMusicEnabled) return;
@@ -2447,6 +2950,23 @@ function playNextBGM() {
   const track = BGM_PLAYLIST[currentBgmIndex];
   bgmAudio = new Audio(track);
   bgmAudio.volume = 0.35; // 35% 音量
+
+  // 防禦性加載錯誤處理：當前音軌不存在時，自動安全切換至下一首，防止死循環報錯
+  bgmAudio.addEventListener('error', () => {
+    console.warn(`[BGM] 載入音樂失敗: ${track}。嘗試播放下一首。`);
+    stopBGM();
+    bgmErrorCount++;
+    if (bgmErrorCount >= BGM_PLAYLIST.length) {
+      console.error('[BGM] 所有背景音樂皆無法加載，停止背景音樂播放系統。');
+      return; 
+    }
+    currentBgmIndex = (currentBgmIndex + 1) % BGM_PLAYLIST.length;
+    playNextBGM();
+  });
+
+  bgmAudio.addEventListener('canplaythrough', () => {
+    bgmErrorCount = 0; // 成功加載後重置錯誤計數
+  }, { once: true });
 
   bgmAudio.addEventListener('ended', () => {
     // 播放結束後，間隔 5 秒播放下一首
@@ -2506,5 +3026,62 @@ if (btnToggleMusic) {
     }
   });
 }
+
+// 註冊測試調試放怪按鈕事件
+const btnSpawnTestMonster = document.getElementById('btnSpawnTestMonster')! as HTMLButtonElement;
+const testMonsterSelect = document.getElementById('testMonsterSelect')! as HTMLSelectElement;
+
+btnSpawnTestMonster.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (currentScene !== 'BATTLE') return;
+  playSFX('click');
+  const enemyType = testMonsterSelect.value as EnemyTypeId;
+  spawnTestEnemy(enemyType);
+});
+
+// 初始化版本顯示與更新日誌
+function initVersionAndReleaseNotes() {
+  const versionEl = document.getElementById('gameVersion');
+  if (versionEl) {
+    versionEl.textContent = GAME_VERSION;
+  }
+  
+  const btnReleaseNotes = document.getElementById('btnReleaseNotes');
+  const releaseNotesModal = document.getElementById('releaseNotesModal');
+  const btnCloseReleaseNotes = document.getElementById('btnCloseReleaseNotes');
+  const releaseNotesBody = document.getElementById('releaseNotesBody');
+  
+  if (btnReleaseNotes && releaseNotesModal && releaseNotesBody) {
+    btnReleaseNotes.addEventListener('click', (e) => {
+      e.stopPropagation();
+      playSFX('click');
+      
+      // 將 Markdown 格式簡易轉為 HTML (支援標題、清單、粗體、換行)
+      const html = releaseNotesText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/^# (.*$)/gim, '<h2 style="font-size: 1.4rem; color: var(--gold); margin-top: 16px; margin-bottom: 8px; font-weight:700;">$1</h2>')
+        .replace(/^## (.*$)/gim, '<h3 style="font-size: 1.15rem; color: #a5b4fc; margin-top: 14px; margin-bottom: 6px; font-weight:700; border-bottom:1px dashed var(--border-color); padding-bottom:4px;">$1</h3>')
+        .replace(/^### (.*$)/gim, '<h4 style="font-size: 1rem; color: var(--text-color); margin-top: 8px; margin-bottom: 4px; font-weight:700;">$1</h4>')
+        .replace(/^\s*-\s*(.*$)/gim, '<li style="margin-left: 16px; margin-bottom: 6px; list-style-type: disc;">$1</li>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--gold);">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+      
+      releaseNotesBody.innerHTML = html;
+      releaseNotesModal.style.display = 'flex';
+    });
+  }
+  
+  if (btnCloseReleaseNotes && releaseNotesModal) {
+    btnCloseReleaseNotes.addEventListener('click', (e) => {
+      e.stopPropagation();
+      playSFX('click');
+      releaseNotesModal.style.display = 'none';
+    });
+  }
+}
+initVersionAndReleaseNotes();
 
 

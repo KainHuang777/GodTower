@@ -537,9 +537,11 @@
   <div id="mainMenu" class="scene active">
     <div class="menu-title">五行迷宮塔防</div>
     <div class="menu-subtitle">Wuxing Maze Tower Defense</div>
+    <div id="gameVersion" style="color: var(--text-muted); font-size: 0.85rem; margin-top: -15px; margin-bottom: 5px; font-weight: 500;">V0.20</div>
     <div class="menu-buttons">
       <button id="btnStartGame" class="menu-btn primary">⚔️ 開始遊戲</button>
       <button id="btnTalent" class="menu-btn">🌟 天賦系統</button>
+      <button id="btnReleaseNotes" class="menu-btn">📜 更新日誌</button>
       <div id="menuTalentInfo" class="menu-talent-info" style="text-align:center;"></div>
     </div>
   </div>
@@ -732,16 +734,49 @@
         <div class="tools" id="towerButtons">
           <!-- 動態生成砲台按鈕 -->
         </div>
-        <div style="display:flex;gap:6px;">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <!-- 測試關卡專用調試工具 -->
+          <div id="testControls" style="display:none; align-items:center; gap:6px; background:rgba(30, 41, 59, 0.85); border:1px solid #475569; border-radius:6px; padding:2px 8px; margin-right:8px; height:32px;">
+            <span style="color:#94a3b8; font-size:0.75rem; font-weight:bold; white-space:nowrap;">🧪 測試調試：</span>
+            <select id="testMonsterSelect" class="btn" style="padding: 2px 6px; font-size: 0.8rem; background:#334155; border-color:#475569; height:26px; line-height:1; color:#fff; cursor:pointer;">
+              <option value="snake">🐍 木蛇</option>
+              <option value="fly">🦟 金蠅 (飛行)</option>
+              <option value="salamander">🦎 火蜥蜴</option>
+              <option value="water_spirit">💧 水靈</option>
+              <option value="golem">🗿 土傀儡</option>
+              <option value="beetle">🪲 陰甲蟲</option>
+              <option value="boss_dragon">🐲 陽龍 (Boss)</option>
+            </select>
+            <button id="btnSpawnTestMonster" class="btn" style="background:#8b5cf6; border-color:#7c3aed; height:26px; padding:2px 10px; font-size: 0.8rem; font-weight: bold; line-height:1; color:#fff; display:flex; align-items:center; justify-content:center;">放怪</button>
+          </div>
+
           <button id="btnMerge" class="btn btn-merge" data-tool="merge">🔮 合成</button>
           <button id="btnSell" class="btn" data-tool="sell">💰 拆除</button>
           <button id="btnShowRoute" class="btn" style="background:#0284c7; border-color:#0369a1;">🗺️ 路線預覽</button>
           <button id="btnStartWave" class="btn btn-action">⚔️ 下一波</button>
+          <button id="btnDiagnostics" class="btn" style="background:#475569; border-color:#64748b;">⚙️ 診斷</button>
           <button id="btnQuitBattle" class="btn btn-quit">✕ 放棄</button>
         </div>
       </div>
       <div id="instructionText" class="instructions">
         選擇砲台後點擊地圖擺放。怪物必須依序碰觸 <span style="color:#f59e0b">❶❷❸❹❺</span> 檢查點，再抵達基地。用砲台築迷宮讓怪物繞最遠的路！<span style="color:#94a3b8;margin-left:8px;">右鍵點擊砲台可快速拆除</span>
+      </div>
+      
+      <!-- 性能診斷面板 -->
+      <div id="diagnosticPanel" style="display: none; position: absolute; top: 60px; right: 20px; width: 320px; background: rgba(15, 23, 42, 0.95); border: 2px solid #334155; border-radius: 12px; padding: 16px; z-index: 999; box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-family: monospace; backdrop-filter: blur(8px);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 6px;">
+          <span style="font-weight: bold; color: #a78bfa; font-size: 0.9rem;">⚙️ 性能診斷面板</span>
+          <button id="btnDiagExport" class="btn" style="padding: 2px 8px; font-size: 0.72rem; background: #6366f1;">Export Profile</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.8rem; color: #f8fafc;">
+          <div style="display: flex; justify-content: space-between;"><span>FPS:</span><span id="diagFps" style="color: #10b981; font-weight: bold;">60</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>單幀渲染耗時:</span><span id="diagLatency" style="color: #38bdf8;">0 ms</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>每幀繪製次數:</span><span id="diagDrawCalls" style="color: #fbbf24;">0</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>快取 Canvas 總數:</span><span id="diagCacheSize" style="color: #a5b4fc;">0</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>當前怪物數量:</span><span id="diagMonsters" style="color: #f43f5e;">0</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>當前防禦塔數量:</span><span id="diagTowers" style="color: #fb7185;">0</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>濾鏡調用警報:</span><span id="diagFilterWarning" style="color: #10b981; font-weight: bold;">0</span></div>
+        </div>
       </div>
       <div class="wave-progress-bar">
         <span id="waveProgressLabel">待機中</span>
@@ -749,6 +784,19 @@
           <div id="waveProgressFill" class="wave-progress-fill idle"></div>
         </div>
         <span id="waveEnemyCount" style="min-width:60px;text-align:right;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 彈窗: 更新日誌 ===== -->
+  <div id="releaseNotesModal" class="scene" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
+    <div style="background: var(--panel-bg); border: 2px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); backdrop-filter: blur(12px); color: var(--text-color);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; width: 100%;">
+        <h3 style="font-size: 1.4rem; color: var(--gold); font-weight: 700; margin: 0;">📜 遊戲更新日誌</h3>
+        <button id="btnCloseReleaseNotes" style="background: none; border: none; color: var(--text-muted); font-size: 2rem; cursor: pointer; transition: color 0.2s; line-height: 1; padding: 0 5px;">&times;</button>
+      </div>
+      <div id="releaseNotesBody" style="overflow-y: auto; flex-grow: 1; font-size: 0.95rem; line-height: 1.6; color: var(--text-color); text-align: left; padding-right: 8px;">
+        <!-- 內容由 JS 動態填充 -->
       </div>
     </div>
   </div>
