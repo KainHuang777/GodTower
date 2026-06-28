@@ -90,7 +90,7 @@ console.log('Build completed successfully.');
 // 7. Git commit, tag, and push
 try {
   console.log('Executing git commits...');
-  execSync('git add package.json package-lock.json src/main.ts index.html Releasenote.md Update.txt', { stdio: 'inherit' });
+  execSync('git add package.json package-lock.json src/main.ts index.html Releasenote.md Update.txt vite.config.ts', { stdio: 'inherit' });
   execSync(`git commit -m "release: ${gameVersionUi}"`, { stdio: 'inherit' });
   try {
     execSync(`git tag -d ${gameVersionUi}`, { stdio: 'ignore' });

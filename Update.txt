@@ -1,3 +1,9 @@
+2026-06-28 (58th Update)
+- Resolved GitHub Pages deployment issues where main menu buttons were unresponsive.
+  1. Vite configuration: Created vite.config.ts and set base to './' to force Vite to compile assets with relative paths instead of absolute paths (which caused 404 resource errors on subpath deployments like GitHub Pages).
+  2. Entry script: Changed script injection in index.html from absolute path /src/main.ts to relative path ./src/main.ts.
+  3. Release process: Updated scripts/release.cjs to include vite.config.ts in Git commit index.
+
 2026-06-28 (57th Update)
 - Resolved Git repository safety and tracking issues by removing untracked dependencies and improving ignore rules.
   1. Untracked node_modules: Removed accidentally tracked `node_modules` from Git index via `git rm -r --cached` while preserving the local files.
