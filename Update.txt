@@ -1,3 +1,12 @@
+2026-06-28 (60th Update)
+- Resolved GitHub Actions push configuration.
+  1. Release script: Included the newly created .github/workflows/deploy.yml in scripts/release.cjs git add parameters, ensuring the workflow config is properly committed and pushed.
+
+2026-06-28 (59th Update)
+- Resolved GitHub Pages MIME type (video/mp2t) loading error.
+  1. CI/CD automation: Added GitHub Actions workflow (.github/workflows/deploy.yml) to automatically compile TS code and deploy the build target ('dist') to GitHub Pages on every push to main branch.
+  2. Setup documentation: Guided user to change GitHub Pages source settings to use 'GitHub Actions'.
+
 2026-06-28 (58th Update)
 - Resolved GitHub Pages deployment issues where main menu buttons were unresponsive.
   1. Vite configuration: Created vite.config.ts and set base to './' to force Vite to compile assets with relative paths instead of absolute paths (which caused 404 resource errors on subpath deployments like GitHub Pages).

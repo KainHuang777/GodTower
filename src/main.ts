@@ -205,7 +205,7 @@ let hasUserInteracted = false;
 let waveTotal = 0;    // 本波應生成總怪物數
 let waveSpawned = 0;  // 本波已生成怪物數
 
-const GAME_VERSION = 'V0.20';
+const GAME_VERSION = 'V0.30';
 
 // --- DOM 元素 ---
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
