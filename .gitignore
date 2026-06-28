@@ -40,3 +40,16 @@ dist-ssr/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+
+# Test outputs
+test_sd_monster*.png
+
