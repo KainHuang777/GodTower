@@ -12,6 +12,10 @@
     "preview": {
       "description": "預覽 production build",
       "template": "npm run preview"
+    },
+    "release": {
+      "description": "發行新版本 (執行打包、更新副版號、簡化更新日誌、推送GitHub)",
+      "template": "node scripts/release.cjs"
     }
   }
 }

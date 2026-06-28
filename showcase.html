@@ -1,0 +1,209 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>五行塔防 — 視覺品質展示</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#030712;color:#e2e8f0;font-family:system-ui,sans-serif;overflow-x:hidden;}
+    header{text-align:center;padding:32px 20px 16px;}
+    header h1{font-size:2rem;font-weight:900;background:linear-gradient(135deg,#fbbf24,#ef4444,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;}
+    header p{color:#64748b;font-size:.9rem;}
+    .info-bar{display:flex;justify-content:center;gap:24px;padding:12px 20px;background:#0f172a;border-bottom:1px solid #1e293b;font-size:.8rem;color:#94a3b8;flex-wrap:wrap;}
+    .badge{background:#1e293b;border:1px solid #334155;border-radius:4px;padding:2px 8px;color:#fbbf24;font-weight:700;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;padding:20px;max-width:1400px;margin:0 auto;}
+    .panel{background:#0f172a;border:1px solid #1e293b;border-radius:12px;overflow:hidden;}
+    .ph{padding:12px 16px;background:#1e293b;border-bottom:1px solid #334155;font-size:.85rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+    .tag{font-size:.7rem;background:#0f172a;border:1px solid #475569;border-radius:4px;padding:2px 6px;color:#94a3b8;margin-left:auto;}
+    .cw{display:flex;justify-content:center;align-items:center;padding:16px;min-height:160px;}
+    canvas{image-rendering:pixelated;}
+    .desc{padding:10px 16px;font-size:.75rem;color:#64748b;border-top:1px solid #1e293b;line-height:1.6;}
+    .full{grid-column:1/-1;}
+    footer{text-align:center;padding:24px;color:#334155;font-size:.75rem;}
+  </style>
+</head>
+<body>
+<header>
+  <h1>五行迷宮塔防 — 視覺品質展示</h1>
+  <p>使用現有精靈矩陣在 4× 縮放 + 進階特效渲染下的真實視覺上限</p>
+</header>
+<div class="info-bar">
+  <span>渲染器 <span class="badge">HTML5 Canvas 2D</span></span>
+  <span>精靈尺寸 <span class="badge">16×16 / 16×24</span></span>
+  <span>展示縮放 <span class="badge">4×</span></span>
+  <span>特效 <span class="badge">shadowBlur · 粒子 · 光暈 · 拖影</span></span>
+</div>
+<div class="grid">
+  <div class="panel"><div class="ph">🔥 火系塔 — Lv1 烈焰塔 <span class="tag">火元素</span></div><div class="cw"><canvas id="c-fire" width="200" height="200"></canvas></div><div class="desc">六色分層火焰漸變，呼吸動畫以底盤中心為縮放基準，元素色底座光圈脈動。</div></div>
+  <div class="panel"><div class="ph">💧 水系塔 — Lv1 冰凍塔 <span class="tag">水元素</span></div><div class="cw"><canvas id="c-water" width="200" height="200"></canvas></div><div class="desc">冰晶水滴結構，深海藍→冰藍→白色高光，2幀上下呼吸。</div></div>
+  <div class="panel"><div class="ph">☀️ 陽系塔 — Lv1 聖光塔 <span class="tag">陽元素</span></div><div class="cw"><canvas id="c-yang" width="200" height="200"></canvas></div><div class="desc">八方射線太陽圖騰，金烏造型，環繞粒子旋轉，核心脈動感強烈。</div></div>
+  <div class="panel"><div class="ph">🔥★★ 火系塔 — Lv2 烈焰熔爐 <span class="tag">16×24 等距</span></div><div class="cw"><canvas id="c-fire2" width="200" height="240"></canvas></div><div class="desc">16×24 等距 2.5D 三層設計：火焰冠 + 主體 + 基座。頂端動態燃燒感。</div></div>
+  <div class="panel"><div class="ph">🐍 木系怪物 — 小蛇 <span class="tag">地行 · 自動受擊</span></div><div class="cw"><canvas id="c-snake" width="200" height="200"></canvas></div><div class="desc">翠綠三層漸變，紅眼毒腺。每2秒自動受擊：閃白+元素粒子爆發+squash形變。</div></div>
+  <div class="panel"><div class="ph">🐲 火系 Boss — 龍影 <span class="tag">飛行 Boss · 自動受擊</span></div><div class="cw"><canvas id="c-dragon" width="200" height="200"></canvas></div><div class="desc">深紅鱗甲+金色腹部+橙焰翼，翅膀2幀拍動。自動觸發火焰受擊爆炸。</div></div>
+  <div class="panel"><div class="ph">✨ 五種元素子彈效果 <span class="tag">元素色拖影</span></div><div class="cw"><canvas id="c-bullets" width="320" height="250"></canvas></div><div class="desc">🔥烈焰 💧冰晶 🌿毒刺 ⚔️剃刃 🌑暗影 — 元素色 shadowBlur 光暈 + 像素尾流。</div></div>
+  <div class="panel"><div class="ph">💥 受擊 & 爆炸特效 <span class="tag">點擊觸發 / 自動演示</span></div><div class="cw"><canvas id="c-hit" width="320" height="250"></canvas></div><div class="desc">點擊任意位置觸發。元素色粒子爆發 + 波紋光圈 + 拋物線像素噴濺。</div></div>
+  <div class="panel full"><div class="ph">🎮 完整場景展示 — 塔防戰鬥 Demo <span class="tag">3塔自動射擊 + 3怪移動受擊 + 全特效</span></div><div class="cw"><canvas id="c-scene" width="960" height="300"></canvas></div><div class="desc">三座塔（火/水/陽）自動偵測射擊怪物。子彈追蹤拖影 → 命中粒子爆炸 → 閃白受擊 squash → 死亡爆炸波紋 → 血條扣除 → 自動重置。</div></div>
+</div>
+<footer>GodTower Visual Quality Showcase — Canvas 2D 原生渲染極限驗證頁</footer>
+<script>
+const S4=4;
+function px(ctx,pal,mat,x,y,s,ol){
+  const h=mat.length,w=mat[0].length,dirs=[[-1,0],[1,0],[0,-1],[0,1]];
+  ctx.fillStyle=ol||'#0f172a';
+  for(let py=0;py<h;py++)for(let px2=0;px2<w;px2++){
+    if(!mat[py][px2])continue;
+    for(const[dx,dy]of dirs){const nx=px2+dx,ny=py+dy;if(nx>=0&&nx<w&&ny>=0&&ny<h&&!mat[ny][nx])ctx.fillRect((x+nx)*s,(y+ny)*s,s,s);}
+  }
+  for(let py=0;py<h;py++)for(let px2=0;px2<w;px2++){const i=mat[py][px2];if(!i)continue;ctx.fillStyle=pal[i];ctx.fillRect((x+px2)*s,(y+py)*s,s,s);}
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+function glow(ctx,cx,cy,col,r,a){
+  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+  const ah=Math.round((a||.3)*255).toString(16).padStart(2,'0');
+  g.addColorStop(0,col+ah);g.addColorStop(1,col+'00');
+  ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(cx,cy,r,r*.4,0,0,Math.PI*2);ctx.fill();
+}
+function bullet(ctx,bx,by,el){
+  const C={fire:{c:'#fef08a',m:'#f97316',g:'#ef4444',t:'#7f1d1d',r:5},water:{c:'#fff',m:'#60a5fa',g:'#2563eb',t:'#1e3a8a',r:4},wood:{c:'#a7f3d0',m:'#22c55e',g:'#166534',t:'#052e16',r:4},metal:{c:'#fff',m:'#cbd5e1',g:'#94a3b8',t:'#475569',r:5},yin:{c:'#fff',m:'#d8b4fe',g:'#a855f7',t:'#3b0764',r:4},yang:{c:'#fff',m:'#fef08a',g:'#fbbf24',t:'#854d0e',r:5}};
+  const cv=C[el]||C.fire;
+  for(let i=0;i<6;i++){const tx=bx-i*10,a=(1-i/6)*.7,tr=lerp(cv.r,1,i/6);ctx.save();ctx.globalAlpha=a;ctx.shadowBlur=8;ctx.shadowColor=cv.g;ctx.fillStyle=cv.t;ctx.beginPath();ctx.arc(tx,by,tr,0,Math.PI*2);ctx.fill();ctx.restore();}
+  ctx.save();ctx.shadowBlur=20;ctx.shadowColor=cv.g;
+  const gr=ctx.createRadialGradient(bx,by,0,bx,by,cv.r);gr.addColorStop(0,cv.c);gr.addColorStop(.5,cv.m);gr.addColorStop(1,cv.g);
+  ctx.fillStyle=gr;ctx.beginPath();ctx.arc(bx,by,cv.r,0,Math.PI*2);ctx.fill();ctx.restore();
+}
+
+class PS{
+  constructor(){this.p=[];}
+  emit(x,y,col,n,spd,sz,life){
+    for(let i=0;i<n;i++){const a=(Math.PI*2/n)*i+Math.random()*.5,sp=spd*(.5+Math.random());this.p.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,col,alpha:1,sz:sz*(.5+Math.random()),life,ml:life,g:.15});}
+  }
+  death(x,y,col){this.emit(x,y,col,20,6,4,60);this.emit(x,y,'#fff',8,8,3,30);this.p.push({ring:1,x,y,col,r:4,mr:60,life:35,ml:35});}
+  update(){this.p=this.p.filter(p=>p.life>0);for(const p of this.p){p.life--;if(p.ring){p.r=lerp(p.r,p.mr,.15);continue;}p.x+=p.vx;p.y+=p.vy;p.vy+=p.g;p.vx*=.92;p.vy*=.92;p.alpha=p.life/p.ml;}}
+  draw(ctx){for(const p of this.p){ctx.save();ctx.globalAlpha=p.alpha;if(p.ring){ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.strokeStyle=p.col;ctx.lineWidth=2;ctx.shadowBlur=12;ctx.shadowColor=p.col;ctx.stroke();}else{const sz=Math.max(1,p.sz*p.alpha);ctx.fillStyle=p.col;ctx.shadowBlur=6;ctx.shadowColor=p.col;ctx.fillRect(p.x-sz/2,p.y-sz/2,sz,sz);}ctx.restore();}}
+}
+
+const FP=['','#7f1c1d','#dc2626','#f97316','#fbbf24','#fef08a','#ffffff'];
+const FF0=[[0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,5,4,5,0,0,0,0,0,0,0],[0,0,0,0,0,5,4,3,4,5,0,0,0,0,0,0],[0,0,0,0,5,4,3,2,3,4,5,0,0,0,0,0],[0,0,0,5,4,3,2,1,2,3,4,5,0,0,0,0],[0,0,5,4,3,2,1,6,1,2,3,4,5,0,0,0],[0,5,4,3,2,1,6,6,6,1,2,3,4,5,0,0],[0,5,3,2,1,6,6,6,6,6,1,2,3,5,0,0],[5,4,3,2,1,6,6,6,6,6,1,2,3,4,5,0],[5,3,2,1,1,6,6,6,6,6,1,1,2,3,5,0],[0,5,3,2,1,1,6,6,6,1,1,2,3,5,0,0],[0,0,5,4,2,1,1,6,1,1,2,4,5,0,0,0],[0,0,0,5,4,3,1,1,1,3,4,5,0,0,0,0],[0,0,0,0,5,4,3,2,3,4,5,0,0,0,0,0],[0,0,0,0,0,5,4,3,4,5,0,0,0,0,0,0],[0,0,0,0,0,0,5,5,5,0,0,0,0,0,0,0]];
+const FF1=[[0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,5,4,5,0,0,0,0,0,0,0,0],[0,0,0,0,5,4,3,4,5,0,0,0,0,0,0,0],[0,0,0,5,4,3,2,3,4,5,0,0,0,0,0,0],[0,0,5,4,3,2,1,2,3,4,5,0,0,0,0,0],[0,5,4,3,2,1,6,1,2,3,4,5,0,0,0,0],[0,5,3,2,1,6,6,6,1,2,3,4,5,0,0,0],[5,4,3,2,1,6,6,6,6,1,2,3,4,5,0,0],[5,3,2,1,6,6,6,6,6,6,1,2,3,5,0,0],[0,5,3,2,1,1,6,6,6,6,1,2,3,5,0,0],[0,0,5,3,2,1,1,6,6,1,1,2,5,0,0,0],[0,0,0,5,4,2,1,1,1,1,2,4,5,0,0,0],[0,0,0,0,5,4,3,1,1,3,4,5,0,0,0,0],[0,0,0,0,0,5,4,3,2,4,5,0,0,0,0,0],[0,0,0,0,0,0,5,4,5,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0]];
+
+const WP=['','#1e3a8a','#2563eb','#3b82f6','#60a5fa','#93c5fd','#ffffff'];
+const WF0=[[0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,6,5,6,0,0,0,0,0,0,0],[0,0,0,0,0,6,5,4,5,6,0,0,0,0,0,0],[0,0,0,0,0,6,4,3,4,6,0,0,0,0,0,0],[0,0,0,0,6,5,4,3,4,5,6,0,0,0,0,0],[0,0,0,6,5,4,3,2,3,4,5,6,0,0,0,0],[0,0,6,5,4,3,2,2,2,3,4,5,6,0,0,0],[0,6,5,4,3,2,2,1,2,2,3,4,5,6,0,0],[0,6,4,3,2,2,1,1,1,2,2,3,4,6,0,0],[6,5,4,3,2,1,1,1,1,1,2,3,4,5,6,0],[6,4,3,2,2,1,1,1,1,1,2,2,3,4,6,0],[6,4,3,3,2,2,1,1,1,2,2,3,3,4,6,0],[0,6,4,3,3,2,2,2,2,2,3,3,4,6,0,0],[0,0,6,5,4,3,3,3,3,3,4,5,6,0,0,0],[0,0,0,6,5,4,4,4,4,4,5,6,0,0,0,0],[0,0,0,0,0,6,6,6,6,6,0,0,0,0,0,0]];
+const WF1=[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,6,5,6,0,0,0,0,0,0,0],[0,0,0,0,0,6,5,4,5,6,0,0,0,0,0,0],[0,0,0,0,0,6,4,3,4,6,0,0,0,0,0,0],[0,0,0,0,6,5,4,3,4,5,6,0,0,0,0,0],[0,0,0,6,5,4,3,2,3,4,5,6,0,0,0,0],[0,0,6,5,4,3,2,2,2,3,4,5,6,0,0,0],[0,6,5,4,3,2,2,1,2,2,3,4,5,6,0,0],[0,6,4,3,2,2,1,1,1,2,2,3,4,6,0,0],[6,5,4,3,2,1,1,1,1,1,2,3,4,5,6,0],[6,4,3,2,2,1,1,1,1,1,2,2,3,4,6,0],[0,6,4,3,3,2,2,1,2,2,3,3,4,6,0,0],[0,0,6,5,4,3,3,2,3,3,4,5,6,0,0,0],[0,0,0,6,5,4,4,3,4,4,5,6,0,0,0,0],[0,0,0,0,0,6,6,6,6,6,0,0,0,0,0,0]];
+
+const YGP=['','#854d0e','#a16207','#d97706','#fbbf24','#fef08a','#ffffff'];
+const YGF0=[[0,0,0,0,0,0,0,5,5,0,0,0,0,0,0,0],[0,0,0,5,0,0,5,4,4,5,0,0,5,0,0,0],[0,0,0,0,5,5,4,3,3,4,5,5,0,0,0,0],[0,0,0,0,0,4,3,2,2,3,4,0,0,0,0,0],[0,0,0,5,4,3,2,2,2,2,3,4,5,0,0,0],[0,0,5,4,3,2,1,1,1,1,2,3,4,5,0,0],[0,5,4,3,2,1,1,6,6,1,1,2,3,4,5,0],[5,4,3,2,2,1,6,6,6,6,1,2,2,3,4,5],[5,4,3,2,2,1,6,6,6,6,1,2,2,3,4,5],[0,5,4,3,2,1,1,6,6,1,1,2,3,4,5,0],[0,0,5,4,3,2,1,1,1,1,2,3,4,5,0,0],[0,0,0,5,4,3,2,2,2,2,3,4,5,0,0,0],[0,0,0,0,0,4,3,2,2,3,4,0,0,0,0,0],[0,0,0,0,5,5,4,3,3,4,5,5,0,0,0,0],[0,0,0,5,0,0,5,4,4,5,0,0,5,0,0,0],[0,0,0,0,0,0,0,5,5,0,0,0,0,0,0,0]];
+const YGF1=[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,5,5,0,0,0,0,0,0,0],[0,0,0,5,0,0,5,4,4,5,0,0,5,0,0,0],[0,0,0,0,5,5,4,3,3,4,5,5,0,0,0,0],[0,0,0,0,0,4,3,2,2,3,4,0,0,0,0,0],[0,0,0,5,4,3,2,2,2,2,3,4,5,0,0,0],[0,0,5,4,3,2,1,1,1,1,2,3,4,5,0,0],[0,5,4,3,2,1,1,6,6,1,1,2,3,4,5,0],[5,4,3,2,2,1,6,6,6,6,1,2,2,3,4,5],[5,4,3,2,2,1,6,6,6,6,1,2,2,3,4,5],[0,5,4,3,2,1,1,6,6,1,1,2,3,4,5,0],[0,0,5,4,3,2,1,1,1,1,2,3,4,5,0,0],[0,0,0,5,4,3,2,2,2,2,3,4,5,0,0,0],[0,0,0,0,0,4,3,2,2,3,4,0,0,0,0,0],[0,0,0,0,5,5,4,3,3,4,5,5,0,0,0,0],[0,0,0,5,0,0,5,4,4,5,0,0,5,0,0,0]];
+
+const F2P=['','#7f1d1d','#450a0a','#ef4444','#fbbf24','#ffffff','#ea580c'];
+const F2F0=[[0,0,0,0,0,0,6,6,6,6,0,0,0,0,0,0],[0,0,0,0,0,6,5,4,4,5,6,0,0,0,0,0],[0,0,0,0,6,5,4,3,3,4,5,6,0,0,0,0],[0,0,0,0,5,4,3,6,3,4,5,0,0,0,0,0],[0,0,0,0,6,5,4,3,3,4,5,6,0,0,0,0],[0,0,0,0,0,6,5,4,4,5,6,0,0,0,0,0],[0,0,0,0,0,0,2,2,2,2,0,0,0,0,0,0],[0,0,0,0,0,2,1,1,1,1,2,0,0,0,0,0],[0,0,0,0,2,1,6,6,6,6,1,2,0,0,0,0],[0,0,0,2,1,6,3,3,3,3,6,1,2,0,0,0],[0,0,0,2,1,6,3,1,1,3,6,1,2,0,0,0],[0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],[0,0,2,2,2,2,2,2,2,2,2,2,2,2,0,0],[0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],[0,0,2,1,1,2,1,1,1,1,2,1,1,2,0,0],[0,0,2,1,1,2,1,1,1,1,2,1,1,2,0,0],[0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],[0,0,2,1,1,1,1,1,1,1,1,1,1,2,0,0],[0,0,2,2,2,2,2,2,2,2,2,2,2,2,0,0],[0,2,1,1,1,1,1,1,1,1,1,1,1,1,2,0],[0,2,1,1,1,1,1,1,1,1,1,1,1,1,2,0],[0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
+
+const SNP=['','#16a34a','#052e16','#b9f6ca','#ef4444'];
+const SNF0=[[0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0],[0,0,0,0,0,3,1,1,1,1,3,0,0,0,0,0],[0,0,0,0,3,1,1,1,1,1,1,3,0,0,0,0],[0,0,0,0,3,1,3,1,1,3,1,3,0,0,0,0],[0,0,0,0,3,1,1,1,1,1,1,3,0,0,0,0],[0,0,0,0,0,3,1,1,1,1,3,0,0,0,0,0],[0,0,0,0,0,0,3,4,4,3,0,0,0,0,0,0],[0,0,0,0,0,3,1,1,1,1,3,0,0,0,0,0],[0,0,0,3,3,1,1,2,2,1,1,3,3,0,0,0],[0,0,3,1,1,1,2,2,2,2,1,1,1,3,0,0],[0,3,1,1,2,2,2,1,1,2,2,2,1,1,3,0],[0,3,1,2,2,1,1,3,3,1,1,2,2,1,3,0],[0,0,3,3,3,3,3,0,0,3,3,3,3,3,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
+const SNF1=[[0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0],[0,0,0,0,0,3,1,1,1,1,3,0,0,0,0,0],[0,0,0,0,3,1,1,1,1,1,1,3,0,0,0,0],[0,0,0,0,3,1,3,1,1,3,1,3,0,0,0,0],[0,0,0,0,3,1,1,1,1,1,1,3,0,0,0,0],[0,0,0,0,0,3,1,1,1,1,3,0,0,0,0,0],[0,0,0,0,0,0,3,4,4,3,0,0,0,0,0,0],[0,0,0,0,0,3,1,1,1,1,3,0,0,0,0,0],[0,0,0,3,3,1,1,2,2,1,1,3,3,0,0,0],[0,0,3,1,1,1,2,2,2,2,1,1,1,3,0,0],[0,3,1,1,2,2,1,1,2,2,2,2,1,1,3,0],[0,3,1,2,2,2,2,3,3,1,1,2,2,1,3,0],[0,0,3,3,3,3,3,0,0,3,3,3,3,3,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
+
+const DRP=['','#b91c1c','#450a0a','#fbbf24','#f97316','#ffffff'];
+const DRF0=[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0],[0,0,0,0,0,3,4,4,4,4,3,0,0,0,0,0],[0,0,0,0,3,4,1,1,1,1,4,3,0,0,0,0],[0,0,0,3,4,1,3,1,1,3,1,4,3,0,0,0],[0,0,3,4,1,1,1,1,1,1,1,1,4,3,0,0],[0,3,1,1,1,1,1,1,1,1,1,1,1,1,3,0],[3,1,1,1,2,2,2,2,2,2,2,2,1,1,1,3],[3,1,1,2,2,5,5,5,5,5,5,2,2,1,1,3],[3,1,2,2,5,5,5,5,5,5,5,5,2,2,1,3],[3,1,2,5,5,1,1,1,1,1,1,5,5,2,1,3],[3,1,2,5,5,1,3,3,3,3,1,5,5,2,1,3],[3,1,2,2,5,1,1,1,1,1,1,5,2,2,1,3],[3,1,1,2,2,1,1,1,1,1,1,2,2,1,1,3],[0,3,1,1,1,1,1,1,1,1,1,1,1,1,3,0]];
+const DRF1=[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,3,3,3,3,0,0,0,0,0],[0,0,0,0,0,3,4,4,4,4,3,0,0,0,0,0],[0,0,0,0,3,4,1,1,1,1,4,3,0,0,0,0],[0,0,0,3,4,1,3,1,1,3,1,4,3,0,0,0],[0,0,3,4,1,1,1,1,1,1,1,1,4,3,0,0],[0,3,1,1,1,1,1,1,1,1,1,1,1,1,3,0],[3,1,1,1,2,2,2,2,2,2,2,2,1,1,1,3],[3,1,1,2,2,5,5,5,5,5,5,2,2,1,1,3],[3,1,2,2,5,5,5,5,5,5,5,5,2,2,1,3],[3,1,2,5,5,1,1,1,1,1,1,5,5,2,1,3],[3,1,2,5,5,1,3,3,3,3,1,5,5,2,1,3],[3,1,2,2,5,1,1,1,1,1,1,5,2,2,1,3],[3,1,1,2,2,1,1,1,1,1,1,2,2,1,1,3],[0,3,1,1,1,1,1,1,1,1,1,1,1,1,3,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
+
+function tower(id,pal,frames,ec,gc){
+  const cv=document.getElementById(id),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  function loop(){
+    ctx.clearRect(0,0,W,H);const bg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W/2);bg.addColorStop(0,'#1e293b');bg.addColorStop(1,'#030712');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    const t=Date.now()/1000,fi=Math.floor(Date.now()/350)%frames.length,m=frames[fi],rows=m.length,cols=m[0].length;
+    const cx=W/2,cy=H/2,ox=Math.floor(cx/S4-cols/2),oy=Math.floor(cy/S4-rows/2);
+    glow(ctx,cx,cy+rows*S4*.4,ec,32+Math.sin(t*2)*6,.3+Math.sin(t*2.5)*.1);
+    const sy=1+Math.sin(t*2.5)*.035,sx=1-Math.sin(t*2.5)*.015;
+    ctx.save();ctx.shadowBlur=18+Math.sin(t*3)*4;ctx.shadowColor=gc;
+    ctx.translate(cx,cy+rows*S4*.45);ctx.scale(sx,sy);ctx.translate(-cx,-(cy+rows*S4*.45));
+    px(ctx,pal,m,ox,oy,S4,'#0a0a0a');ctx.restore();
+    for(let i=0;i<3;i++){const a=t*1.8+(Math.PI*2/3)*i,r=28+Math.sin(t*2+i)*4,bx=cx+Math.cos(a)*r,by=(cy+rows*S4*.1)+Math.sin(a)*r*.35;ctx.save();ctx.globalAlpha=.7+Math.sin(t*3+i)*.3;ctx.shadowBlur=10;ctx.shadowColor=ec;ctx.fillStyle=ec;ctx.beginPath();ctx.arc(bx,by,2.5,0,Math.PI*2);ctx.fill();ctx.restore();}
+    requestAnimationFrame(loop);
+  }loop();
+}
+
+function tower2(id,pal,frame,ec,gc){
+  const cv=document.getElementById(id),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  function loop(){
+    ctx.clearRect(0,0,W,H);const bg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W/2);bg.addColorStop(0,'#1e293b');bg.addColorStop(1,'#030712');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    const t=Date.now()/1000,rows=frame.length,cols=frame[0].length;
+    const ox=Math.floor(W/2/S4-cols/2),oy=Math.floor((H-rows*S4)/2/S4);
+    const cx=W/2,cy=oy*S4+rows*S4*.9;
+    glow(ctx,cx,cy,ec,38,.35+Math.sin(t*2)*.1);
+    ctx.save();ctx.shadowBlur=22+Math.sin(t*3)*6;ctx.shadowColor=gc;px(ctx,pal,frame,ox,oy,S4,'#0a0a0a');ctx.restore();
+    ctx.fillStyle='#fde047';ctx.font='bold 12px sans-serif';ctx.textAlign='right';ctx.shadowBlur=8;ctx.shadowColor='#fbbf24';ctx.fillText('\u2605\u2605',ox*S4+cols*S4-2,oy*S4+14);ctx.shadowBlur=0;
+    requestAnimationFrame(loop);
+  }loop();
+}
+
+function enemy(id,pal,frames,ec,gc){
+  const cv=document.getElementById(id),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const ps=new PS();let hf=0,sqx=1,sqy=1;
+  setInterval(()=>{hf=8;sqx=.65;sqy=1.35;ps.emit(W/2,H/2,ec,10,4,3,35);ps.p.push({ring:1,x:W/2,y:H/2,col:ec,r:4,mr:40,life:25,ml:25});},2200);
+  function loop(){
+    ctx.clearRect(0,0,W,H);const bg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W/2);bg.addColorStop(0,'#1e293b');bg.addColorStop(1,'#030712');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    const t=Date.now()/1000,fi=Math.floor(Date.now()/180)%frames.length,m=frames[fi],rows=m.length,cols=m[0].length;
+    const ox=Math.floor(W/2/S4-cols/2),oy=Math.floor(H/2/S4-rows/2),cx=W/2,cy=H/2;
+    ctx.save();ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(cx,cy+rows*S4*.45,28,8,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    sqx+=(1-sqx)*.2;sqy+=(1-sqy)*.2;
+    ctx.save();ctx.translate(cx,cy+rows*S4*.45);ctx.rotate(Math.sin(t*3)*.06);ctx.scale(sqx,sqy);ctx.translate(-cx,-(cy+rows*S4*.45));
+    if(hf>0){ctx.save();ctx.shadowBlur=24;ctx.shadowColor='#ff3b30';for(let py=0;py<rows;py++)for(let px2=0;px2<cols;px2++)if(m[py][px2]){ctx.fillStyle='#fff';ctx.fillRect((ox+px2)*S4,(oy+py)*S4,S4,S4);}ctx.restore();hf--;}
+    else{ctx.save();ctx.shadowBlur=12;ctx.shadowColor=gc;px(ctx,pal,m,ox,oy,S4,'#0a0a0a');ctx.restore();}
+    ctx.restore();ps.update();ps.draw(ctx);requestAnimationFrame(loop);
+  }loop();
+}
+
+function bullets(){
+  const cv=document.getElementById('c-bullets'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const els=['fire','water','wood','metal','yin'],lbls=['\uD83D\uDD25 \u70c8\u7130\u5f48','\uD83D\uDCA7 \u51b0\u6676\u5f48','\uD83C\uDF3F \u6bd2\u523a\u5f48','\u2694\uFE0F \u5264\u520d\u5f48','\uD83C\uDF11 \u6697\u5f71\u5f48'];
+  const yy=[30,75,120,165,210],sp=[2,1.5,1.8,2.2,1.6],pos=els.map(()=>80);
+  function loop(){
+    ctx.clearRect(0,0,W,H);ctx.fillStyle='#030712';ctx.fillRect(0,0,W,H);
+    for(let i=0;i<els.length;i++){
+      ctx.save();ctx.strokeStyle='#1e293b';ctx.lineWidth=1;ctx.setLineDash([4,8]);ctx.beginPath();ctx.moveTo(70,yy[i]);ctx.lineTo(W-10,yy[i]);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+      pos[i]+=sp[i];if(pos[i]>W-10)pos[i]=70;
+      ctx.fillStyle='#475569';ctx.font='11px monospace';ctx.textAlign='left';ctx.fillText(lbls[i],2,yy[i]+4);
+      bullet(ctx,pos[i],yy[i],els[i]);
+    }requestAnimationFrame(loop);
+  }loop();
+}
+
+function hits(){
+  const cv=document.getElementById('c-hit'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const ps=new PS(),cols=['#ef4444','#38bdf8','#22c55e','#cbd5e1','#a855f7'];let ci=0;
+  cv.addEventListener('click',e=>{const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height),c=cols[ci++%cols.length];ps.emit(mx,my,c,16,5,4,45);ps.emit(mx,my,'#fff',6,7,2,25);ps.p.push({ring:1,x:mx,y:my,col:c,r:4,mr:50,life:30,ml:30});});
+  setInterval(()=>{const mx=60+Math.random()*(W-120),my=40+Math.random()*(H-80),c=cols[Math.floor(Math.random()*cols.length)];ps.emit(mx,my,c,14,5,4,45);ps.p.push({ring:1,x:mx,y:my,col:c,r:4,mr:50,life:30,ml:30});},900);
+  function loop(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#030712';ctx.fillRect(0,0,W,H);ctx.fillStyle='#334155';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('\u9ede\u64ca\u4efb\u610f\u4f4d\u7f6e\u89f8\u767c\u53d7\u64ca\u7206\u70b8\u6548\u679c',W/2,H/2+5);ps.update();ps.draw(ctx);requestAnimationFrame(loop);}loop();
+}
+
+function scene(){
+  const cv=document.getElementById('c-scene'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height,S3=3;
+  const ps=new PS();
+  const tds=[{x:80,y:H/2,mats:[FF0,FF1],pal:FP,col:'#ef4444',g:'#f97316',el:'fire',fr:90,cd:0},{x:210,y:H/2,mats:[WF0,WF1],pal:WP,col:'#38bdf8',g:'#2563eb',el:'water',fr:120,cd:40},{x:340,y:H/2,mats:[YGF0,YGF1],pal:YGP,col:'#fbbf24',g:'#d97706',el:'yang',fr:80,cd:20}];
+  function mkE(x,y,pal,frames,col,glow,hp){return{x,y,pal,frames,col,glow,hp,mhp:hp,spd:.8,hf:0,sqx:1,sqy:1,alive:true};}
+  let ens=[mkE(680,H/2-30,SNP,[SNF0,SNF1],'#22c55e','#16a34a',100),mkE(790,H/2+10,DRP,[DRF0,DRF1],'#ef4444','#b91c1c',200),mkE(900,H/2-15,SNP,[SNF0,SNF1],'#22c55e','#16a34a',80)];
+  const buls=[];
+  function loop(){
+    ctx.clearRect(0,0,W,H);const bg=ctx.createLinearGradient(0,0,W,0);bg.addColorStop(0,'#0a0f1e');bg.addColorStop(.5,'#0f172a');bg.addColorStop(1,'#0a0f1e');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#1e293b';ctx.fillRect(0,H-50,W,50);ctx.fillStyle='#334155';ctx.fillRect(0,H-52,W,2);
+    const t=Date.now()/1000;
+    for(const e of ens){if(!e.alive)continue;e.x-=e.spd;e.sqx+=(1-e.sqx)*.2;e.sqy+=(1-e.sqy)*.2;if(e.hf>0)e.hf--;if(e.x<-40)e.alive=false;}
+    for(const td of tds){td.cd--;if(td.cd<=0){const al=ens.filter(e=>e.alive);if(al.length){buls.push({x:td.x,y:td.y,tgt:al[Math.floor(Math.random()*al.length)],el:td.el,col:td.col,g:td.g,spd:5,dmg:22});td.cd=td.fr;}}}
+    for(let i=buls.length-1;i>=0;i--){const b=buls[i];if(!b.tgt.alive){buls.splice(i,1);continue;}const dx=b.tgt.x-b.x,dy=b.tgt.y-b.y,d=Math.sqrt(dx*dx+dy*dy);if(d<6){b.tgt.hp-=b.dmg;b.tgt.hf=7;b.tgt.sqx=.65;b.tgt.sqy=1.35;ps.emit(b.x,b.y,b.col,10,4,3,30);if(b.tgt.hp<=0){b.tgt.alive=false;ps.death(b.tgt.x,b.tgt.y,b.tgt.col);}buls.splice(i,1);continue;}b.x+=dx/d*b.spd;b.y+=dy/d*b.spd;}
+    if(ens.every(e=>!e.alive))ens=[mkE(680,H/2-30,SNP,[SNF0,SNF1],'#22c55e','#16a34a',100),mkE(790,H/2+10,DRP,[DRF0,DRF1],'#ef4444','#b91c1c',200),mkE(900,H/2-15,SNP,[SNF0,SNF1],'#22c55e','#16a34a',80)];
+    for(const td of tds){const m=td.mats[Math.floor(Date.now()/350)%td.mats.length],rows=m.length,cols=m[0].length,ox=Math.floor(td.x/S3-cols/2),oy=Math.floor((td.y-rows*S3*.5)/S3);glow(ctx,td.x,td.y+rows*S3*.3,td.col,24,.3+Math.sin(t*2.5)*.08);ctx.save();ctx.shadowBlur=14+Math.sin(t*3)*3;ctx.shadowColor=td.g;px(ctx,td.pal,m,ox,oy,S3,'#0a0a0a');ctx.restore();}
+    for(const b of buls)bullet(ctx,b.x,b.y,b.el);
+    for(const e of ens){if(!e.alive)continue;const m=e.frames[Math.floor(Date.now()/180)%e.frames.length],rows=m.length,cols=m[0].length,ox=Math.floor(e.x/S3-cols/2),oy=Math.floor((e.y-rows*S3*.5)/S3);ctx.save();ctx.translate(e.x,e.y+rows*S3*.45);ctx.rotate(Math.sin(t*3+e.x*.01)*.05);ctx.scale(e.sqx,e.sqy);ctx.translate(-e.x,-(e.y+rows*S3*.45));if(e.hf>0){ctx.save();ctx.shadowBlur=20;ctx.shadowColor='#ff3b30';for(let py=0;py<rows;py++)for(let px2=0;px2<cols;px2++)if(m[py][px2]){ctx.fillStyle='#fff';ctx.fillRect((ox+px2)*S3,(oy+py)*S3,S3,S3);}ctx.restore();}else{ctx.save();ctx.shadowBlur=10;ctx.shadowColor=e.glow;px(ctx,e.pal,m,ox,oy,S3,'#0a0a0a');ctx.restore();}ctx.restore();const hw=40,hx=e.x-hw/2,hy=oy*S3-8;ctx.fillStyle='#1e293b';ctx.fillRect(hx,hy,hw,5);const rat=Math.max(0,e.hp/e.mhp);ctx.fillStyle=rat>.5?'#22c55e':rat>.25?'#fbbf24':'#ef4444';ctx.fillRect(hx,hy,hw*rat,5);}
+    ps.update();ps.draw(ctx);requestAnimationFrame(loop);
+  }loop();
+}
+
+tower('c-fire',FP,[FF0,FF1],'#ef4444','#f97316');
+tower('c-water',WP,[WF0,WF1],'#38bdf8','#2563eb');
+tower('c-yang',YGP,[YGF0,YGF1],'#fbbf24','#d97706');
+tower2('c-fire2',F2P,F2F0,'#ef4444','#f97316');
+enemy('c-snake',SNP,[SNF0,SNF1],'#22c55e','#16a34a');
+enemy('c-dragon',DRP,[DRF0,DRF1],'#ef4444','#b91c1c');
+bullets();hits();scene();
+</script>
+</body>
+</html>

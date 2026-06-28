@@ -254,3 +254,4 @@ export function getSellPrice(def: TowerDef): number {
   }
   return 5; // fallback
 }
+

@@ -20,13 +20,13 @@ from typing import Optional
 try:
     import requests
 except ImportError:
-    print("❌ 缺少 requests 模組，請執行: pip install requests")
+    print("Error: Missing requests module, please run: pip install requests")
     sys.exit(1)
 
 try:
     from PIL import Image
 except ImportError:
-    print("❌ 缺少 Pillow 模組，請執行: pip install Pillow")
+    print("Error: Missing Pillow module, please run: pip install Pillow")
     sys.exit(1)
 
 # ============================================================
@@ -37,15 +37,16 @@ SD_API_BASE = "http://10.20.60.37:7860/sdapi/v1"
 
 # 共通 Prompt 前綴
 COMMON_POSITIVE_PREFIX = (
-    "8-bit pixel art, retro game sprite, wuxing theme, isolated on pure solid white background, "
-    "minimal style, clean borders, crisp pixels, "
+    "classic 16-bit pixel art, cute chibi game sprite, 2D gaming asset, flat color, clean contours, "
+    "isolated on pure solid white background, high contrast, crisp pixel details, no gradient shading, "
+    "retro game style, "
 )
 
 # 共通 Negative Prompt
 COMMON_NEGATIVE = (
-    "photorealistic, 3d render, card, frame, border, text, description, card game, "
-    "board game, playing card, landscape background, sky, cloud, grass, trees, "
-    "shadow, low quality, watermark, multiple characters"
+    "3d render, photorealistic, smooth gradients, blurry, anti-aliased pixels, shadows, "
+    "glowing ground, noise, messy borders, frame, card border, signature, text, watermark, "
+    "duplicate, draft, landscape background, sky, cloud, grass, trees"
 )
 
 # 共通生成參數
@@ -74,53 +75,51 @@ SPRITE_CONFIG = {
     # ── 怪物 ─────────────────────────────────────────────────
     "enemies/snake": {
         "prompt": (
-            "green snake monster, scales texture, glowing green eyes, "
-            "standing upright coiled serpent, side view, small cute but menacing, "
-            "vibrant green tones"
+            "green snake monster, side-view profile walking pose, scales texture, "
+            "glowing green eyes, standing upright coiled serpent, "
+            "small cute but menacing, flat colors, clean outline"
         ),
     },
     "enemies/fly": {
         "prompt": (
-            "metallic fly insect monster, silver armor plated wings, "
-            "compound eyes glowing silver, buzzing wings spread, hovering pose, "
-            "aerial creature, metallic grey tones, gold highlights"
+            "metallic fly insect monster, side-view profile hovering pose, "
+            "silver armor plated wings, compound eyes glowing silver, buzzing wings spread, "
+            "aerial creature, flat colors, clean outline, metallic grey tones"
         ),
     },
     "enemies/salamander": {
         "prompt": (
-            "fire salamander lizard monster, flames erupting on its back, "
-            "ember red and orange scales, walking pose, lizard body, fire breath ready, "
-            "red orange tones, glowing ember spots"
+            "fire salamander lizard monster, side-view profile walking pose, "
+            "flames erupting on its back, ember red and orange scales, lizard body, "
+            "fire breath ready, flat colors, clean outline, red orange tones"
         ),
     },
     "enemies/water_spirit": {
         "prompt": (
-            "water spirit elemental monster, translucent blue water body, "
-            "flowing wave form, ethereal ghost-like creature, "
-            "chinese mythological water spirit, sky blue cyan tones, "
-            "ripple effects around body"
+            "water spirit elemental monster, side-view profile floating pose, "
+            "translucent blue water body, flowing wave form, ethereal ghost-like creature, "
+            "chinese mythological water spirit, flat colors, clean outline, sky blue cyan tones"
         ),
     },
     "enemies/golem": {
         "prompt": (
-            "stone golem monster, ancient chinese stone guardian, rocky body, "
-            "carved stone texture, broad powerful stance, earth tones, "
-            "grey brown stone, glowing eyes, chunky proportions, imposing"
+            "stone golem monster, side-view profile walking pose, "
+            "ancient chinese stone guardian, rocky body, carved stone texture, "
+            "broad powerful stance, earth tones, flat colors, clean outline, grey brown stone"
         ),
     },
     "enemies/beetle": {
         "prompt": (
-            "golden scarab beetle monster, shiny gold carapace, metallic shell, "
-            "six legs visible, beetle horns, side view walking pose, "
-            "golden yellow tones, polished metal sheen on shell"
+            "golden scarab beetle monster, side-view profile walking pose, "
+            "shiny gold carapace, metallic shell, six legs visible, beetle horns, "
+            "flat colors, clean outline, golden yellow tones"
         ),
     },
     "enemies/boss_dragon": {
         "prompt": (
-            "shadow dragon boss monster, chinese dragon, dark red scales, "
-            "large spread wings, flying pose, breathing fire, intimidating aura, "
-            "chinese mythological dragon, dark crimson deep red tones, "
-            "glowing golden eyes, scale detail, powerful boss creature"
+            "shadow dragon boss monster, side-view profile flying pose, chinese dragon, "
+            "dark red scales, large spread wings, breathing fire, intimidating aura, "
+            "chinese mythological dragon, flat colors, clean outline, dark crimson deep red tones"
         ),
         "size": (768, 768),
     },
@@ -283,28 +282,34 @@ SPRITE_CONFIG = {
 # ============================================================
 
 def test_connection() -> bool:
-    """測試 SD API 連線"""
-    print(f"🔗 正在連線至 SD API: {SD_API_BASE}")
+    """Test SD API connection"""
+    print(f"Connecting to SD API: {SD_API_BASE}")
     try:
         resp = requests.get(f"{SD_API_BASE}/sd-models", timeout=10)
         if resp.status_code == 200:
             models = resp.json()
-            print(f"✅ 連線成功！可用模型數量：{len(models)}")
+            print(f"Connection successful! Models count: {len(models)}")
             for m in models[:3]:
                 print(f"   - {m.get('title', '???')}")
             return True
         else:
-            print(f"❌ 伺服器回應異常 (status={resp.status_code})")
+            print(f"Server response error (status={resp.status_code})")
             return False
     except Exception as e:
-        print(f"❌ 無法連線：{e}")
+        print(f"Cannot connect to SD API: {e}")
         return False
 
 
 def generate_image(sprite_key: str, config: dict) -> Optional[bytes]:
     """呼叫 SD txt2img API 生成一張圖片，回傳 PNG bytes（失敗回傳 None）"""
     w, h = config.get("size", (512, 512))
-    full_prompt = COMMON_POSITIVE_PREFIX + config["prompt"]
+    
+    # 智慧型前綴拼接：針對防禦塔強制限定正交等距視角與硬邊像素
+    prefix = COMMON_POSITIVE_PREFIX
+    if "towers" in sprite_key:
+        prefix += "isometric projection, orthographic view, structural asset, no anti-aliasing, "
+        
+    full_prompt = prefix + config["prompt"]
     payload = {
         **DEFAULT_PARAMS,
         "prompt": full_prompt,
@@ -318,24 +323,39 @@ def generate_image(sprite_key: str, config: dict) -> Optional[bytes]:
             images = resp.json().get("images", [])
             if images:
                 return base64.b64decode(images[0])
-        print(f"   ⚠️  API 回應異常 (status={resp.status_code})")
+        print(f"   API response error (status={resp.status_code})")
     except Exception as e:
-        print(f"   ⚠️  請求發生異常：{e}")
+        print(f"   Request error: {e}")
     return None
 
 
-def remove_white_background(img_bytes: bytes, threshold: int = 240) -> bytes:
-    """將接近白色的背景轉為透明，回傳 PNG bytes"""
+def remove_white_background(img_bytes: bytes, threshold: int = 230, target_size: Optional[int] = None) -> bytes:
+    """智慧型容差去背：將接近白色的背景轉為透明，優化抗鋸齒邊緣以防白邊，並等比縮小"""
     from io import BytesIO
     img = Image.open(BytesIO(img_bytes)).convert("RGBA")
     data = img.getdata()
     new_data = []
+    
     for r, g, b, a in data:
+        # 若大於等於容差閾值，判定為純白背景，設為完全透明
         if r >= threshold and g >= threshold and b >= threshold:
             new_data.append((255, 255, 255, 0))
         else:
-            new_data.append((r, g, b, a))
+            # 智慧去白邊：針對 [200, threshold-1] 區間的半透明抗鋸齒邊緣進行 Alpha 衰減
+            if r >= 200 and g >= 200 and b >= 200:
+                avg = (r + g + b) / 3
+                # 越接近 threshold，越趨向透明
+                alpha_factor = 1.0 - (avg - 200) / (threshold - 200)
+                new_alpha = int(a * max(0.0, min(alpha_factor, 1.0)))
+                new_data.append((r, g, b, new_alpha))
+            else:
+                new_data.append((r, g, b, a))
+                
     img.putdata(new_data)
+    
+    if target_size:
+        img = img.resize((target_size, target_size), Image.Resampling.LANCZOS)
+        
     buf = BytesIO()
     img.save(buf, "PNG")
     return buf.getvalue()
@@ -364,89 +384,88 @@ def run_batch(args):
         tasks[key] = cfg
 
     if not tasks:
-        print("⚠️  沒有符合條件的任務，請確認 --category 或 --id 參數。")
+        print("Error: No tasks match the criteria. Check --category or --id.")
         return
 
-    print(f"\n📋 待生成任務共 {len(tasks)} 張：")
+    print(f"\nTasks to generate: {len(tasks)}")
     for k in tasks:
         out = resolve_output_path(k)
-        exists = "✅ 已存在" if os.path.exists(out) else "⬜ 未產"
+        exists = "Exists" if os.path.exists(out) else "Missing"
         print(f"   [{exists}] {out}")
 
     if args.dry_run:
-        print("\n🔍 Dry-run 模式，不執行生成。")
+        print("\nDry-run mode, skipping generation.")
         return
 
-    # 連線測試
     if not test_connection():
-        print("\n❌ 無法連線至 Stable Diffusion API，請確認服務已啟動。")
+        print("\nCannot connect to Stable Diffusion API. Make sure SD WebUI is running with --api.")
         sys.exit(1)
 
     success_count = 0
     skip_count = 0
     fail_count = 0
 
-    print(f"\n🚀 開始批量生成...\n")
+    print(f"\nStarting batch generation...\n")
     for i, (key, cfg) in enumerate(tasks.items(), 1):
         out_path = resolve_output_path(key)
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
         if os.path.exists(out_path) and not args.force:
-            print(f"[{i:02d}/{len(tasks):02d}] ⏩ 跳過（已存在）: {out_path}")
+            print(f"[{i:02d}/{len(tasks):02d}] Skipping (already exists): {out_path}")
             skip_count += 1
             continue
 
-        print(f"[{i:02d}/{len(tasks):02d}] 🎨 生成中: {key}")
+        print(f"[{i:02d}/{len(tasks):02d}] Generating: {key}")
 
         img_bytes = generate_image(key, cfg)
         if img_bytes is None:
-            print(f"         ❌ 生成失敗，跳過。")
+            print(f"         Generation failed, skipping.")
             fail_count += 1
             continue
 
-        transparent_bytes = remove_white_background(img_bytes)
+        target_size = 96 if "boss" in key else 64
+        transparent_bytes = remove_white_background(img_bytes, target_size=target_size)
         with open(out_path, "wb") as f:
             f.write(transparent_bytes)
-        print(f"         ✅ 已儲存: {out_path}")
+        print(f"         Saved: {out_path}")
         success_count += 1
 
-        # 避免對 API 發送請求過快
         if i < len(tasks):
             time.sleep(0.5)
 
     print(f"\n{'='*55}")
-    print(f"✅ 完成：{success_count} 張  |  ⏩ 跳過：{skip_count} 張  |  ❌ 失敗：{fail_count} 張")
+    print(f"Completed: {success_count}  |  Skipped: {skip_count}  |  Failed: {fail_count}")
     print(f"{'='*55}")
     if fail_count > 0:
-        print("⚠️  有失敗項目，可使用 --id <id> 單獨重試，或確認 SD API 狀態。")
+        print("There were failures. You can retry with --id <id> --force.")
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="五行迷宮塔防 — SD 精靈圖批量產圖工具"
+        description="Wuxing TD - SD Sprites Batch Generator"
     )
     parser.add_argument(
         "--force", action="store_true",
-        help="強制重新生成（覆蓋已存在的檔案）"
+        help="Force regeneration (overwrite existing files)"
     )
     parser.add_argument(
         "--category",
         choices=["enemies", "towers", "towers_lv2", "towers_recipe"],
-        help="只生成指定類別"
+        help="Generate only specified category"
     )
     parser.add_argument(
         "--id", metavar="SPRITE_ID",
-        help="只生成指定 ID 的精靈圖（例如：snake, fire, wood_fire）"
+        help="Generate only specified ID"
     )
     parser.add_argument(
         "--dry-run", action="store_true",
-        help="列出所有待生成任務但不執行"
+        help="List tasks but do not generate"
     )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     print("=" * 55)
-    print("  五行迷宮塔防 — SD 精靈圖批量產圖工具")
+    print("  Wuxing TD - SD Sprites Batch Generator")
     print("=" * 55)
     run_batch(parse_args())
