@@ -10,7 +10,7 @@ export interface Point {
 export interface MapConfig {
   id: string;
   name: string;
-  difficulty: '教學' | '簡單' | '中等' | '困難' | '自訂';
+  difficulty: '教學' | '簡單' | '中等' | '困難' | '自訂' | '測試';
   description: string;
   spawnPoint: Point;
   basePoint: Point;
@@ -66,6 +66,21 @@ function generateHardObstacles(): Point[] {
 }
 
 export const MAPS: MapConfig[] = [
+  // 0. 測試關卡 (怪獸與砲台觀賞室)
+  {
+    id: 'test_level',
+    name: '【測試】砲台與怪物觀賞室',
+    difficulty: '測試',
+    description: '測試關卡：1.地圖尺寸 20x10，網格放大 4 倍。2.怪物HP無限、金錢無限、基地HP無限。3.只能透過放棄按鈕結束關卡，不提供天賦點。可以用來清楚觀察所有怪物與砲台的圖片與動畫！',
+    spawnPoint: { x: 0, y: 5 },
+    basePoint: { x: 19, y: 5 },
+    waypoints: [
+      { x: 5, y: 2 },
+      { x: 10, y: 7 },
+      { x: 15, y: 2 }
+    ],
+    obstacles: []
+  },
   // 1. 教學關卡 (引導玩家使用 W 折返迷宮)
   {
     id: 'tutorial',

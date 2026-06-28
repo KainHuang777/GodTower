@@ -4,8 +4,19 @@
 // 每個精靈以 2D 數字陣列定義，數字對應調色盤索引。
 // 遊戲初始化時預渲染至 OffscreenCanvas 做為貼圖快取。
 
-import type { EnemyTypeId } from './enemies';
+import { ENEMY_DEFS, type EnemyTypeId } from './enemies';
 import type { TowerTypeId } from './towers';
+
+/** 五行屬性代表色（用於描邊與底盤發光） */
+const ELEMENT_COLORS: Record<string, string> = {
+  fire: '#ef4444',   // 火：紅色
+  water: '#38bdf8',  // 水：冰藍
+  wood: '#22c55e',   // 木：翠綠
+  earth: '#d97706',  // 土：黃褐
+  metal: '#cbd5e1',  // 金：銀灰/白
+  yin: '#c084fc',    // 陰：暗紫
+  yang: '#fde047',   // 陽：耀眼金黃
+};
 
 /** 精靈快取 */
 const spriteCache = new Map<string, HTMLCanvasElement>();
@@ -360,26 +371,58 @@ export function initSprites(): void {
 }
 
 /** 繪製怪物精靈 */
-export function drawEnemySprite(ctx: CanvasRenderingContext2D, enemyType: EnemyTypeId, x: number, y: number): void {
+export function drawEnemySprite(
+  ctx: CanvasRenderingContext2D, 
+  enemyType: EnemyTypeId, 
+  x: number, 
+  y: number,
+  hitFlashFrame: number = 0,
+  scale: number = 1,
+  style: string = 'pixel'
+): void {
   const imgKey = `enemy_${enemyType}`;
   const img = imageAssetCache.get(imgKey);
   
-  if (img && img.complete && img.naturalWidth !== 0) {
-    // 優先以高品質 SD 圖片繪製（置中對齊，通常怪物尺寸設為 32x32 或與像素版大小相當）
-    const targetSize = enemyType.startsWith('boss') ? 48 : 32;
+  // 取得怪物屬性顏色
+  const def = ENEMY_DEFS[enemyType];
+  const elementColor = def ? ELEMENT_COLORS[def.element] : '#ffffff';
+
+  ctx.save();
+
+  // 只有當選擇 AI 高清 (style === 'highres') 且圖片載入成功時才使用 SD 圖片
+  if (style === 'highres' && img && img.complete && img.naturalWidth !== 0) {
+    // 普通怪物對齊 1 格寬 (16px)，Boss 龍影放大至 26px，並乘上縮放係數
+    const targetSize = (enemyType.startsWith('boss') ? 26 : 16) * scale;
+
+    if (hitFlashFrame > 0) {
+      // 受擊狀態：耀眼的紅/白受擊外發光 + 整個身體閃爍白色
+      ctx.filter = 'brightness(2.5) contrast(1.5) drop-shadow(0 0 3px #ff3b30)';
+    } else {
+      // 正常狀態：屬性色 1px 硬外描邊 + 輕微立體落影，改善四角邊緣死板感
+      ctx.filter = `drop-shadow(1px 0px 0px ${elementColor}) drop-shadow(-1px 0px 0px ${elementColor}) drop-shadow(0px 1px 0px ${elementColor}) drop-shadow(0px -1px 0px ${elementColor}) drop-shadow(0px 2px 2px rgba(0,0,0,0.35))`;
+    }
+
     ctx.drawImage(img, x - targetSize / 2, y - targetSize / 2, targetSize, targetSize);
+    ctx.restore();
     return;
   }
 
   // Fallback: 原始內建像素精靈
   const cvs = spriteCache.get(imgKey);
   if (cvs) {
-    ctx.drawImage(cvs, x - cvs.width / 2, y - cvs.height / 2);
+    if (hitFlashFrame > 0) {
+      ctx.filter = 'brightness(2.5) contrast(1.5) drop-shadow(0 0 3px #ff3b30)';
+    } else {
+      ctx.filter = `drop-shadow(1px 0px 0px ${elementColor}) drop-shadow(-1px 0px 0px ${elementColor}) drop-shadow(0px 1px 0px ${elementColor}) drop-shadow(0px -1px 0px ${elementColor})`;
+    }
+    // 依據比例繪製 fallback 像素圖
+    ctx.drawImage(cvs, x - (cvs.width * scale) / 2, y - (cvs.height * scale) / 2, cvs.width * scale, cvs.height * scale);
+    ctx.restore();
   }
 }
 
 /** 繪製砲台精靈 */
-export function drawTowerSprite(ctx: CanvasRenderingContext2D, towerType: TowerTypeId, x: number, y: number): void {
+export function drawTowerSprite(ctx: CanvasRenderingContext2D, towerType: TowerTypeId, x: number, y: number, scale: number = 1, style: string = 'pixel'): void {
   // 合成塔暫用基礎屬性的精靈（加上 Lv 標記）
   let baseType = towerType.replace(/_2$/, '').split('_')[0];
   // 異系合成塔映射到第一個輸入屬性的精靈
@@ -396,19 +439,42 @@ export function drawTowerSprite(ctx: CanvasRenderingContext2D, towerType: TowerT
     img = imageAssetCache.get(`tower_${baseType}`); // 其次搜尋基礎型號 (例如 fire)
   }
 
-  if (img && img.complete && img.naturalWidth !== 0) {
-    // 優先以高品質 SD 圖片繪製 (64x64 等比例縮放繪製到網格中，網格大小為 16px)
-    // 為了保持防禦塔的立體感與可讀性，我們繪製 20px * 20px 並作微調偏移
-    ctx.drawImage(img, x - 2, y - 4, 20, 20);
-    drawTowerLevelStars(ctx, towerType, x, y, recipeMap);
+  // 1. 繪製半透明五行屬性底座 (3D 透視橢圓)
+  const elementColor = ELEMENT_COLORS[baseType] ?? '#ffffff';
+  ctx.save();
+  ctx.beginPath();
+  // 16x16 網格中心為 x + 8 * scale, y + 12 * scale，底盤繪製於地表略偏下方 (y + 12)，並乘上縮放係數
+  ctx.ellipse(x + 8 * scale, y + 12 * scale, 10 * scale, 5 * scale, 0, 0, Math.PI * 2);
+  ctx.fillStyle = elementColor + '22';     // ~13% 透明度填充
+  ctx.fill();
+  ctx.strokeStyle = elementColor + '88';   // ~53% 透明度描邊
+  ctx.lineWidth = 1.5 * scale;
+  ctx.stroke();
+  ctx.restore();
+
+  // 2. 繪製防禦塔主體
+  // 只有當選擇 AI 高清 (style === 'highres') 且圖片載入成功時才使用 SD 圖片
+  if (style === 'highres' && img && img.complete && img.naturalWidth !== 0) {
+    ctx.save();
+    // 使用 Canvas filter 硬體加速：加上 1px 半透明黑色外描邊與微弱投影，使其不再只是死板的透明四角貼圖
+    ctx.filter = 'drop-shadow(1px 0px 0px rgba(0,0,0,0.65)) drop-shadow(-1px 0px 0px rgba(0,0,0,0.65)) drop-shadow(0px 1px 0px rgba(0,0,0,0.65)) drop-shadow(0px -1px 0px rgba(0,0,0,0.65)) drop-shadow(0px 3px 2px rgba(0,0,0,0.4))';
+    
+    // 限制寬度為 1 格寬 (16*scale) 以免交疊，高度 22*scale 以保留立體感，偏移 y - 6*scale
+    ctx.drawImage(img, x, y - 6 * scale, 16 * scale, 22 * scale);
+    ctx.restore();
+    drawTowerLevelStars(ctx, towerType, x, y, recipeMap, scale);
     return;
   }
 
   // Fallback: 原始內建像素精靈
   const cvs = spriteCache.get(`tower_${baseType}`);
   if (cvs) {
-    ctx.drawImage(cvs, x, y);
-    drawTowerLevelStars(ctx, towerType, x, y, recipeMap);
+    ctx.save();
+    // 像素 Fallback 精靈亦套用 1px 外描邊以增強對比，並依據比例繪製
+    ctx.filter = 'drop-shadow(1px 0px 0px rgba(0,0,0,0.45)) drop-shadow(-1px 0px 0px rgba(0,0,0,0.45)) drop-shadow(0px 1px 0px rgba(0,0,0,0.45)) drop-shadow(0px -1px 0px rgba(0,0,0,0.45))';
+    ctx.drawImage(cvs, x, y, cvs.width * scale, cvs.height * scale);
+    ctx.restore();
+    drawTowerLevelStars(ctx, towerType, x, y, recipeMap, scale);
   }
 }
 
@@ -418,14 +484,15 @@ function drawTowerLevelStars(
   towerType: TowerTypeId, 
   x: number, 
   y: number,
-  recipeMap: Record<string, string>
+  recipeMap: Record<string, string>,
+  scale: number = 1
 ): void {
   const level = towerType.endsWith('_2') ? 2 : (recipeMap[towerType] ? 3 : 1);
   if (level > 1) {
     ctx.fillStyle = '#fde047';
-    ctx.font = 'bold 8px sans-serif';
+    ctx.font = 'bold ' + Math.round(8 * scale) + 'px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('★'.repeat(Math.min(level, 3)), x + 15, y + 8);
+    ctx.fillText('★'.repeat(Math.min(level, 3)), x + 15 * scale, y + 8 * scale);
   }
 }
 

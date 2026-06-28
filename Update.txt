@@ -1,3 +1,68 @@
+2026-06-28 (第三十四次更新)
+- 移除主選單與天賦系統大圖生成腳本與相關排版變更：
+  1. 還原 index.html：移除先前新增的雙欄分欄、裝飾插圖標籤、懸浮動畫、發光層與相關 CSS 樣式，使主選單與天賦頁面恢復至原先清爽、置中的核心像素功能佈局。
+  2. 清空大圖生成腳本：由於 Stable Diffusion 輸出之大圖插畫品質不佳且不符預期，已廢棄並清空專案根目錄下的 sd_generate_large.py。
+
+2026-06-28 (第三十三次更新)
+- 實裝主選單與天賦系統大圖排版與特效處理，並建立大圖生成腳本：
+  1. 重構 index.html 樣式與佈局：實作主選單雙欄分界、玻璃擬態面板、懸浮動畫（@keyframes floatAnim）與背景發光特效（illustration-glow）；重構天賦頁面為左側插圖導覽與右側天賦樹佈局。
+  2. 新增防禦性插圖加載：大圖標籤均綁定 onerror="this.parentElement.style.display='none'"，若大圖尚未生成或加載失敗，版面將自動優雅退回無圖排版，不影響玩家操作。
+  3. 建立 sd_generate_large.py 腳本：配置專用 Prompts 與 512x512 解析度，呼叫本地 SD API 進行生成並套用白色背景高精去背，產出主選單與天賦系統大圖至 assets/sprites 目錄下。
+
+2026-06-28 (第三十二次更新)
+- 調整專案視覺設計路線並更新 ROADMAP.md：
+  1. 決議棄用 SD 高畫質產圖路線：由於 512px 圖片在 16px 網格地圖下縮放後細節盡失，且 SD 生成與去背存在瑕疵，決定全面轉向「方案 D：極致原生像素風」。
+  2. 更新開發路線圖：在 ROADMAP.md 中新增 Phase 4.5（極致像素風視覺升級）計劃，包含精靈規格重構至 16x16、角色動態動畫幀、戰場像素地板、像素風 HUD/UI、Canvas Bloom 後處理光效等，並於 Phase 4 標註 SD 圖片調整註記。
+
+2026-06-28 (第三十一次更新)
+- 修復美術圖片交疊與卡牌框無去背問題並新增畫質風格切換選單：
+  1. 縮放與交疊優化：調整 src/sprites.ts 中防禦塔的繪製尺寸為寬 16 * scale (剛好 1 格寬，防止左右交疊) 與高 22 * scale (維持 1.3 倍高度立體感)，偏移 y - 6 * scale，使岩壁塔等連續建造時如城牆般完美拼接；普通怪物尺寸縮小至 16 * scale (1 格寬，Boss 為 26 * scale)，避免體積過大遮擋網格。
+  2. 新增美術風格選單：在 index.html 頂部面板新增「👾 懷舊像素 (推薦) / 🎨 AI 高清」切換選單。於 src/main.ts 中實作全域變數 currentStyle 與 change 監聽，並將其傳入精靈渲染函式。
+  3. 精靈繪製風格連動：在 src/sprites.ts 中，當前風格為 pixel 時強制繪製 100% 完美去背的內建像素精靈；為 highres 且高清圖片載入成功時才載入 SD 圖片，給予玩家在高清美術調整完成前隨時一鍵返回無瑕像素風的權利。
+  4. 優化 SD 產圖提示詞：修改 sd_batch_generate.py，在正面 Prompt 增加 8-bit pixel art、no background 等詞彙；Negative Prompt 中大幅加重 card, frame, border, text, description, landscape background, sky, cloud, grass 等詞，從源頭杜絕 SD 產出卡牌邊框與藍天草地等背景。
+
+2026-06-28 (第三十次更新)
+- 實裝【測試】砲台與怪物觀賞室關卡與動態畫面放大功能：
+  1. 新增測試關卡配置：在 maps.ts 導入 test_level 20x10 地圖與對應檢查點，並於 MapConfig 中擴充 difficulty 型別支援 '測試' 難度。
+  2. 核心邏輯動態網格大小適配：將 COLS/ROWS/TILE_SIZE/grid 改為變數。載入測試關卡時，自動設定為 20x10 網格且每格 64 像素（放大 4 倍），完美填滿畫布。
+  3. 全方位等比例渲染縮放：砲台底座/星級、怪物/血條/DOT條、子彈半徑、飄字大小、發光虛線路徑粗細、以及粒子特效初速與尺寸，皆依據網格大小比例（TILE_SIZE / 16）自動等比縮放，保持一致視覺比例。
+  4. 測試關卡專屬無敵與無限規則：初始金幣設為 999999 且蓋塔不扣；怪物被打時血量不扣並顯示「免疫」字樣，保留受擊高亮與擊中粒子；怪物到基地不扣 HP 且安全消失；UI 金幣與生命顯示為「∞」；放棄結束不給予天賦點數，亦不判定勝利。
+  5. 難度標籤美化：在 index.html 增加 .badge-test 粉紅色難度樣式，並於關卡選擇動態卡片綁定對應 badge。
+
+2026-06-28 (第二十九次更新)
+- 修復高品質美術去背不完全所致之正方形大圖問題：
+  1. 建立診斷工具 check_sprites.py：檢查 assets/sprites 底下所有 PNG 圖片的透明通道與透明像素比例。
+  2. 建立去背修復工具 fix_transparency.py：支援 Flood Fill (邊緣泛洪填充) 與 Global (全域亮色替換) 兩種高精細度去背演算法，可對現有圖片重新去背並自動覆蓋，避免主體內部白色像素被誤挖空。
+  3. 清除冗餘代碼：修正 src/main.ts，移除尾部重複且載入路徑錯誤的 loadHighResAssets() 冗餘呼叫。
+
+2026-06-28 (第二十八次更新)
+- 美化 SD 高品質美術資源與實裝打擊回饋效果：
+  1. 砲台底座優化：在防禦塔正下方新增繪製半透明五行屬性色的 3D 透視橢圓發光光環，改善砲台屬性難以辨識問題。
+  2. 防禦塔尺寸與偏移調整：SD 砲台渲染規格由 20x20 放大至 26x26，並調整偏移 y - 10 像素，在 16x16 網格上建立偽 3D 立體高度感。
+  3. 精靈圖硬邊描邊：使用 Canvas filter 硬體加速為怪物套用屬性色 1px 外框與落影；砲台套用 1px 半透明黑描邊與陰影，改善四角邊緣死板四方形感。像素 Fallback 精靈亦同享描邊美化。
+  4. 怪物受擊閃爍回饋：在 Enemy 介面引入 hitFlashFrame 屬性。當子彈擊中怪物或造成範圍傷害（AOE）時，設定該怪物 hitFlashFrame 為 6 幀。在繪製時，若 hitFlashFrame > 0 則使用 filter 套用耀眼亮度對比與紅色外發光，大幅提升擊中反饋。
+
+2026-06-28 (第二十七次更新)
+- 實裝 SD 高品質美術資源導入遊戲：
+  1. 修改 src/main.ts：在 initSprites() 之後加入 loadAllHighResSprites() 呼叫，批量載入全部 27 張防禦塔與怪物的高品質 SD 去背精靈圖。
+  2. 與 src/sprites.ts 的 imageAssetCache 雙重渲染機制連動：當圖片載入完成後將自動無縫套用於 Canvas 畫面中，若資源尚未載入完或缺失，將安全回退至內建像素精靈渲染，達成健全防禦性資產載入。
+  3. 更新 ROADMAP.md：將 Phase 4 高品質美術資源項目與 Phase 4 整體進度標記為「已完成」。
+  4. 更新 docs/ART_ASSET_MANIFEST.md：將 27 張精靈圖的導入狀態更新為「🟢 已完成」。
+
+2026-06-28 (第二十六次更新)
+- Phase 4 SD 批量產圖規劃：新增美術資源管理文件與批量產圖腳本
+  1. 新增 docs/ART_ASSET_MANIFEST.md：定義所有精靈圖（7 怪物 + 7 基礎塔 + 7 Lv2 塔 + 6 配方塔 = 共 27 張）的命名規範、儲存路徑、規格要求與狀態追蹤表，並附上導入後 main.ts 初始化代碼片段。
+  2. 新增 docs/SD_PROMPT_GUIDE.md：記錄所有角色的完整 Stable Diffusion 提示詞設計（共通前綴、Negative Prompt、各角色專屬 Prompt），以及去背參數說明。
+  3. 新增 sd_batch_generate.py：支援全量批量產圖，功能包含：
+     - --force 強制重新生成（覆蓋已存在的檔案）
+     - --category enemies/towers/towers_lv2/towers_recipe 只生成指定類別
+     - --id <sprite_id> 只生成單一精靈圖
+     - --dry-run 列出任務清單但不執行
+     - 自動白底去背（threshold 可調）
+     - 自動建立目錄結構 assets/sprites/{enemies,towers,towers_lv2,towers_recipe}/
+     - 跳過已存在的檔案（節省時間）
+  4. 修復了 sd_batch_generate.py 在 Python 3.10 以下環境（不支援 `bytes | None` 聯合型別語法）引起的 TypeError，改用 typing.Optional[bytes] 以提升舊版本相容性。
+
 2026-06-27 (第二十五次更新)
 - Refactored Tutorial Level map obstacles and added tower placement guide:
   1. Updated obstacles layout in src/maps.ts: Added a long horizontal barrier (row 15, col 0..55) and vertical guides. This forces enemies from Spawn (5,20) to walk all the way right to waypoint 3's area (x=56+) first, bypass the obstacle, and walk left to reach waypoint 1 (20,10).

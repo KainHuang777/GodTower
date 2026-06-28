@@ -8,10 +8,10 @@ import { loadTalentData, getAvailablePoints, canUnlockTalent, unlockTalent, calc
 import { initSprites, drawEnemySprite, drawTowerSprite, preloadImage } from './sprites';
 import { MAPS, loadCustomMaps, saveCustomMaps, deleteCustomMap, type MapConfig } from './maps';
 
-// --- 常數 ---
-const COLS = 80;
-const ROWS = 40;
-const TILE_SIZE = 16;
+// --- 常數 (在此改為可變動，以適應測試關卡放大) ---
+let COLS = 80;
+let ROWS = 40;
+let TILE_SIZE = 16;
 
 interface Point { x: number; y: number; }
 
@@ -48,7 +48,8 @@ let talentData: TalentSaveData;
 let totalDamageDealt = 0;       // 本局總傷害
 let currentKillStreak = 0;      // 當前連殺計數（波次內）
 let maxKillStreak = 0;          // 最高連殺記錄
-const grid: number[][] = Array.from({ length: COLS }, () => Array(ROWS).fill(0));
+let grid: number[][] = Array.from({ length: COLS }, () => Array(ROWS).fill(0));
+let currentStyle: 'pixel' | 'highres' = 'pixel';
 
 // --- 實體定義 ---
 interface Enemy {
@@ -65,6 +66,7 @@ interface Enemy {
   path: Point[]; pathIndex: number;
   slowDuration: number;
   dotDamage: number; dotDuration: number;
+  hitFlashFrame: number; // 剩餘受擊閃爍幀數
 }
 
 interface Tower {
@@ -206,6 +208,7 @@ const waveProgressLabel = document.getElementById('waveProgressLabel')!;
 const waveEnemyCount = document.getElementById('waveEnemyCount')!;
 const selectTheme = document.getElementById('selectTheme') as HTMLSelectElement;
 const selectWeather = document.getElementById('selectWeather') as HTMLSelectElement;
+const selectStyle = document.getElementById('selectStyle') as HTMLSelectElement;
 
 // 場景元素
 const mainMenuEl = document.getElementById('mainMenu')!;
@@ -291,6 +294,7 @@ function renderLevelSelectScreen() {
     else if (map.difficulty === '中等') badgeClass = 'badge-normal';
     else if (map.difficulty === '困難') badgeClass = 'badge-hard';
     else if (map.difficulty === '自訂') badgeClass = 'badge-custom';
+    else if (map.difficulty === '測試') badgeClass = 'badge-test';
     
     const isCustom = map.difficulty === '自訂';
     card.innerHTML = `
@@ -726,6 +730,20 @@ function initBgStars() {
 // ============================================================
 
 function startBattle() {
+  // 根據地圖動態決定網格大小與 TILE_SIZE
+  if (currentMap.id === 'test_level') {
+    COLS = 20;
+    ROWS = 10;
+    TILE_SIZE = 64;
+  } else {
+    COLS = 80;
+    ROWS = 40;
+    TILE_SIZE = 16;
+  }
+
+  // 重新分配 grid 大小
+  grid = Array.from({ length: COLS }, () => Array(ROWS).fill(0));
+
   // 讀取地圖配置
   SPAWN_POINT = currentMap.spawnPoint;
   BASE_POINT = currentMap.basePoint;
@@ -733,7 +751,7 @@ function startBattle() {
 
   // 讀取天賦效果
   hp = getBaseHP(talentData);
-  gold = getStartGold(talentData);
+  gold = currentMap.id === 'test_level' ? 999999 : getStartGold(talentData);
   wave = 0;
   killCount = 0;
   isWaveActive = false;
@@ -988,7 +1006,7 @@ function handleBuild(x: number, y: number) {
 
   grid[x][y] = def.isWall ? 1 : 0;
   towers.push({ id: nextTowerId++, x, y, typeId: def.id, def: { ...def, cost }, cooldown: 0 });
-  gold -= cost;
+  if (currentMap.id !== 'test_level') gold -= cost;
   updateUI();
   if (def.isWall) updateAllEnemyPaths();
 }
@@ -1129,7 +1147,8 @@ function spawnWave(waveNum: number) {
           waypointIndex: 0,
           path, pathIndex: 0,
           slowDuration: 0,
-          dotDamage: 0, dotDuration: 0
+          dotDamage: 0, dotDuration: 0,
+          hitFlashFrame: 0
         });
       }
       spawned++;
@@ -1164,8 +1183,10 @@ function updatePhysics() {
 
     // DOT 傷害
     if (e.dotDuration > 0) {
-      e.hp -= e.dotDamage;
-      totalDamageDealt += e.dotDamage;
+      if (currentMap.id !== 'test_level') {
+        e.hp -= e.dotDamage;
+        totalDamageDealt += e.dotDamage;
+      }
       e.dotDuration--;
       if (e.hp <= 0) {
         gold += e.goldAward;
@@ -1178,6 +1199,11 @@ function updatePhysics() {
         checkWaveEnd();
         continue;
       }
+    }
+
+    // 遞減受擊高亮幀數
+    if (e.hitFlashFrame > 0) {
+      e.hitFlashFrame--;
     }
 
     // 減速
@@ -1200,10 +1226,12 @@ function updatePhysics() {
         if (e.currentGridX === curTarget.x && e.currentGridY === curTarget.y) {
           e.waypointIndex++;
           if (e.waypointIndex > WAYPOINTS.length) {
-            hp -= 1;
+            if (currentMap.id !== 'test_level') {
+              hp -= 1;
+            }
             enemies.splice(i, 1);
             updateUI();
-            if (hp <= 0) { endBattle(false); return; }
+            if (currentMap.id !== 'test_level' && hp <= 0) { endBattle(false); return; }
             checkWaveEnd();
             continue;
           }
@@ -1310,9 +1338,14 @@ function updatePhysics() {
         dmg += Math.floor(b.targetEnemy.maxHp * b.hpPctDamage);
       }
 
-      b.targetEnemy.hp -= dmg;
-      totalDamageDealt += dmg;
-      showFloat(b.targetEnemy.x, b.targetEnemy.y - 10, `-${dmg}`, '#ef4444');
+      if (currentMap.id !== 'test_level') {
+        b.targetEnemy.hp -= dmg;
+        totalDamageDealt += dmg;
+        showFloat(b.targetEnemy.x, b.targetEnemy.y - 10, `-${dmg}`, '#ef4444');
+      } else {
+        showFloat(b.targetEnemy.x, b.targetEnemy.y - 10, '免疫', '#38bdf8');
+      }
+      b.targetEnemy.hitFlashFrame = 6;
 
       // 產生屬性對應的擊中粒子
       const bulletColors: Record<string, string> = {
@@ -1341,9 +1374,14 @@ function updatePhysics() {
           if (e.id === b.targetEnemy.id) continue;
           const adist = Math.sqrt((e.x - b.targetEnemy.x) ** 2 + (e.y - b.targetEnemy.y) ** 2);
           if (adist <= aoeRange) {
-            e.hp -= aoeDmg;
-            totalDamageDealt += aoeDmg;
-            showFloat(e.x, e.y - 10, `-${aoeDmg}`, '#f97316');
+            if (currentMap.id !== 'test_level') {
+              e.hp -= aoeDmg;
+              totalDamageDealt += aoeDmg;
+              showFloat(e.x, e.y - 10, `-${aoeDmg}`, '#f97316');
+            } else {
+              showFloat(e.x, e.y - 10, '免疫', '#38bdf8');
+            }
+            e.hitFlashFrame = 6;
           }
         }
       }
@@ -1558,8 +1596,10 @@ function endBattle(isVictory: boolean) {
   spawnTimers.forEach(t => clearInterval(t));
   spawnTimers = [];
 
-  const earned = calcTalentPointsEarned(wave);
-  addTalentPoints(talentData, earned);
+  const earned = currentMap.id === 'test_level' ? 0 : calcTalentPointsEarned(wave);
+  if (currentMap.id !== 'test_level') {
+    addTalentPoints(talentData, earned);
+  }
 
   const titleEl = document.getElementById('gameoverTitle')!;
   titleEl.textContent = isVictory ? '🎉 防禦成功！' : '💀 防禦失敗';
@@ -1581,12 +1621,12 @@ function checkWaveEnd() {
     showFloat(640, 320, '波次防禦成功！', '#10b981');
     gold += 15 + wave * 3;
     updateUI();
-    // 達到最大波次則勝利
-    if (wave >= MAX_WAVES) {
+    // 達到最大波次則勝利 (測試關卡除外)
+    if (currentMap.id !== 'test_level' && wave >= MAX_WAVES) {
       setTimeout(() => endBattle(true), 1500);
     } else {
-      // 禁止超過最大波次
-      btnStartWave.disabled = wave >= MAX_WAVES;
+      // 禁止超過最大波次 (測試關卡除外，可以無限挑戰)
+      btnStartWave.disabled = currentMap.id !== 'test_level' && wave >= MAX_WAVES;
     }
   }
 }
@@ -1679,7 +1719,8 @@ function renderGame() {
   // 檢查點
   WAYPOINTS.forEach((wp, idx) => {
     ctx.beginPath();
-    ctx.arc(wp.x * TILE_SIZE + TILE_SIZE / 2, wp.y * TILE_SIZE + TILE_SIZE / 2, 10, 0, Math.PI * 2);
+    const wpScale = TILE_SIZE / 16;
+    ctx.arc(wp.x * TILE_SIZE + TILE_SIZE / 2, wp.y * TILE_SIZE + TILE_SIZE / 2, 10 * wpScale, 0, Math.PI * 2);
     
     let wpBg = '#f59e0b';
     let wpFg = '#fff';
@@ -1696,22 +1737,22 @@ function renderGame() {
     
     if (currentTheme === 'ink') {
       ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 * wpScale;
       ctx.stroke();
     }
     
-    ctx.fillStyle = wpFg; ctx.font = 'bold 11px Outfit, sans-serif';
+    ctx.fillStyle = wpFg; ctx.font = `bold ${Math.round(11 * wpScale)}px Outfit, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText((idx + 1).toString(), wp.x * TILE_SIZE + TILE_SIZE / 2, wp.y * TILE_SIZE + TILE_SIZE / 2);
   });
 
   // 砲台（使用像素精靈）
   for (const t of towers) {
-    drawTowerSprite(ctx, t.typeId, t.x * TILE_SIZE, t.y * TILE_SIZE);
+    drawTowerSprite(ctx, t.typeId, t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE / 16, currentStyle);
 
     // 合成模式高亮選中的第一座塔
     if (mergeMode && mergeFirstTower && mergeFirstTower.id === t.id) {
-      ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2;
+      ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2 * (TILE_SIZE / 16);
       ctx.strokeRect(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
   }
@@ -1724,33 +1765,34 @@ function renderGame() {
     ctx.fillStyle = '#4ade80';
     ctx.fillRect(tw.x * TILE_SIZE, tw.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     ctx.globalAlpha = alpha;
-    ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1 * (TILE_SIZE / 16);
     ctx.strokeRect(tw.x * TILE_SIZE, tw.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     ctx.restore();
   }
 
   // 怪物（使用像素精靈）
   for (const e of enemies) {
-    drawEnemySprite(ctx, e.type, e.x, e.y);
+    drawEnemySprite(ctx, e.type, e.x, e.y, e.hitFlashFrame, TILE_SIZE / 16, currentStyle);
 
-    // 血條
+    // 血條 (依地圖比例縮放)
     const hpPct = e.hp / e.maxHp;
+    const hpScale = TILE_SIZE / 16;
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(e.x - 8, e.y - 12, 16, 3);
+    ctx.fillRect(e.x - 8 * hpScale, e.y - 12 * hpScale, 16 * hpScale, 3 * hpScale);
     ctx.fillStyle = e.slowDuration > 0 ? '#06b6d4' : '#10b981';
-    ctx.fillRect(e.x - 8, e.y - 12, 16 * hpPct, 3);
+    ctx.fillRect(e.x - 8 * hpScale, e.y - 12 * hpScale, 16 * hpScale * hpPct, 3 * hpScale);
 
     // DOT 指示
     if (e.dotDuration > 0) {
       ctx.fillStyle = '#4ade80';
-      ctx.fillRect(e.x - 8, e.y - 9, 16 * (e.dotDuration / 60), 1);
+      ctx.fillRect(e.x - 8 * hpScale, e.y - 9 * hpScale, 16 * hpScale * (e.dotDuration / 60), 1 * hpScale);
     }
   }
 
   // 子彈
   for (const b of bullets) {
     ctx.beginPath();
-    ctx.arc(b.x, b.y, 2.5, 0, Math.PI * 2);
+    ctx.arc(b.x, b.y, 2.5 * (TILE_SIZE / 16), 0, Math.PI * 2);
     // 根據屬性著色
     const bulletColors: Record<string, string> = {
       fire: '#f97316', water: '#38bdf8', wood: '#4ade80',
@@ -1764,7 +1806,7 @@ function renderGame() {
   for (const ft of floatingTexts) {
     ctx.save();
     ctx.globalAlpha = ft.alpha;
-    const fSize = ft.fontSize || 11;
+    const fSize = (ft.fontSize || 11) * (TILE_SIZE / 16);
     ctx.font = `bold ${fSize}px Outfit, sans-serif`;
     ctx.fillStyle = ft.color;
     ctx.textAlign = 'center';
@@ -1860,17 +1902,18 @@ function renderGame() {
 // ============================================================
 
 function createHitParticles(x: number, y: number, color: string) {
+  const pScale = TILE_SIZE / 16;
   const count = 8 + Math.floor(Math.random() * 5);
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const speed = 1 + Math.random() * 3;
+    const speed = (1 + Math.random() * 3) * pScale;
     particles.push({
       x, y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       color,
       alpha: 1.0,
-      size: 2 + Math.random() * 3,
+      size: (2 + Math.random() * 3) * pScale,
       life: 0,
       maxLife: 20 + Math.floor(Math.random() * 15)
     });
@@ -1878,17 +1921,18 @@ function createHitParticles(x: number, y: number, color: string) {
 }
 
 function createDeathParticles(x: number, y: number, color: string) {
+  const pScale = TILE_SIZE / 16;
   const count = 15 + Math.floor(Math.random() * 10);
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const speed = 1.5 + Math.random() * 4;
+    const speed = (1.5 + Math.random() * 4) * pScale;
     particles.push({
       x, y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       color,
       alpha: 1.0,
-      size: 3 + Math.random() * 4,
+      size: (3 + Math.random() * 4) * pScale,
       life: 0,
       maxLife: 30 + Math.floor(Math.random() * 20)
     });
@@ -1896,11 +1940,12 @@ function createDeathParticles(x: number, y: number, color: string) {
 }
 
 function createMergeParticles(x: number, y: number) {
+  const pScale = TILE_SIZE / 16;
   const count = 36;
-  const radius = 8;
+  const radius = 8 * pScale;
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2;
-    const speed = 1.8;
+    const speed = 1.8 * pScale;
     particles.push({
       x: x + Math.cos(angle) * radius,
       y: y + Math.sin(angle) * radius,
@@ -1908,7 +1953,7 @@ function createMergeParticles(x: number, y: number) {
       vy: Math.sin(angle) * speed,
       color: '#c084fc',
       alpha: 1.0,
-      size: 3,
+      size: 3 * pScale,
       life: 0,
       maxLife: 40
     });
@@ -1987,10 +2032,11 @@ function drawRoutePreview() {
     return;
   }
 
+  const routeScale = TILE_SIZE / 16;
   ctx.save();
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 4 * routeScale;
   ctx.strokeStyle = 'rgba(56, 189, 248, 0.8)';
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 8 * routeScale;
   ctx.shadowColor = '#38bdf8';
 
   if (routePreviewTimer < 60) {
@@ -2012,10 +2058,10 @@ function drawRoutePreview() {
   ctx.stroke();
 
   // 繪製發光虛線流動點效果
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 * routeScale;
   ctx.strokeStyle = '#ffffff';
-  ctx.setLineDash([6, 12]);
-  ctx.lineDashOffset = -routePreviewTimer * 1.5;
+  ctx.setLineDash([6 * routeScale, 12 * routeScale]);
+  ctx.lineDashOffset = -routePreviewTimer * 1.5 * routeScale;
   ctx.stroke();
   ctx.restore();
 }
@@ -2025,11 +2071,11 @@ function showFloat(x: number, y: number, text: string, color: string, fontSize?:
 }
 
 function updateUI() {
-  hpVal.textContent = Math.floor(hp).toString();
-  goldVal.textContent = gold.toString();
+  hpVal.textContent = currentMap.id === 'test_level' ? '∞' : Math.floor(hp).toString();
+  goldVal.textContent = currentMap.id === 'test_level' ? '∞' : gold.toString();
   waveVal.textContent = wave.toString();
   killVal.textContent = killCount.toString();
-  btnStartWave.disabled = isWaveActive || wave >= MAX_WAVES;
+  btnStartWave.disabled = isWaveActive || (currentMap.id !== 'test_level' && wave >= MAX_WAVES);
   updateWaveProgress();
 }
 
@@ -2132,10 +2178,57 @@ selectWeather.addEventListener('change', () => {
   }
 });
 
+selectStyle.addEventListener('change', () => {
+  currentStyle = selectStyle.value as 'pixel' | 'highres';
+  playSFX('click');
+});
+
 // 初始化
 talentData = loadTalentData();
 initSprites();
+loadAllHighResSprites();
 refreshMenuTalentInfo();
+
+/** 批量載入所有防禦塔與怪物的高品質 SD 精靈圖 */
+function loadAllHighResSprites(): void {
+  const SPRITE_BASE = 'assets/sprites';
+  const imagePreloads: Array<[string, string]> = [
+    // --- 怪物 ---
+    ['enemy_snake',        `${SPRITE_BASE}/enemies/snake.png`],
+    ['enemy_fly',          `${SPRITE_BASE}/enemies/fly.png`],
+    ['enemy_salamander',   `${SPRITE_BASE}/enemies/salamander.png`],
+    ['enemy_water_spirit', `${SPRITE_BASE}/enemies/water_spirit.png`],
+    ['enemy_golem',        `${SPRITE_BASE}/enemies/golem.png`],
+    ['enemy_beetle',       `${SPRITE_BASE}/enemies/beetle.png`],
+    ['enemy_boss_dragon',  `${SPRITE_BASE}/enemies/boss_dragon.png`],
+    // --- 基礎塔 ---
+    ['tower_fire',         `${SPRITE_BASE}/towers/fire.png`],
+    ['tower_water',        `${SPRITE_BASE}/towers/water.png`],
+    ['tower_wood',         `${SPRITE_BASE}/towers/wood.png`],
+    ['tower_earth',        `${SPRITE_BASE}/towers/earth.png`],
+    ['tower_metal',        `${SPRITE_BASE}/towers/metal.png`],
+    ['tower_yin',          `${SPRITE_BASE}/towers/yin.png`],
+    ['tower_yang',         `${SPRITE_BASE}/towers/yang.png`],
+    // --- Lv2 塔 ---
+    ['tower_fire_2',       `${SPRITE_BASE}/towers_lv2/fire_2.png`],
+    ['tower_water_2',      `${SPRITE_BASE}/towers_lv2/water_2.png`],
+    ['tower_wood_2',       `${SPRITE_BASE}/towers_lv2/wood_2.png`],
+    ['tower_earth_2',      `${SPRITE_BASE}/towers_lv2/earth_2.png`],
+    ['tower_metal_2',      `${SPRITE_BASE}/towers_lv2/metal_2.png`],
+    ['tower_yin_2',        `${SPRITE_BASE}/towers_lv2/yin_2.png`],
+    ['tower_yang_2',       `${SPRITE_BASE}/towers_lv2/yang_2.png`],
+    // --- 配方塔 ---
+    ['tower_wood_fire',    `${SPRITE_BASE}/towers_recipe/wood_fire.png`],
+    ['tower_fire_earth',   `${SPRITE_BASE}/towers_recipe/fire_earth.png`],
+    ['tower_earth_metal',  `${SPRITE_BASE}/towers_recipe/earth_metal.png`],
+    ['tower_metal_water',  `${SPRITE_BASE}/towers_recipe/metal_water.png`],
+    ['tower_water_wood',   `${SPRITE_BASE}/towers_recipe/water_wood.png`],
+    ['tower_yin_yang',     `${SPRITE_BASE}/towers_recipe/yin_yang.png`],
+  ];
+  imagePreloads.forEach(([key, src]) => {
+    preloadImage(key, src);
+  });
+}
 
 // ============================================================
 // 天賦分支快速導覽列事件綁定
@@ -2414,18 +2507,4 @@ if (btnToggleMusic) {
   });
 }
 
-// 異步背景載入高品質美術資源 (Phase 4 SD 產圖)
-async function loadHighResAssets() {
-  const enemies = ['snake', 'fly', 'salamander', 'water_spirit', 'golem', 'beetle', 'boss_dragon'];
-  const towers = ['fire', 'water', 'wood', 'earth', 'metal', 'yin', 'yang', 'fire_2', 'water_2', 'wood_2', 'earth_2', 'metal_2', 'yin_2', 'yang_2'];
-  
-  const promises: Promise<void>[] = [];
-  for (const e of enemies) {
-    promises.push(preloadImage(`enemy_${e}`, `assets/enemies/${e}_transparent.png`));
-  }
-  for (const t of towers) {
-    promises.push(preloadImage(`tower_${t}`, `assets/towers/${t}_transparent.png`));
-  }
-  await Promise.all(promises);
-}
-loadHighResAssets();
+
