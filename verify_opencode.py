@@ -6,6 +6,13 @@ import sys
 import json
 import subprocess
 
+# 避免 Windows 終端機預設 CP950 編碼印出 Unicode 符號時發生崩潰
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 def verify_opencode():
     print("==================================================")
     print("         OpenCode 相關設置與專案建置自檢         ")

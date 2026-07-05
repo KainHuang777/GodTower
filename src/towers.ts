@@ -123,8 +123,8 @@ export const LV2_TOWERS: Record<string, TowerDef> = {
   },
   metal_2: {
     id: 'metal_2', name: '鏡刃塔 Lv2', emoji: '⚔️', element: 'metal',
-    cost: 0, damage: 40, range: 3, fireRate: 35, isWall: true, level: 2,
-    critChance: 0.4, critMultiplier: 2.5,
+    cost: 0, damage: 30, range: 3, fireRate: 38, isWall: true, level: 2,
+    critChance: 0.30, critMultiplier: 2.0,
     colorBase: '#1f2937', colorAccent: '#f9fafb'
   },
   yin_2: {

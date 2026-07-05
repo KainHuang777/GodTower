@@ -50,6 +50,11 @@ index.html     — 入口頁面
 - 為了維持 Vibecoding 快速迭代下的系統穩定性，所有前端外置資產（如 Stable Diffusion 產生的圖片、背景音樂、SFX 音效）之載入必須設計 **Fallback 機制**。
 - 若外部資源缺失或載入失敗（如 `Image.onload` / `onerror` 或 `audio.play().catch()`），必須能安全且無縫地回退到原生像素精靈矩陣或 Emoji 渲染，不可中斷遊戲流程。
 
+## 執行環境與視覺測試
+- **Opencode（當前環境）**：模型無畫面視覺能力，無法看到 Canvas 渲染結果、UI 佈局、動畫效果。僅適合進行程式碼邏輯分析、架構討論、數值計算。
+- **Antigravity**：具備視覺能力，可查看遊戲畫面。當需要驗證畫面呈現（佈局、顏色、動畫、特效、UI 位置）時，應提示使用者切換至 Antigravity 執行。
+- **協作流程**：在 Opencode 中完成程式碼修改 → 提示使用者「請切換到 Antigravity 查看畫面效果」→ 依回饋迭代。
+
 ## 執行權限限制處理
 - 當前 Agent 在部分 Windows 開發環境下，執行 `run_command` 終端機指令會被系統拒絕（出現 `Access is denied` 錯誤）。
 - 遇此環境限制時，Agent 應主動將寫好的測試腳本或 Git 命令整理成清晰的指令列，引導使用者在本地端手動執行。

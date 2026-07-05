@@ -2,10 +2,7 @@
 // src/maps.ts — 關卡地圖配置（不同難度、起終點、檢查點及預設障礙物）
 // ============================================================
 
-export interface Point {
-  x: number;
-  y: number;
-}
+import type { Point } from './types';
 
 export interface MapConfig {
   id: string;

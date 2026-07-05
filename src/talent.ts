@@ -57,7 +57,7 @@ export const TALENT_TREE: TalentNode[] = [
 export interface TalentSaveData {
   totalTalentPoints: number;
   spentTalentPoints: number;
-  talentLevels: Record<TalentId, number>;
+  talentLevels: Partial<Record<TalentId, number>>;
   unlockedTalents?: TalentId[]; // 舊資料相容用
 }
 

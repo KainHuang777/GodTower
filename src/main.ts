@@ -2,322 +2,93 @@
 // src/main.ts — 五行迷宮塔防 核心遊戲邏輯
 // ============================================================
 
-import { BASE_TOWERS, getTowerDef, getSameMergeResult, getCrossRecipeResult, getElementBonus, getSellPrice, type TowerDef, type TowerTypeId, type Element } from './towers';
+import { BASE_TOWERS, getTowerDef, getSameMergeResult, getCrossRecipeResult, getElementBonus, getSellPrice, type TowerTypeId } from './towers';
 import { ENEMY_DEFS, getWaveConfig, type EnemyTypeId } from './enemies';
-import { loadTalentData, getAvailablePoints, canUnlockTalent, unlockTalent, calcTalentPointsEarned, addTalentPoints, getBaseHP, getStartGold, getDamageMultiplier, getTowerElementDamageMultiplier, getFireRateMultiplier, isTowerUnlocked, resetTalents, TALENT_TREE, getWallCost, type TalentSaveData, type TalentId } from './talent';
+import { loadTalentData, getAvailablePoints, canUnlockTalent, unlockTalent, calcTalentPointsEarned, addTalentPoints, getBaseHP, getStartGold, getDamageMultiplier, getTowerElementDamageMultiplier, getFireRateMultiplier, isTowerUnlocked, resetTalents, TALENT_TREE, getWallCost, type TalentId } from './talent';
 import { initSprites, drawEnemySprite, drawTowerSprite, preloadImage, drawTile, spriteCache } from './sprites';
 import { MAPS, loadCustomMaps, saveCustomMaps, deleteCustomMap, type MapConfig } from './maps';
+import type { Point, Enemy, Tower, GameScene, EditorTool, ThemeId, WeatherId } from './types';
+import { GAME_VERSION, MAX_WAVES } from './types';
 import releaseNotesText from '../Releasenote.md?raw';
+import { initBgmUnlocker, playSFX, setupMusicToggle } from './audio/audioSystem';
+import { createSplatterParticles, createHitParticles, createDeathParticles, createMergeParticles, updateParticles } from './renderer/particles';
+import { drawObstacle } from './renderer/drawObstacle';
+import { drawRoutePreview } from './renderer/drawRoutePreview';
+import { astarFind, recalculatePathTiles, validatePlacement, updateAllEnemyPaths } from './battle/pathfinding';
+import { gameState } from './state';
+import { initDomRefs, getDomRefs } from './domRefs';
 
-// --- 常數 (在此改為可變動，以適應測試關卡放大) ---
-let COLS = 80;
-let ROWS = 40;
-let TILE_SIZE = 16;
-
-interface Point { x: number; y: number; }
-
-// --- 遊戲地圖變數 ---
-let currentMap: MapConfig = MAPS[1]; // 預設為簡單關卡
-let SPAWN_POINT: Point = { x: 0, y: 20 };
-let BASE_POINT: Point = { x: 79, y: 20 };
-let WAYPOINTS: Point[] = [
-  { x: 13, y: 8 }, { x: 26, y: 32 }, { x: 40, y: 8 }, { x: 53, y: 32 }, { x: 66, y: 15 }
-];
-
-// --- 場景管理 ---
-type GameScene = 'MAIN_MENU' | 'LEVEL_SELECT' | 'MAP_EDITOR' | 'TALENT_SCREEN' | 'BATTLE' | 'GAME_OVER';
-let currentScene: GameScene = 'MAIN_MENU';
-let animFrameId: number | null = null;
-
-// --- 地圖編輯器狀態 ---
-type EditorTool = 'spawn' | 'base' | 'waypoint' | 'obstacle' | 'eraser';
-let editorTool: EditorTool = 'obstacle';
-let editorGrid: number[][] = [];
-let editorSpawn: Point | null = null;
-let editorBase: Point | null = null;
-let editorWaypoints: Point[] = [];
-let editorAnimId: number | null = null;
-let editorMouseDown = false;
-
-// --- 遊戲狀態 ---
-let hp = 20;
-let gold = 60;
-let wave = 0;
-let killCount = 0;
-let isWaveActive = false;
-let talentData: TalentSaveData;
-let totalDamageDealt = 0;       // 本局總傷害
-let currentKillStreak = 0;      // 當前連殺計數（波次內）
-let maxKillStreak = 0;          // 最高連殺記錄
-let grid: number[][] = Array.from({ length: COLS }, () => Array(ROWS).fill(0));
-let currentStyle: 'pixel' | 'highres' = 'pixel';
-
-// --- 實體定義 ---
-interface Enemy {
-  id: number;
-  type: EnemyTypeId;
-  element: Element;
-  x: number; y: number;
-  currentGridX: number; currentGridY: number;
-  hp: number; maxHp: number;
-  speed: number; baseSpeed: number;
-  goldAward: number;
-  isFlying: boolean;
-  waypointIndex: number;
-  path: Point[]; pathIndex: number;
-  slowDuration: number;
-  dotDamage: number; dotDuration: number;
-  hitFlashFrame: number; // 剩餘受擊閃爍幀數
-  vx: number;
-  vy: number;
-  squashX: number;
-  squashY: number;
-}
-
-interface Tower {
-  id: number;
-  x: number; y: number;
-  typeId: TowerTypeId;
-  def: TowerDef;
-  cooldown: number;
-  recoilY: number;
-}
-
-interface Bullet {
-  x: number; y: number;
-  targetEnemy: Enemy;
-  speed: number;
-  damage: number;
-  element: Element;
-  // 特殊效果繼承
-  slowPct?: number; slowDuration?: number;
-  dotDamage?: number; dotDuration?: number;
-  aoeRadius?: number; aoeDamagePct?: number;
-  hpPctDamage?: number;
-  critChance?: number; critMultiplier?: number;
-  flyingBonus?: number;
-  healBase?: number;
-  spawnWall?: boolean;
-}
-
-interface FloatingText {
-  x: number; y: number; text: string; color: string; alpha: number; life: number;
-  fontSize?: number;
-}
-
-interface TempWall {
-  x: number; y: number; lifetime: number; // 剩餘幀數
-}
-
-let enemies: Enemy[] = [];
-let drawCallCount = 0;
-let isDiagnosticOpen = false;
-let lastFpsUpdateTime = 0;
-let frameCount = 0;
-let currentFps = 60;
-let towers: Tower[] = [];
-let bullets: Bullet[] = [];
-let floatingTexts: FloatingText[] = [];
-let tempWalls: TempWall[] = [];
-let nextEnemyId = 1;
-
-// --- 粒子特效系統介面與變數 (Phase 4) ---
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  color: string;
-  alpha: number;
-  size: number;
-  life: number;
-  maxLife: number;
-  gravity?: number;
-  isPixel?: boolean;
-  dragMultiplier?: number;
-  isRing?: boolean;
-  maxRadius?: number;
-}
-let particles: Particle[] = [];
-let nextTowerId = 1;
-let selectedTool: string = 'earth'; // 預設選擇岩壁塔
-let mergeMode = false;
-let mergeFirstTower: Tower | null = null;
-let spawnTimers: ReturnType<typeof setInterval>[] = [];
-let routePreviewTimer = 0;
-let cachedPreviewRoute: Point[] = [];
-
-// --- 地圖主題與動態天氣變數 (Phase 4) ---
-type ThemeId = 'scifi' | 'chinese' | 'ink' | 'starry';
-type WeatherId = 'none' | 'rain' | 'fog' | 'thunder';
-
-let currentTheme: ThemeId = 'scifi';
-let currentWeather: WeatherId = 'none';
-
-interface BgStar {
-  x: number;
-  y: number;
-  size: number;
-  alpha: number;
-  alphaSpeed: number;
-}
-let bgStars: BgStar[] = [];
-
-interface WeatherParticle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  alpha: number;
-  length?: number;
-}
-let weatherParticles: WeatherParticle[] = [];
-let lightningTimer = 0;
-let lightningActive = 0; // > 0 表示閃電亮起幀數
-let lightningPaths: Point[][] = [];
-
-// --- 地圖平移與縮放變數 (Phase 4) ---
-let mapScale = 1.0;
-let mapOffsetX = 0;
-let mapOffsetY = 0;
-let isDraggingMap = false;
-let isPointerDown = false;
-let startPointerX = 0;
-let startPointerY = 0;
+// 純常數，不屬於可變狀態
 const dragThreshold = 5;
-let lastTouchDist = 0;
-
-// --- 背景音樂播放控制變數 (Phase 4) ---
-const BGM_PLAYLIST = [
-  'assets/audio/Rain_on_the_Pagoda_Roof.mp3',
-  'assets/audio/Tiles_in_Motion.mp3',
-  'assets/audio/Iron_River_Gate.mp3'
-];
-let currentBgmIndex = 0;
-let bgmAudio: HTMLAudioElement | null = null;
-let bgmTimeoutId: ReturnType<typeof setTimeout> | null = null;
-let isMusicEnabled = true;
-let hasUserInteracted = false;
-
-
-// --- 波次進度追蹤 ---
-let waveTotal = 0;    // 本波應生成總怪物數
-let waveSpawned = 0;  // 本波已生成怪物數
-
-const GAME_VERSION = 'V0.40';
-
-// --- DOM 元素 ---
-const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d')!;
-const hpVal = document.getElementById('hpVal')!;
-const goldVal = document.getElementById('goldVal')!;
-const waveVal = document.getElementById('waveVal')!;
-const killVal = document.getElementById('killVal')!;
-const btnStartWave = document.getElementById('btnStartWave')! as HTMLButtonElement;
-const btnMerge = document.getElementById('btnMerge')!;
-const btnSell = document.getElementById('btnSell')!;
-const btnQuitBattle = document.getElementById('btnQuitBattle')!;
-const btnDiagnostics = document.getElementById('btnDiagnostics')!;
-const diagnosticPanel = document.getElementById('diagnosticPanel')!;
-const btnDiagExport = document.getElementById('btnDiagExport')!;
-const diagFps = document.getElementById('diagFps')!;
-const diagLatency = document.getElementById('diagLatency')!;
-const diagDrawCalls = document.getElementById('diagDrawCalls')!;
-const diagCacheSize = document.getElementById('diagCacheSize')!;
-const diagMonsters = document.getElementById('diagMonsters')!;
-const diagTowers = document.getElementById('diagTowers')!;
-const diagFilterWarning = document.getElementById('diagFilterWarning')!;
-const btnShowRoute = document.getElementById('btnShowRoute')!;
-const instructionText = document.getElementById('instructionText')!;
-const towerButtonsContainer = document.getElementById('towerButtons')!;
-const waveProgressFill = document.getElementById('waveProgressFill')!;
-const waveProgressLabel = document.getElementById('waveProgressLabel')!;
-const waveEnemyCount = document.getElementById('waveEnemyCount')!;
-const selectTheme = document.getElementById('selectTheme') as HTMLSelectElement;
-const selectWeather = document.getElementById('selectWeather') as HTMLSelectElement;
-const selectStyle = document.getElementById('selectStyle') as HTMLSelectElement;
-
-// 場景元素
-const mainMenuEl = document.getElementById('mainMenu')!;
-const levelSelectScreenEl = document.getElementById('levelSelectScreen')!;
-const levelGridEl = document.getElementById('levelGrid')!;
-const mapEditorSceneEl = document.getElementById('mapEditorScene')!;
-const editorCanvasEl = document.getElementById('editorCanvas') as HTMLCanvasElement;
-const editorCtx = editorCanvasEl.getContext('2d')!;
-const editorStatusEl = document.getElementById('editorStatus')!;
-const editorMapNameInput = document.getElementById('editorMapName') as HTMLInputElement;
-const talentScreenEl = document.getElementById('talentScreen')!;
-const gameOverScreenEl = document.getElementById('gameOverScreen')!;
-const battleSceneEl = document.getElementById('battleScene')!;
+initDomRefs();
 
 // ============================================================
 // 1. 場景切換
 // ============================================================
 
 function switchScene(scene: GameScene) {
-  currentScene = scene;
-  mainMenuEl.classList.remove('active');
-  levelSelectScreenEl.classList.remove('active');
-  mapEditorSceneEl.classList.remove('active');
-  talentScreenEl.classList.remove('active');
-  gameOverScreenEl.classList.remove('active');
-  battleSceneEl.classList.remove('active');
+  gameState.currentScene = scene;
+  getDomRefs().mainMenuEl.classList.remove('active');
+  getDomRefs().levelSelectScreenEl.classList.remove('active');
+  getDomRefs().mapEditorSceneEl.classList.remove('active');
+  getDomRefs().talentScreenEl.classList.remove('active');
+  getDomRefs().gameOverScreenEl.classList.remove('active');
+  getDomRefs().battleSceneEl.classList.remove('active');
 
   // 離開編輯器時停止其渲染迴圈
-  if (scene !== 'MAP_EDITOR' && editorAnimId) {
-    cancelAnimationFrame(editorAnimId);
-    editorAnimId = null;
+  if (scene !== 'MAP_EDITOR' && gameState.editorAnimId) {
+    cancelAnimationFrame(gameState.editorAnimId);
+    gameState.editorAnimId = null;
   }
 
   switch (scene) {
     case 'MAIN_MENU':
-      mainMenuEl.classList.add('active');
-      if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+      getDomRefs().mainMenuEl.classList.add('active');
+      if (gameState.animFrameId) { cancelAnimationFrame(gameState.animFrameId); gameState.animFrameId = null; }
       refreshMenuTalentInfo();
       break;
     case 'LEVEL_SELECT':
-      levelSelectScreenEl.classList.add('active');
+      getDomRefs().levelSelectScreenEl.classList.add('active');
       renderLevelSelectScreen();
       break;
     case 'MAP_EDITOR':
-      mapEditorSceneEl.classList.add('active');
+      getDomRefs().mapEditorSceneEl.classList.add('active');
       initEditor();
       break;
     case 'TALENT_SCREEN':
-      talentScreenEl.classList.add('active');
+      getDomRefs().talentScreenEl.classList.add('active');
       renderTalentScreen();
       break;
     case 'BATTLE':
-      battleSceneEl.classList.add('active');
+      getDomRefs().battleSceneEl.classList.add('active');
       startBattle();
-      if (currentMap && currentMap.id === 'test_level') {
-        mapScale = 1.0;
-        mapOffsetX = 0;
-        mapOffsetY = 0;
+      if (gameState.currentMap && gameState.currentMap.id === 'test_level') {
+        gameState.mapScale = 1.0;
+        gameState.mapOffsetX = 0;
+        gameState.mapOffsetY = 0;
       } else {
-        mapScale = 2.0; // 2x zoom for large maps
-        mapOffsetX = 0; // Align left
-        mapOffsetY = -320; // Center Y-axis vertically
+        gameState.mapScale = 2.0; // 2x zoom for large maps
+        gameState.mapOffsetX = 0; // Align left
+        gameState.mapOffsetY = -320; // Center Y-axis vertically
       }
       resizeGameContainer();
       break;
     case 'GAME_OVER':
-      gameOverScreenEl.classList.add('active');
-      if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+      getDomRefs().gameOverScreenEl.classList.add('active');
+      if (gameState.animFrameId) { cancelAnimationFrame(gameState.animFrameId); gameState.animFrameId = null; }
       break;
   }
 }
 
 function refreshMenuTalentInfo() {
   const info = document.getElementById('menuTalentInfo')!;
-  const pts = getAvailablePoints(talentData);
-  const total = talentData.totalTalentPoints;
+  const pts = getAvailablePoints(gameState.talentData);
+  const total = gameState.talentData.totalTalentPoints;
   info.textContent = total > 0 ? `🌟 天賦點: ${pts} 可用 / ${total} 總計` : '尚未獲得天賦點';
 }
 
 function renderLevelSelectScreen() {
-  levelGridEl.innerHTML = '';
+  getDomRefs().levelGridEl.innerHTML = '';
   const allMaps = [...MAPS, ...loadCustomMaps()];
   allMaps.forEach(map => {
     const card = document.createElement('div');
@@ -348,7 +119,7 @@ function renderLevelSelectScreen() {
       // 防止點擊刪除按鈕時觸發卡片點擊
       if ((e.target as HTMLElement).hasAttribute('data-delete-map')) return;
       playSFX('click');
-      currentMap = map;
+      gameState.currentMap = map;
       switchScene('BATTLE');
     });
 
@@ -366,7 +137,7 @@ function renderLevelSelectScreen() {
       }
     }
     
-    levelGridEl.appendChild(card);
+    getDomRefs().levelGridEl.appendChild(card);
   });
 }
 
@@ -375,13 +146,13 @@ function renderLevelSelectScreen() {
 // ============================================================
 
 function initEditor() {
-  editorGrid = Array.from({ length: COLS }, () => Array(ROWS).fill(0));
-  editorSpawn = null;
-  editorBase = null;
-  editorWaypoints = [];
-  editorTool = 'obstacle';
-  editorMapNameInput.value = '';
-  editorMouseDown = false;
+  gameState.editorGrid = Array.from({ length: gameState.COLS }, () => Array(gameState.ROWS).fill(0));
+  gameState.editorSpawn = null;
+  gameState.editorBase = null;
+  gameState.editorWaypoints = [];
+  gameState.editorTool = 'obstacle';
+  getDomRefs().editorMapNameInput.value = '';
+  gameState.editorMouseDown = false;
   
   // 重設工具按鈕高亮
   document.querySelectorAll('[data-editor-tool]').forEach(btn => {
@@ -393,19 +164,19 @@ function initEditor() {
 }
 
 function startEditorLoop() {
-  if (editorAnimId) cancelAnimationFrame(editorAnimId);
+  if (gameState.editorAnimId) cancelAnimationFrame(gameState.editorAnimId);
   function loop() {
-    if (currentScene !== 'MAP_EDITOR') return;
+    if (gameState.currentScene !== 'MAP_EDITOR') return;
     renderEditor();
-    editorAnimId = requestAnimationFrame(loop);
+    gameState.editorAnimId = requestAnimationFrame(loop);
   }
-  editorAnimId = requestAnimationFrame(loop);
+  gameState.editorAnimId = requestAnimationFrame(loop);
 }
 
 function renderEditor() {
-  const ctx = editorCtx;
-  const W = editorCanvasEl.width;
-  const H = editorCanvasEl.height;
+  const ctx = getDomRefs().editorCtx;
+  const W = getDomRefs().editorCanvasEl.width;
+  const H = getDomRefs().editorCanvasEl.height;
   
   // 背景
   ctx.fillStyle = '#020617';
@@ -414,52 +185,52 @@ function renderEditor() {
   // 網格線
   ctx.strokeStyle = '#1e293b';
   ctx.lineWidth = 0.5;
-  for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x * TILE_SIZE, 0); ctx.lineTo(x * TILE_SIZE, ROWS * TILE_SIZE); ctx.stroke(); }
-  for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * TILE_SIZE); ctx.lineTo(COLS * TILE_SIZE, y * TILE_SIZE); ctx.stroke(); }
+  for (let x = 0; x <= gameState.COLS; x++) { ctx.beginPath(); ctx.moveTo(x * gameState.TILE_SIZE, 0); ctx.lineTo(x * gameState.TILE_SIZE, gameState.ROWS * gameState.TILE_SIZE); ctx.stroke(); }
+  for (let y = 0; y <= gameState.ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * gameState.TILE_SIZE); ctx.lineTo(gameState.COLS * gameState.TILE_SIZE, y * gameState.TILE_SIZE); ctx.stroke(); }
 
   // 障礙物
-  for (let x = 0; x < COLS; x++) {
-    for (let y = 0; y < ROWS; y++) {
-      if (editorGrid[x][y] === 2) {
+  for (let x = 0; x < gameState.COLS; x++) {
+    for (let y = 0; y < gameState.ROWS; y++) {
+      if (gameState.editorGrid[x][y] === 2) {
         ctx.fillStyle = '#1e293b';
         ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = 1.5;
-        ctx.fillRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-        ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        ctx.fillRect(x * gameState.TILE_SIZE + 2, y * gameState.TILE_SIZE + 2, gameState.TILE_SIZE - 4, gameState.TILE_SIZE - 4);
+        ctx.strokeRect(x * gameState.TILE_SIZE + 2, y * gameState.TILE_SIZE + 2, gameState.TILE_SIZE - 4, gameState.TILE_SIZE - 4);
         ctx.fillStyle = '#06b6d4';
-        ctx.fillRect(x * TILE_SIZE + 6, y * TILE_SIZE + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+        ctx.fillRect(x * gameState.TILE_SIZE + 6, y * gameState.TILE_SIZE + 6, gameState.TILE_SIZE - 12, gameState.TILE_SIZE - 12);
       }
     }
   }
 
   // 起點
-  if (editorSpawn) {
+  if (gameState.editorSpawn) {
     ctx.fillStyle = '#22c55e';
-    ctx.fillRect(editorSpawn.x * TILE_SIZE, editorSpawn.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    ctx.fillRect(gameState.editorSpawn.x * gameState.TILE_SIZE, gameState.editorSpawn.y * gameState.TILE_SIZE, gameState.TILE_SIZE, gameState.TILE_SIZE);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 10px Outfit, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('S', editorSpawn.x * TILE_SIZE + TILE_SIZE / 2, editorSpawn.y * TILE_SIZE + TILE_SIZE / 2);
+    ctx.fillText('S', gameState.editorSpawn.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, gameState.editorSpawn.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2);
   }
 
   // 終點
-  if (editorBase) {
+  if (gameState.editorBase) {
     ctx.fillStyle = '#ef4444';
-    ctx.fillRect(editorBase.x * TILE_SIZE, editorBase.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    ctx.fillRect(gameState.editorBase.x * gameState.TILE_SIZE, gameState.editorBase.y * gameState.TILE_SIZE, gameState.TILE_SIZE, gameState.TILE_SIZE);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 10px Outfit, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('B', editorBase.x * TILE_SIZE + TILE_SIZE / 2, editorBase.y * TILE_SIZE + TILE_SIZE / 2);
+    ctx.fillText('B', gameState.editorBase.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, gameState.editorBase.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2);
   }
 
   // 檢查點
-  editorWaypoints.forEach((wp, idx) => {
+  gameState.editorWaypoints.forEach((wp, idx) => {
     ctx.beginPath();
-    ctx.arc(wp.x * TILE_SIZE + TILE_SIZE / 2, wp.y * TILE_SIZE + TILE_SIZE / 2, 10, 0, Math.PI * 2);
+    ctx.arc(wp.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, wp.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, 10, 0, Math.PI * 2);
     ctx.fillStyle = '#f59e0b'; ctx.fill();
     ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Outfit, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText((idx + 1).toString(), wp.x * TILE_SIZE + TILE_SIZE / 2, wp.y * TILE_SIZE + TILE_SIZE / 2);
+    ctx.fillText((idx + 1).toString(), wp.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, wp.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2);
   });
 
   // 當前工具提示（左上角）
@@ -471,58 +242,58 @@ function renderEditor() {
   ctx.fillRect(4, 4, 130, 22);
   ctx.fillStyle = '#e2e8f0'; ctx.font = '12px Outfit, sans-serif';
   ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  ctx.fillText(`工具: ${toolNames[editorTool]}`, 10, 9);
+  ctx.fillText(`工具: ${toolNames[gameState.editorTool]}`, 10, 9);
 }
 
 function editorClickAt(gx: number, gy: number, isRightClick: boolean) {
-  if (gx < 0 || gx >= COLS || gy < 0 || gy >= ROWS) return;
+  if (gx < 0 || gx >= gameState.COLS || gy < 0 || gy >= gameState.ROWS) return;
 
   if (isRightClick) {
     // 右鍵：在 waypoint 模式下刪除檢查點；在 obstacle 模式下擦除障礙物
-    const wpIdx = editorWaypoints.findIndex(w => w.x === gx && w.y === gy);
+    const wpIdx = gameState.editorWaypoints.findIndex(w => w.x === gx && w.y === gy);
     if (wpIdx !== -1) {
-      editorWaypoints.splice(wpIdx, 1);
-    } else if (editorGrid[gx][gy] === 2) {
-      editorGrid[gx][gy] = 0;
+      gameState.editorWaypoints.splice(wpIdx, 1);
+    } else if (gameState.editorGrid[gx][gy] === 2) {
+      gameState.editorGrid[gx][gy] = 0;
     }
     updateEditorStatus();
     return;
   }
 
   // 左鍵操作
-  switch (editorTool) {
+  switch (gameState.editorTool) {
     case 'spawn':
       // 清除舊起點格子
-      if (editorSpawn && editorGrid[editorSpawn.x]?.[editorSpawn.y] === 2) {
+      if (gameState.editorSpawn && gameState.editorGrid[gameState.editorSpawn.x]?.[gameState.editorSpawn.y] === 2) {
         // 不清除障礙物
       }
-      editorSpawn = { x: gx, y: gy };
-      editorGrid[gx][gy] = 0; // 確保起點不在障礙上
+      gameState.editorSpawn = { x: gx, y: gy };
+      gameState.editorGrid[gx][gy] = 0; // 確保起點不在障礙上
       break;
     case 'base':
-      editorBase = { x: gx, y: gy };
-      editorGrid[gx][gy] = 0;
+      gameState.editorBase = { x: gx, y: gy };
+      gameState.editorGrid[gx][gy] = 0;
       break;
     case 'waypoint':
       // 不重複放置
-      if (editorWaypoints.some(w => w.x === gx && w.y === gy)) break;
-      if (editorWaypoints.length >= 8) break;
-      editorGrid[gx][gy] = 0;
-      editorWaypoints.push({ x: gx, y: gy });
+      if (gameState.editorWaypoints.some(w => w.x === gx && w.y === gy)) break;
+      if (gameState.editorWaypoints.length >= 8) break;
+      gameState.editorGrid[gx][gy] = 0;
+      gameState.editorWaypoints.push({ x: gx, y: gy });
       break;
     case 'obstacle':
       // 不覆蓋起終點和檢查點
-      if (editorSpawn && editorSpawn.x === gx && editorSpawn.y === gy) break;
-      if (editorBase && editorBase.x === gx && editorBase.y === gy) break;
-      if (editorWaypoints.some(w => w.x === gx && w.y === gy)) break;
-      editorGrid[gx][gy] = 2;
+      if (gameState.editorSpawn && gameState.editorSpawn.x === gx && gameState.editorSpawn.y === gy) break;
+      if (gameState.editorBase && gameState.editorBase.x === gx && gameState.editorBase.y === gy) break;
+      if (gameState.editorWaypoints.some(w => w.x === gx && w.y === gy)) break;
+      gameState.editorGrid[gx][gy] = 2;
       break;
     case 'eraser':
-      editorGrid[gx][gy] = 0;
-      if (editorSpawn && editorSpawn.x === gx && editorSpawn.y === gy) editorSpawn = null;
-      if (editorBase && editorBase.x === gx && editorBase.y === gy) editorBase = null;
-      const ewIdx = editorWaypoints.findIndex(w => w.x === gx && w.y === gy);
-      if (ewIdx !== -1) editorWaypoints.splice(ewIdx, 1);
+      gameState.editorGrid[gx][gy] = 0;
+      if (gameState.editorSpawn && gameState.editorSpawn.x === gx && gameState.editorSpawn.y === gy) gameState.editorSpawn = null;
+      if (gameState.editorBase && gameState.editorBase.x === gx && gameState.editorBase.y === gy) gameState.editorBase = null;
+      const ewIdx = gameState.editorWaypoints.findIndex(w => w.x === gx && w.y === gy);
+      if (ewIdx !== -1) gameState.editorWaypoints.splice(ewIdx, 1);
       break;
   }
   updateEditorStatus();
@@ -530,53 +301,53 @@ function editorClickAt(gx: number, gy: number, isRightClick: boolean) {
 
 function updateEditorStatus() {
   const parts: string[] = [];
-  parts.push(editorSpawn ? `<span class="status-ok">📍 起點 ✔</span>` : `<span class="status-warn">📍 起點 ✘</span>`);
-  parts.push(editorBase ? `<span class="status-ok">🏠 終點 ✔</span>` : `<span class="status-warn">🏠 終點 ✘</span>`);
-  parts.push(editorWaypoints.length > 0
-    ? `<span class="status-ok">🏁 檢查點: ${editorWaypoints.length} 個</span>`
+  parts.push(gameState.editorSpawn ? `<span class="status-ok">📍 起點 ✔</span>` : `<span class="status-warn">📍 起點 ✘</span>`);
+  parts.push(gameState.editorBase ? `<span class="status-ok">🏠 終點 ✔</span>` : `<span class="status-warn">🏠 終點 ✘</span>`);
+  parts.push(gameState.editorWaypoints.length > 0
+    ? `<span class="status-ok">🏁 檢查點: ${gameState.editorWaypoints.length} 個</span>`
     : `<span class="status-warn">🏁 檢查點: 0 個（至少 1 個）</span>`);
   
   let obsCnt = 0;
-  for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) if (editorGrid[x]?.[y] === 2) obsCnt++;
+  for (let x = 0; x < gameState.COLS; x++) for (let y = 0; y < gameState.ROWS; y++) if (gameState.editorGrid[x]?.[y] === 2) obsCnt++;
   parts.push(`⛰️ 障礙物: ${obsCnt} 個`);
-  editorStatusEl.innerHTML = parts.join(' &nbsp;|&nbsp; ');
+  getDomRefs().editorStatusEl.innerHTML = parts.join(' &nbsp;|&nbsp; ');
 }
 
 function editorValidatePath(): boolean {
-  if (!editorSpawn || !editorBase || editorWaypoints.length === 0) return false;
+  if (!gameState.editorSpawn || !gameState.editorBase || gameState.editorWaypoints.length === 0) return false;
 
-  // 暫時將 grid 設為 editorGrid 的值來做 A* 驗證
-  const backupGrid = grid.map(col => [...col]);
-  for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) grid[x][y] = editorGrid[x]?.[y] || 0;
+  // 暫時將 gameState.grid 設為 gameState.editorGrid 的值來做 A* 驗證
+  const backupGrid = gameState.grid.map(col => [...col]);
+  for (let x = 0; x < gameState.COLS; x++) for (let y = 0; y < gameState.ROWS; y++) gameState.grid[x][y] = gameState.editorGrid[x]?.[y] || 0;
   
   let valid = true;
-  let prev = editorSpawn;
-  for (let i = 0; i <= editorWaypoints.length; i++) {
-    const target = i === editorWaypoints.length ? editorBase : editorWaypoints[i];
-    if (!astarFind(prev, target)) { valid = false; break; }
+  let prev = gameState.editorSpawn;
+  for (let i = 0; i <= gameState.editorWaypoints.length; i++) {
+    const target = i === gameState.editorWaypoints.length ? gameState.editorBase : gameState.editorWaypoints[i];
+    if (!astarFind(prev, target, gameState.grid, gameState.COLS, gameState.ROWS)) { valid = false; break; }
     prev = target;
   }
 
-  // 還原 grid
-  for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) grid[x][y] = backupGrid[x][y];
+  // 還原 gameState.grid
+  for (let x = 0; x < gameState.COLS; x++) for (let y = 0; y < gameState.ROWS; y++) gameState.grid[x][y] = backupGrid[x][y];
   return valid;
 }
 
 function editorSave() {
-  const name = editorMapNameInput.value.trim();
+  const name = getDomRefs().editorMapNameInput.value.trim();
   if (!name) { alert('請輸入地圖名稱！'); return; }
-  if (!editorSpawn) { alert('請設定起點！'); return; }
-  if (!editorBase) { alert('請設定終點！'); return; }
-  if (editorWaypoints.length === 0) { alert('請至少設定 1 個檢查點！'); return; }
+  if (!gameState.editorSpawn) { alert('請設定起點！'); return; }
+  if (!gameState.editorBase) { alert('請設定終點！'); return; }
+  if (gameState.editorWaypoints.length === 0) { alert('請至少設定 1 個檢查點！'); return; }
   if (!editorValidatePath()) {
     alert('路徑驗證失敗！怪物無法從起點經過所有檢查點到達終點，請調整障礙物位置。');
     return;
   }
 
   const obstacles: { x: number; y: number }[] = [];
-  for (let x = 0; x < COLS; x++) {
-    for (let y = 0; y < ROWS; y++) {
-      if (editorGrid[x]?.[y] === 2) obstacles.push({ x, y });
+  for (let x = 0; x < gameState.COLS; x++) {
+    for (let y = 0; y < gameState.ROWS; y++) {
+      if (gameState.editorGrid[x]?.[y] === 2) obstacles.push({ x, y });
     }
   }
 
@@ -584,10 +355,10 @@ function editorSave() {
     id: `custom_${Date.now()}`,
     name,
     difficulty: '自訂',
-    description: `玩家自建地圖：${editorWaypoints.length} 個檢查點、${obstacles.length} 個障礙物。`,
-    spawnPoint: { ...editorSpawn },
-    basePoint: { ...editorBase },
-    waypoints: editorWaypoints.map(w => ({ ...w })),
+    description: `玩家自建地圖：${gameState.editorWaypoints.length} 個檢查點、${obstacles.length} 個障礙物。`,
+    spawnPoint: { ...gameState.editorSpawn },
+    basePoint: { ...gameState.editorBase },
+    waypoints: gameState.editorWaypoints.map(w => ({ ...w })),
     obstacles
   };
 
@@ -599,39 +370,39 @@ function editorSave() {
 }
 
 // 編輯器 Canvas 事件綁定
-editorCanvasEl.addEventListener('mousedown', (e) => {
-  if (currentScene !== 'MAP_EDITOR') return;
+getDomRefs().editorCanvasEl.addEventListener('mousedown', (e) => {
+  if (gameState.currentScene !== 'MAP_EDITOR') return;
   e.preventDefault();
-  editorMouseDown = true;
-  const rect = editorCanvasEl.getBoundingClientRect();
-  const clickX = (e.clientX - rect.left) * (editorCanvasEl.width / rect.width);
-  const clickY = (e.clientY - rect.top) * (editorCanvasEl.height / rect.height);
-  const gx = Math.floor(clickX / TILE_SIZE);
-  const gy = Math.floor(clickY / TILE_SIZE);
+  gameState.editorMouseDown = true;
+  const rect = getDomRefs().editorCanvasEl.getBoundingClientRect();
+  const clickX = (e.clientX - rect.left) * (getDomRefs().editorCanvasEl.width / rect.width);
+  const clickY = (e.clientY - rect.top) * (getDomRefs().editorCanvasEl.height / rect.height);
+  const gx = Math.floor(clickX / gameState.TILE_SIZE);
+  const gy = Math.floor(clickY / gameState.TILE_SIZE);
   editorClickAt(gx, gy, e.button === 2);
 });
 
-editorCanvasEl.addEventListener('mousemove', (e) => {
-  if (currentScene !== 'MAP_EDITOR' || !editorMouseDown) return;
-  if (editorTool !== 'obstacle' && editorTool !== 'eraser') return; // 只有障礙物和橡皮擦支持拖曳繪製
-  const rect = editorCanvasEl.getBoundingClientRect();
-  const clickX = (e.clientX - rect.left) * (editorCanvasEl.width / rect.width);
-  const clickY = (e.clientY - rect.top) * (editorCanvasEl.height / rect.height);
-  const gx = Math.floor(clickX / TILE_SIZE);
-  const gy = Math.floor(clickY / TILE_SIZE);
+getDomRefs().editorCanvasEl.addEventListener('mousemove', (e) => {
+  if (gameState.currentScene !== 'MAP_EDITOR' || !gameState.editorMouseDown) return;
+  if (gameState.editorTool !== 'obstacle' && gameState.editorTool !== 'eraser') return; // 只有障礙物和橡皮擦支持拖曳繪製
+  const rect = getDomRefs().editorCanvasEl.getBoundingClientRect();
+  const clickX = (e.clientX - rect.left) * (getDomRefs().editorCanvasEl.width / rect.width);
+  const clickY = (e.clientY - rect.top) * (getDomRefs().editorCanvasEl.height / rect.height);
+  const gx = Math.floor(clickX / gameState.TILE_SIZE);
+  const gy = Math.floor(clickY / gameState.TILE_SIZE);
   editorClickAt(gx, gy, false);
 });
 
-editorCanvasEl.addEventListener('mouseup', () => { editorMouseDown = false; });
-editorCanvasEl.addEventListener('mouseleave', () => { editorMouseDown = false; });
-editorCanvasEl.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+getDomRefs().editorCanvasEl.addEventListener('mouseup', () => { gameState.editorMouseDown = false; });
+getDomRefs().editorCanvasEl.addEventListener('mouseleave', () => { gameState.editorMouseDown = false; });
+getDomRefs().editorCanvasEl.addEventListener('contextmenu', (e) => { e.preventDefault(); });
 
 // 編輯器工具列按鈕切換
 document.querySelectorAll<HTMLButtonElement>('[data-editor-tool]').forEach(btn => {
   btn.addEventListener('click', () => {
     const tool = btn.getAttribute('data-editor-tool') as EditorTool;
     if (!tool) return;
-    editorTool = tool;
+    gameState.editorTool = tool;
     document.querySelectorAll('[data-editor-tool]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   });
@@ -661,7 +432,7 @@ document.getElementById('btnCreateMap')!.addEventListener('click', () => { playS
 // ============================================================
 
 function renderTalentScreen() {
-  document.getElementById('talentPointsVal')!.textContent = getAvailablePoints(talentData).toString();
+  document.getElementById('talentPointsVal')!.textContent = getAvailablePoints(gameState.talentData).toString();
 
   const cards = document.querySelectorAll('.talent-card');
   cards.forEach(cardEl => {
@@ -669,9 +440,9 @@ function renderTalentScreen() {
     const node = TALENT_TREE.find(t => t.id === tid);
     if (!node) return;
 
-    const level = talentData.talentLevels[tid] || 0;
+    const level = gameState.talentData.talentLevels[tid] || 0;
     const isMax = level >= node.maxLevel;
-    const canUpgrade = canUnlockTalent(talentData, tid);
+    const canUpgrade = canUnlockTalent(gameState.talentData, tid);
 
     // 更新樣式類別
     cardEl.className = 'talent-card';
@@ -699,7 +470,7 @@ function renderTalentScreen() {
     let prereqHtml = '';
     if (node.prerequisites.length > 0) {
       const unmetPrereqs = node.prerequisites.filter(
-        pid => (talentData.talentLevels[pid] || 0) < 1
+        pid => (gameState.talentData.talentLevels[pid] || 0) < 1
       );
       if (unmetPrereqs.length > 0) {
         const prereqNames = unmetPrereqs.map(pid => {
@@ -730,7 +501,7 @@ function renderTalentScreen() {
     if (canUpgrade && !isMax) {
       htmlEl.onclick = () => {
         playSFX('click');
-        unlockTalent(talentData, tid);
+        unlockTalent(gameState.talentData, tid);
         renderTalentScreen();
       };
     }
@@ -740,7 +511,7 @@ function renderTalentScreen() {
   const arrows = document.querySelectorAll('.talent-arrow');
   arrows.forEach(arrowEl => {
     const fromId = arrowEl.getAttribute('data-from') as TalentId;
-    const fromLvl = talentData.talentLevels[fromId] || 0;
+    const fromLvl = gameState.talentData.talentLevels[fromId] || 0;
     if (fromLvl >= 1) {
       arrowEl.classList.add('active');
     } else {
@@ -750,12 +521,12 @@ function renderTalentScreen() {
 }
 
 function initBgStars() {
-  bgStars = [];
+  gameState.bgStars = [];
   const starCount = 80;
   for (let i = 0; i < starCount; i++) {
-    bgStars.push({
-      x: Math.random() * (COLS * TILE_SIZE),
-      y: Math.random() * (ROWS * TILE_SIZE),
+    gameState.bgStars.push({
+      x: Math.random() * (gameState.COLS * gameState.TILE_SIZE),
+      y: Math.random() * (gameState.ROWS * gameState.TILE_SIZE),
       size: 0.5 + Math.random() * 1.5,
       alpha: Math.random(),
       alphaSpeed: 0.005 + Math.random() * 0.015
@@ -768,119 +539,119 @@ function initBgStars() {
 // ============================================================
 
 function startBattle() {
-  // 根據地圖動態決定網格大小與 TILE_SIZE
-  if (currentMap.id === 'test_level') {
-    COLS = 20;
-    ROWS = 10;
-    TILE_SIZE = 64;
+  // 根據地圖動態決定網格大小與 gameState.TILE_SIZE
+  if (gameState.currentMap.id === 'test_level') {
+    gameState.COLS = 20;
+    gameState.ROWS = 10;
+    gameState.TILE_SIZE = 64;
   } else {
-    COLS = 80;
-    ROWS = 40;
-    TILE_SIZE = 16;
+    gameState.COLS = 80;
+    gameState.ROWS = 40;
+    gameState.TILE_SIZE = 16;
   }
 
-  // 重新分配 grid 大小
-  grid = Array.from({ length: COLS }, () => Array(ROWS).fill(0));
+  // 重新分配 gameState.grid 大小
+  gameState.grid = Array.from({ length: gameState.COLS }, () => Array(gameState.ROWS).fill(0));
 
   // 讀取地圖配置
-  SPAWN_POINT = currentMap.spawnPoint;
-  BASE_POINT = currentMap.basePoint;
-  WAYPOINTS = currentMap.waypoints;
+  gameState.SPAWN_POINT = gameState.currentMap.spawnPoint;
+  gameState.BASE_POINT = gameState.currentMap.basePoint;
+  gameState.WAYPOINTS = gameState.currentMap.waypoints;
 
   // 讀取天賦效果
-  hp = getBaseHP(talentData);
-  gold = currentMap.id === 'test_level' ? 999999 : getStartGold(talentData);
-  wave = 0;
-  killCount = 0;
-  isWaveActive = false;
-  totalDamageDealt = 0;
-  currentKillStreak = 0;
-  maxKillStreak = 0;
-  enemies = [];
-  towers = [];
-  bullets = [];
-  floatingTexts = [];
-  tempWalls = [];
-  nextEnemyId = 1;
-  nextTowerId = 1;
-  mergeMode = false;
-  mergeFirstTower = null;
-  spawnTimers.forEach(t => clearInterval(t));
-  spawnTimers = [];
-  waveTotal = 0;
-  waveSpawned = 0;
+  gameState.hp = getBaseHP(gameState.talentData);
+  gameState.gold = gameState.currentMap.id === 'test_level' ? 999999 : getStartGold(gameState.talentData);
+  gameState.wave = 0;
+  gameState.killCount = 0;
+  gameState.isWaveActive = false;
+  gameState.totalDamageDealt = 0;
+  gameState.currentKillStreak = 0;
+  gameState.maxKillStreak = 0;
+  gameState.enemies = [];
+  gameState.towers = [];
+  gameState.bullets = [];
+  gameState.floatingTexts = [];
+  gameState.tempWalls = [];
+  gameState.nextEnemyId = 1;
+  gameState.nextTowerId = 1;
+  gameState.mergeMode = false;
+  gameState.mergeFirstTower = null;
+  gameState.spawnTimers.forEach(t => clearInterval(t));
+  gameState.spawnTimers = [];
+  gameState.waveTotal = 0;
+  gameState.waveSpawned = 0;
 
   // 清空網格並放置預設障礙物
-  for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) grid[x][y] = 0;
-  for (const obs of currentMap.obstacles) {
-    if (obs.x >= 0 && obs.x < COLS && obs.y >= 0 && obs.y < ROWS) {
-      grid[obs.x][obs.y] = 2; // 2 代表天然地形障礙物
+  for (let x = 0; x < gameState.COLS; x++) for (let y = 0; y < gameState.ROWS; y++) gameState.grid[x][y] = 0;
+  for (const obs of gameState.currentMap.obstacles) {
+    if (obs.x >= 0 && obs.x < gameState.COLS && obs.y >= 0 && obs.y < gameState.ROWS) {
+      gameState.grid[obs.x][obs.y] = 2; // 2 代表天然地形障礙物
     }
   }
 
   // 初始化星空背景與天氣粒子
   initBgStars();
-  weatherParticles = [];
-  lightningActive = 0;
-  currentTheme = (selectTheme.value as ThemeId) || 'scifi';
-  currentWeather = (selectWeather.value as WeatherId) || 'none';
+  gameState.weatherParticles = [];
+  gameState.lightningActive = 0;
+  gameState.currentTheme = (getDomRefs().selectTheme.value as ThemeId) || 'scifi';
+  gameState.currentWeather = (getDomRefs().selectWeather.value as WeatherId) || 'none';
 
   // 動態生成砲台按鈕
   buildTowerButtons();
-  selectedTool = 'earth';
+  gameState.selectedTool = 'earth';
   refreshToolSelection();
   updateUI();
 
   // 啟動遊戲迴圈
-  if (animFrameId) cancelAnimationFrame(animFrameId);
-  recalculatePathTiles();
+  if (gameState.animFrameId) cancelAnimationFrame(gameState.animFrameId);
+  recalculatePathTiles(gameState.grid, gameState.COLS, gameState.ROWS, gameState.SPAWN_POINT, gameState.BASE_POINT, gameState.WAYPOINTS, cachedPathTiles, cachedFullPath);
   gameLoop();
 }
 
 function buildTowerButtons() {
-  towerButtonsContainer.innerHTML = '';
+  getDomRefs().towerButtonsContainer.innerHTML = '';
   const towerIds: TowerTypeId[] = ['earth', 'fire', 'water', 'wood', 'metal', 'yin', 'yang'];
 
   for (const tid of towerIds) {
     const def = BASE_TOWERS[tid];
     if (!def) continue;
-    const unlocked = currentMap.id === 'test_level' ? true : isTowerUnlocked(talentData, tid);
+    const unlocked = gameState.currentMap.id === 'test_level' ? true : isTowerUnlocked(gameState.talentData, tid);
     const btn = document.createElement('button');
     btn.className = 'btn';
     btn.setAttribute('data-tool', tid);
     btn.disabled = !unlocked;
-    const cost = tid === 'earth' ? getWallCost(talentData) : def.cost;
+    const cost = tid === 'earth' ? getWallCost(gameState.talentData) : def.cost;
     btn.textContent = `${def.emoji} ${def.name} (${cost}g)`;
-    if (!unlocked && currentMap.id !== 'test_level') btn.title = '需先在天賦頁解鎖';
+    if (!unlocked && gameState.currentMap.id !== 'test_level') btn.title = '需先在天賦頁解鎖';
     btn.addEventListener('click', () => {
       if (!unlocked) return;
-      mergeMode = false;
-      mergeFirstTower = null;
-      selectedTool = tid;
+      gameState.mergeMode = false;
+      gameState.mergeFirstTower = null;
+      gameState.selectedTool = tid;
       refreshToolSelection();
     });
-    towerButtonsContainer.appendChild(btn);
+    getDomRefs().towerButtonsContainer.appendChild(btn);
   }
 }
 
 function refreshToolSelection() {
-  const allBtns = towerButtonsContainer.querySelectorAll('.btn');
+  const allBtns = getDomRefs().towerButtonsContainer.querySelectorAll('.btn');
   allBtns.forEach(b => b.classList.remove('active'));
-  const activeBtn = towerButtonsContainer.querySelector(`[data-tool="${selectedTool}"]`);
+  const activeBtn = getDomRefs().towerButtonsContainer.querySelector(`[data-tool="${gameState.selectedTool}"]`);
   if (activeBtn) activeBtn.classList.add('active');
 
-  btnMerge.classList.toggle('active', mergeMode);
-  btnSell.classList.toggle('active', selectedTool === 'sell');
+  getDomRefs().btnMerge.classList.toggle('active', gameState.mergeMode);
+  getDomRefs().btnSell.classList.toggle('active', gameState.selectedTool === 'sell');
 
-  if (mergeMode) {
-    instructionText.innerHTML = '<span class="merge-hint">🔮 合成模式：點擊一座塔選為材料，再點擊相鄰的塔進行合成</span>';
-  } else if (selectedTool === 'sell') {
-    instructionText.textContent = '💰 拆除模式：點擊砲台將其拆除並退回部分金幣';
+  if (gameState.mergeMode) {
+    getDomRefs().instructionText.innerHTML = '<span class="merge-hint">🔮 合成模式：點擊一座塔選為材料，再點擊相鄰的塔進行合成</span>';
+  } else if (gameState.selectedTool === 'sell') {
+    getDomRefs().instructionText.textContent = '💰 拆除模式：點擊砲台將其拆除並退回部分金幣';
   } else {
-    if (currentMap && currentMap.id === 'tutorial') {
-      instructionText.innerHTML = '🎓 <span style="color:#fbbf24; font-weight:bold;">教學引導：</span>因橫向長牆阻擋，怪物必須先向右繞過 3 號點入口才進入 1 號點。推薦在右側瓶頸 <span style="color:#38bdf8; font-weight:bold;">(58, 17)</span> 建造攻擊塔，讓怪物在三個尋路階段反覆受擊！';
+    if (gameState.currentMap && gameState.currentMap.id === 'tutorial') {
+      getDomRefs().instructionText.innerHTML = '🎓 <span style="color:#fbbf24; font-weight:bold;">教學引導：</span>因橫向長牆阻擋，怪物必須先向右繞過 3 號點入口才進入 1 號點。推薦在右側瓶頸 <span style="color:#38bdf8; font-weight:bold;">(58, 17)</span> 建造攻擊塔，讓怪物在三個尋路階段反覆受擊！';
     } else {
-      instructionText.innerHTML = '選擇砲台後點擊地圖擺放。怪物依序碰觸 <span style="color:#f59e0b">❶❷❸❹❺</span> 檢查點再抵達基地。用砲台築迷宮！';
+      getDomRefs().instructionText.innerHTML = '選擇砲台後點擊地圖擺放。怪物依序碰觸 <span style="color:#f59e0b">❶❷❸❹❺</span> 檢查點再抵達基地。用砲台築迷宮！';
     }
   }
 }
@@ -889,159 +660,39 @@ function refreshToolSelection() {
 // 4. A* 尋路
 // ============================================================
 
-class AStarNode {
-  x: number; y: number; parent: AStarNode | null; g: number; h: number; f: number;
-  constructor(x: number, y: number, parent: AStarNode | null, g: number, h: number) {
-    this.x = x; this.y = y; this.parent = parent; this.g = g; this.h = h; this.f = g + h;
-  }
-}
-
-function astarFind(start: Point, end: Point, isFlying: boolean = false, blockedX = -1, blockedY = -1): Point[] | null {
-  if (isFlying) {
-    const path: Point[] = [];
-    let cx = start.x, cy = start.y;
-    while (cx !== end.x || cy !== end.y) {
-      path.push({ x: cx, y: cy });
-      if (cx < end.x) cx++; else if (cx > end.x) cx--;
-      if (cy < end.y) cy++; else if (cy > end.y) cy--;
-    }
-    path.push({ x: end.x, y: end.y });
-    return path;
-  }
-
-  const openList: AStarNode[] = [];
-  const closedSet = new Set<string>();
-  const heuristic = (a: Point, b: Point) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-
-  openList.push(new AStarNode(start.x, start.y, null, 0, heuristic(start, end)));
-
-  while (openList.length > 0) {
-    openList.sort((a, b) => a.f - b.f);
-    const cur = openList.shift()!;
-    const key = `${cur.x},${cur.y}`;
-    if (closedSet.has(key)) continue;
-    closedSet.add(key);
-
-    if (cur.x === end.x && cur.y === end.y) {
-      const path: Point[] = [];
-      let n: AStarNode | null = cur;
-      while (n) { path.push({ x: n.x, y: n.y }); n = n.parent; }
-      return path.reverse();
-    }
-
-    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
-      const nx = cur.x + dx, ny = cur.y + dy;
-      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
-      if (grid[nx][ny] !== 0 || (nx === blockedX && ny === blockedY)) continue;
-      const nKey = `${nx},${ny}`;
-      if (closedSet.has(nKey)) continue;
-      const g = cur.g + 1;
-      const h = heuristic({ x: nx, y: ny }, end);
-      const existing = openList.find(n => n.x === nx && n.y === ny);
-      if (!existing) {
-        openList.push(new AStarNode(nx, ny, cur, g, h));
-      } else if (g < existing.g) {
-        existing.g = g; existing.f = g + existing.h; existing.parent = cur;
-      }
-    }
-  }
-  return null;
-}
-
 let cachedPathTiles = new Set<string>();
 let cachedFullPath: Point[] = [];
-
-function recalculatePathTiles() {
-  cachedPathTiles.clear();
-  let fullPath: Point[] = [];
-  let currentStart = SPAWN_POINT;
-  const targets = [...WAYPOINTS, BASE_POINT];
-  let blocked = false;
-  
-  for (const target of targets) {
-    const segment = astarFind(currentStart, target, false);
-    if (segment) {
-      if (fullPath.length > 0) {
-        fullPath = fullPath.concat(segment.slice(1));
-      } else {
-        fullPath = fullPath.concat(segment);
-      }
-      currentStart = target;
-    } else {
-      blocked = true;
-      break;
-    }
-  }
-
-  if (!blocked) {
-    for (const pt of fullPath) {
-      cachedPathTiles.add(`${pt.x},${pt.y}`);
-    }
-    cachedFullPath = fullPath;
-  } else {
-    cachedFullPath = [];
-  }
-}
-
-function validatePlacement(x: number, y: number): boolean {
-  if (x === SPAWN_POINT.x && y === SPAWN_POINT.y) return false;
-  if (x === BASE_POINT.x && y === BASE_POINT.y) return false;
-  for (const wp of WAYPOINTS) { if (x === wp.x && y === wp.y) return false; }
-
-  let tempStart = SPAWN_POINT;
-  for (let i = 0; i <= WAYPOINTS.length; i++) {
-    const target = i === WAYPOINTS.length ? BASE_POINT : WAYPOINTS[i];
-    if (!astarFind(tempStart, target, false, x, y)) return false;
-    tempStart = target;
-  }
-  for (const enemy of enemies) {
-    if (enemy.isFlying) continue;
-    const target = enemy.waypointIndex >= WAYPOINTS.length ? BASE_POINT : WAYPOINTS[enemy.waypointIndex];
-    if (!astarFind({ x: enemy.currentGridX, y: enemy.currentGridY }, target, false, x, y)) return false;
-  }
-  return true;
-}
-
-function updateAllEnemyPaths() {
-  for (const enemy of enemies) {
-    if (enemy.isFlying) continue;
-    const target = enemy.waypointIndex >= WAYPOINTS.length ? BASE_POINT : WAYPOINTS[enemy.waypointIndex];
-    const path = astarFind({ x: enemy.currentGridX, y: enemy.currentGridY }, target);
-    if (path) { enemy.path = path; enemy.pathIndex = 0; }
-  }
-  recalculatePathTiles();
-}
 
 // ============================================================
 // 5. 砲台放置 / 拆除 / 合成
 // ============================================================
 
-canvas.addEventListener('click', (e) => {
-  if (currentScene !== 'BATTLE') return;
+getDomRefs().canvas.addEventListener('click', (e) => {
+  if (gameState.currentScene !== 'BATTLE') return;
 
   // 如果剛剛是拖曳地圖，則這次點擊不觸發放置或售塔
-  if (isDraggingMap) {
-    isDraggingMap = false;
+  if (gameState.isDraggingMap) {
+    gameState.isDraggingMap = false;
     return;
   }
 
-  const rect = canvas.getBoundingClientRect();
-  const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
-  const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const rect = getDomRefs().canvas.getBoundingClientRect();
+  const clickX = (e.clientX - rect.left) * (getDomRefs().canvas.width / rect.width);
+  const clickY = (e.clientY - rect.top) * (getDomRefs().canvas.height / rect.height);
 
   // 反向換算地圖平移與縮放後的座標
-  const worldX = (clickX - mapOffsetX) / mapScale;
-  const worldY = (clickY - mapOffsetY) / mapScale;
+  const worldX = (clickX - gameState.mapOffsetX) / gameState.mapScale;
+  const worldY = (clickY - gameState.mapOffsetY) / gameState.mapScale;
 
-  const gx = Math.max(0, Math.min(COLS - 1, Math.floor(worldX / TILE_SIZE)));
-  const gy = Math.max(0, Math.min(ROWS - 1, Math.floor(worldY / TILE_SIZE)));
+  const gx = Math.max(0, Math.min(gameState.COLS - 1, Math.floor(worldX / gameState.TILE_SIZE)));
+  const gy = Math.max(0, Math.min(gameState.ROWS - 1, Math.floor(worldY / gameState.TILE_SIZE)));
 
-  if (mergeMode) {
+  if (gameState.mergeMode) {
     handleMergeClick(gx, gy);
     return;
   }
 
-  if (selectedTool === 'sell') {
+  if (gameState.selectedTool === 'sell') {
     handleSell(gx, gy);
     return;
   }
@@ -1051,110 +702,116 @@ canvas.addEventListener('click', (e) => {
 });
 
 // 右鍵快速售塔
-canvas.addEventListener('contextmenu', (e) => {
+getDomRefs().canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
-  if (currentScene !== 'BATTLE') return;
+  if (gameState.currentScene !== 'BATTLE') return;
   
-  const rect = canvas.getBoundingClientRect();
-  const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
-  const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const rect = getDomRefs().canvas.getBoundingClientRect();
+  const clickX = (e.clientX - rect.left) * (getDomRefs().canvas.width / rect.width);
+  const clickY = (e.clientY - rect.top) * (getDomRefs().canvas.height / rect.height);
 
-  const worldX = (clickX - mapOffsetX) / mapScale;
-  const worldY = (clickY - mapOffsetY) / mapScale;
+  const worldX = (clickX - gameState.mapOffsetX) / gameState.mapScale;
+  const worldY = (clickY - gameState.mapOffsetY) / gameState.mapScale;
 
-  const gx = Math.max(0, Math.min(COLS - 1, Math.floor(worldX / TILE_SIZE)));
-  const gy = Math.max(0, Math.min(ROWS - 1, Math.floor(worldY / TILE_SIZE)));
+  const gx = Math.max(0, Math.min(gameState.COLS - 1, Math.floor(worldX / gameState.TILE_SIZE)));
+  const gy = Math.max(0, Math.min(gameState.ROWS - 1, Math.floor(worldY / gameState.TILE_SIZE)));
   handleSell(gx, gy);
 });
 
 function handleBuild(x: number, y: number) {
-  if (grid[x][y] !== 0) { showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '已有建物', '#ef4444', 15); return; }
-  const def = BASE_TOWERS[selectedTool];
+  if (gameState.grid[x][y] !== 0) { showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '已有建物', '#ef4444', 15); return; }
+  const def = BASE_TOWERS[gameState.selectedTool];
   if (!def) return;
-  const cost = selectedTool === 'earth' ? getWallCost(talentData) : def.cost;
-  if (gold < cost) { showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '金幣不足', '#ef4444', 15); return; }
+  const cost = gameState.selectedTool === 'earth' ? getWallCost(gameState.talentData) : def.cost;
+  if (gameState.gold < cost) { showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '金幣不足', '#ef4444', 15); return; }
 
-  if (def.isWall && !validatePlacement(x, y)) {
-    showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '不能堵死怪物！', '#ef4444', 15);
+  if (def.isWall && !validatePlacement(x, y, gameState.grid, gameState.COLS, gameState.ROWS, gameState.SPAWN_POINT, gameState.BASE_POINT, gameState.WAYPOINTS, gameState.enemies)) {
+    showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '不能堵死怪物！', '#ef4444', 15);
     return;
   }
 
-  grid[x][y] = def.isWall ? 1 : 0;
-  towers.push({ id: nextTowerId++, x, y, typeId: def.id, def: { ...def, cost }, cooldown: 0, recoilY: 0 });
-  if (currentMap.id !== 'test_level') gold -= cost;
+  gameState.grid[x][y] = def.isWall ? 1 : 0;
+  gameState.towers.push({ id: gameState.nextTowerId++, x, y, typeId: def.id, def: { ...def, cost }, cooldown: 0, recoilY: 0 });
+  if (gameState.currentMap.id !== 'test_level') gameState.gold -= cost;
   updateUI();
-  if (def.isWall) updateAllEnemyPaths();
+  if (def.isWall) updateAllEnemyPaths(gameState.enemies, gameState.grid, gameState.COLS, gameState.ROWS, gameState.SPAWN_POINT, gameState.BASE_POINT, gameState.WAYPOINTS, cachedPathTiles, cachedFullPath);
 }
 
 function handleSell(x: number, y: number) {
-  if (grid[x][y] === 2) {
-    showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '天然障礙物無法拆除', '#ef4444', 15);
+  if (gameState.grid[x][y] === 2) {
+    showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '天然障礙物無法拆除', '#ef4444', 15);
     return;
   }
-  const idx = towers.findIndex(t => t.x === x && t.y === y);
+  const idx = gameState.towers.findIndex(t => t.x === x && t.y === y);
   if (idx === -1) return;
-  const tower = towers[idx];
+  const tower = gameState.towers[idx];
   const refund = getSellPrice(tower.def);
-  gold += refund;
-  towers.splice(idx, 1);
-  grid[x][y] = 0;
+  gameState.gold += refund;
+  gameState.towers.splice(idx, 1);
+  gameState.grid[x][y] = 0;
+  if (gameState.mergeFirstTower && gameState.mergeFirstTower.id === tower.id) gameState.mergeFirstTower = null;
+  // 清理以死亡/無效敵人為目標的子彈，避免懸空參照
+  for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+    const t = gameState.bullets[i].targetEnemy;
+    if (!t || t.hp <= 0 || !gameState.enemies.some(e => e.id === t.id)) gameState.bullets.splice(i, 1);
+  }
   updateUI();
-  updateAllEnemyPaths();
-  showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, `+${refund}g`, '#f59e0b');
+  updateAllEnemyPaths(gameState.enemies, gameState.grid, gameState.COLS, gameState.ROWS, gameState.SPAWN_POINT, gameState.BASE_POINT, gameState.WAYPOINTS, cachedPathTiles, cachedFullPath);
+  showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, `+${refund}g`, '#f59e0b');
 }
 
 function handleMergeClick(x: number, y: number) {
-  const clickedTower = towers.find(t => t.x === x && t.y === y);
+  const clickedTower = gameState.towers.find(t => t.x === x && t.y === y);
   if (!clickedTower) {
-    showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '沒有砲台', '#ef4444', 15);
+    showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '沒有砲台', '#ef4444', 15);
     return;
   }
 
-  if (!mergeFirstTower) {
+  if (!gameState.mergeFirstTower) {
     // 選擇第一座塔
-    mergeFirstTower = clickedTower;
-    showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '已選取，請點擊另一座塔合成', '#c084fc', 15);
+    gameState.mergeFirstTower = clickedTower;
+    showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '已選取，請點擊另一座塔合成', '#c084fc', 15);
     return;
   }
 
   // 選擇第二座塔 — 檢查是否為同一座塔（取消選取）
-  if (clickedTower.id === mergeFirstTower.id) {
-    showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '已取消選取', '#94a3b8', 15);
-    mergeFirstTower = null;
+  if (clickedTower.id === gameState.mergeFirstTower.id) {
+    showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '已取消選取', '#94a3b8', 15);
+    gameState.mergeFirstTower = null;
     return;
   }
 
   // 同系合成
-  if (clickedTower.def.element === mergeFirstTower.def.element &&
-      clickedTower.def.level === 1 && mergeFirstTower.def.level === 1) {
+  if (clickedTower.def.element === gameState.mergeFirstTower.def.element &&
+      clickedTower.def.level === 1 && gameState.mergeFirstTower.def.level === 1) {
     const resultId = getSameMergeResult(clickedTower.def.element);
     if (resultId) {
-      performMerge(mergeFirstTower, clickedTower, resultId);
-      mergeFirstTower = null;
+      performMerge(gameState.mergeFirstTower, clickedTower, resultId);
+      gameState.mergeFirstTower = null;
       return;
     }
   }
 
   // 異系配方合成
-  const el1 = mergeFirstTower.def.element;
+  const el1 = gameState.mergeFirstTower.def.element;
   const el2 = clickedTower.def.element;
   const recipeResult = getCrossRecipeResult(el1, el2);
   if (recipeResult) {
     // 陰陽合成需天賦（測試關卡除外）
     if ((el1 === 'yin' || el1 === 'yang') && (el2 === 'yin' || el2 === 'yang')) {
-      if (currentMap.id !== 'test_level' && (talentData.talentLevels['taiji_dao'] || 0) < 1) {
-        showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '需解鎖「太極之道」天賦', '#ef4444', 15);
-        mergeFirstTower = null;
+      if (gameState.currentMap.id !== 'test_level' && (gameState.talentData.talentLevels['taiji_dao'] || 0) < 1) {
+        showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '需解鎖「太極之道」天賦', '#ef4444', 15);
+        gameState.mergeFirstTower = null;
         return;
       }
     }
-    performMerge(mergeFirstTower, clickedTower, recipeResult);
-    mergeFirstTower = null;
+    performMerge(gameState.mergeFirstTower, clickedTower, recipeResult);
+    gameState.mergeFirstTower = null;
     return;
   }
 
-  showFloat(x * TILE_SIZE + 8, y * TILE_SIZE, '無法合成此組合', '#ef4444', 15);
-  mergeFirstTower = null;
+  showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '無法合成此組合', '#ef4444', 15);
+  gameState.mergeFirstTower = null;
 }
 
 function performMerge(tower1: Tower, tower2: Tower, resultId: TowerTypeId) {
@@ -1162,17 +819,24 @@ function performMerge(tower1: Tower, tower2: Tower, resultId: TowerTypeId) {
   if (!resultDef) return;
 
   // 移除第二座塔
-  const idx2 = towers.findIndex(t => t.id === tower2.id);
-  if (idx2 !== -1) { towers.splice(idx2, 1); grid[tower2.x][tower2.y] = 0; }
+  const idx2 = gameState.towers.findIndex(t => t.id === tower2.id);
+  if (idx2 !== -1) { gameState.towers.splice(idx2, 1); gameState.grid[tower2.x][tower2.y] = 0; }
+  if (gameState.mergeFirstTower && gameState.mergeFirstTower.id === tower2.id) gameState.mergeFirstTower = null;
 
   // 升級第一座塔
   tower1.typeId = resultId;
   tower1.def = { ...resultDef };
   tower1.cooldown = 0;
 
-  updateAllEnemyPaths();
-  showFloat(tower1.x * TILE_SIZE + 8, tower1.y * TILE_SIZE, `✨ ${resultDef.name}`, '#c084fc', 16);
-  createMergeParticles(tower1.x * TILE_SIZE + TILE_SIZE / 2, tower1.y * TILE_SIZE + TILE_SIZE / 2);
+  // 清理以死亡/無效敵人為目標的子彈，避免懸空參照
+  for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+    const t = gameState.bullets[i].targetEnemy;
+    if (!t || t.hp <= 0 || !gameState.enemies.some(e => e.id === t.id)) gameState.bullets.splice(i, 1);
+  }
+
+  updateAllEnemyPaths(gameState.enemies, gameState.grid, gameState.COLS, gameState.ROWS, gameState.SPAWN_POINT, gameState.BASE_POINT, gameState.WAYPOINTS, cachedPathTiles, cachedFullPath);
+  showFloat(tower1.x * gameState.TILE_SIZE + 8, tower1.y * gameState.TILE_SIZE, `✨ ${resultDef.name}`, '#c084fc', 16);
+  createMergeParticles(gameState.particles, gameState.TILE_SIZE, tower1.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, tower1.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2);
   playSFX('merge_success');
 }
 
@@ -1180,84 +844,86 @@ function performMerge(tower1: Tower, tower2: Tower, resultId: TowerTypeId) {
 // 6. 波次系統
 // ============================================================
 
-const MAX_WAVES = 20; // 通關波次
-
-btnStartWave.addEventListener('click', () => {
-  if (isWaveActive || currentScene !== 'BATTLE') return;
+getDomRefs().btnStartWave.addEventListener('click', () => {
+  if (gameState.isWaveActive || gameState.currentScene !== 'BATTLE') return;
   playSFX('click');
-  wave++;
-  isWaveActive = true;
+  gameState.wave++;
+  gameState.isWaveActive = true;
   updateUI();
-  spawnWave(wave);
+  spawnWave(gameState.wave);
 });
 
 function spawnWave(waveNum: number) {
   const configs = getWaveConfig(waveNum);
-  waveTotal = 0;
-  waveSpawned = 0;
+  gameState.waveTotal = 0;
+  gameState.waveSpawned = 0;
 
-  for (const cfg of configs) waveTotal += cfg.count;
+  for (const cfg of configs) gameState.waveTotal += cfg.count;
 
   for (const cfg of configs) {
     let spawned = 0;
     const timer = setInterval(() => {
       if (spawned >= cfg.count) { clearInterval(timer); return; }
       const def = ENEMY_DEFS[cfg.enemyType];
-      const startPos = { ...SPAWN_POINT };
-      const path = astarFind(startPos, WAYPOINTS[0], def.isFlying);
-      if (path) {
-        enemies.push({
-          id: nextEnemyId++,
-          type: cfg.enemyType,
-          element: def.element,
-          x: startPos.x * TILE_SIZE + TILE_SIZE / 2,
-          y: startPos.y * TILE_SIZE + TILE_SIZE / 2,
-          currentGridX: startPos.x, currentGridY: startPos.y,
-          hp: Math.floor(def.baseHp * cfg.hpMultiplier),
-          maxHp: Math.floor(def.baseHp * cfg.hpMultiplier),
-          speed: def.speed,
-          baseSpeed: def.speed,
-          goldAward: def.goldAward,
-          isFlying: def.isFlying,
-          waypointIndex: 0,
-          path, pathIndex: 0,
-          slowDuration: 0,
-          dotDamage: 0, dotDuration: 0,
-          hitFlashFrame: 0,
-          vx: 0,
-          vy: 0,
-          squashX: 1,
-          squashY: 1
-        });
+      const startPos = { ...gameState.SPAWN_POINT };
+      const path = astarFind(startPos, gameState.WAYPOINTS[0], gameState.grid, gameState.COLS, gameState.ROWS, def.isFlying);
+      const isStuck = !path;
+      gameState.enemies.push({
+        id: gameState.nextEnemyId++,
+        type: cfg.enemyType,
+        element: def.element,
+        x: startPos.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2,
+        y: startPos.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2,
+        currentGridX: startPos.x, currentGridY: startPos.y,
+        hp: Math.floor(def.baseHp * cfg.hpMultiplier),
+        maxHp: Math.floor(def.baseHp * cfg.hpMultiplier),
+        speed: def.speed,
+        baseSpeed: def.speed,
+        goldAward: def.goldAward,
+        isFlying: def.isFlying,
+        waypointIndex: 0,
+        path: path ?? [], pathIndex: 0,
+        slowDuration: 0,
+        dotDamage: 0, dotDuration: 0,
+        hitFlashFrame: 0,
+        vx: 0,
+        vy: 0,
+        squashX: 1,
+        squashY: 1,
+        isStuck,
+        pathBlockedHintShown: isStuck
+      });
+      if (isStuck) {
+        showFloat(startPos.x * gameState.TILE_SIZE + 8, startPos.y * gameState.TILE_SIZE, '道路被封死！', '#ef4444', 15);
       }
       spawned++;
-      waveSpawned++;
+      gameState.waveSpawned++;
     }, cfg.spawnIntervalMs);
-    spawnTimers.push(timer);
+    gameState.spawnTimers.push(timer);
   }
 }
 
 function spawnTestEnemy(enemyType: EnemyTypeId) {
   const def = ENEMY_DEFS[enemyType];
   if (!def) return;
-  const startPos = { ...SPAWN_POINT };
-  const path = astarFind(startPos, WAYPOINTS[0], def.isFlying);
+  const startPos = { ...gameState.SPAWN_POINT };
+  const path = astarFind(startPos, gameState.WAYPOINTS[0], gameState.grid, gameState.COLS, gameState.ROWS, def.isFlying);
   if (!path) {
-    showFloat(startPos.x * TILE_SIZE + 8, startPos.y * TILE_SIZE, '起點路徑被堵死！', '#ef4444', 15);
+    showFloat(startPos.x * gameState.TILE_SIZE + 8, startPos.y * gameState.TILE_SIZE, '起點路徑被堵死！', '#ef4444', 15);
     return;
   }
 
   // 強度計算：基於當前波次（如果波次為 0 則預設為 1）
-  const curWave = wave || 1;
+  const curWave = gameState.wave || 1;
   const configs = getWaveConfig(curWave);
   const hpMult = configs[0] ? configs[0].hpMultiplier : 1.0;
 
-  enemies.push({
-    id: nextEnemyId++,
+  gameState.enemies.push({
+    id: gameState.nextEnemyId++,
     type: enemyType,
     element: def.element,
-    x: startPos.x * TILE_SIZE + TILE_SIZE / 2,
-    y: startPos.y * TILE_SIZE + TILE_SIZE / 2,
+    x: startPos.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2,
+    y: startPos.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2,
     currentGridX: startPos.x, currentGridY: startPos.y,
     hp: Math.floor(def.baseHp * hpMult),
     maxHp: Math.floor(def.baseHp * hpMult),
@@ -1277,7 +943,7 @@ function spawnTestEnemy(enemyType: EnemyTypeId) {
   });
 
   updateUI();
-  showFloat(startPos.x * TILE_SIZE + 8, startPos.y * TILE_SIZE, `Spawned ${def.name}!`, '#8b5cf6', 14);
+  showFloat(startPos.x * gameState.TILE_SIZE + 8, startPos.y * gameState.TILE_SIZE, `Spawned ${def.name}!`, '#8b5cf6', 14);
 }
 
 // ============================================================
@@ -1285,36 +951,36 @@ function spawnTestEnemy(enemyType: EnemyTypeId) {
 // ============================================================
 
 function gameLoop() {
-  if (currentScene !== 'BATTLE') return;
+  if (gameState.currentScene !== 'BATTLE') return;
   updatePhysics();
   renderGame();
-  animFrameId = requestAnimationFrame(gameLoop);
+  gameState.animFrameId = requestAnimationFrame(gameLoop);
 }
 
 function updatePhysics() {
-  const dmgMult = getDamageMultiplier(talentData);
-  const frMult = getFireRateMultiplier(talentData);
+  const dmgMult = getDamageMultiplier(gameState.talentData);
+  const frMult = getFireRateMultiplier(gameState.talentData);
 
-  if (routePreviewTimer > 0) {
-    routePreviewTimer--;
+  if (gameState.routePreviewTimer > 0) {
+    gameState.routePreviewTimer--;
   }
 
   // 1. 怪物移動
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    const e = enemies[i];
+  for (let i = gameState.enemies.length - 1; i >= 0; i--) {
+    const e = gameState.enemies[i];
 
     // DOT 傷害
     if (e.dotDuration > 0) {
       e.hp -= e.dotDamage;
-      totalDamageDealt += e.dotDamage;
+      gameState.totalDamageDealt += e.dotDamage;
       e.dotDuration--;
       if (e.hp <= 0) {
-        gold += e.goldAward;
-        killCount++;
-        currentKillStreak++;
-        if (currentKillStreak > maxKillStreak) maxKillStreak = currentKillStreak;
+        gameState.gold += e.goldAward;
+        gameState.killCount++;
+        gameState.currentKillStreak++;
+        if (gameState.currentKillStreak > gameState.maxKillStreak) gameState.maxKillStreak = gameState.currentKillStreak;
         showFloat(e.x, e.y, `+${e.goldAward}g`, '#f59e0b');
-        enemies.splice(i, 1);
+        gameState.enemies.splice(i, 1);
         updateUI();
         checkWaveEnd();
         continue;
@@ -1335,10 +1001,10 @@ function updatePhysics() {
 
     const prevX = e.x;
     const prevY = e.y;
-    if (e.path && e.pathIndex < e.path.length) {
+    if (!e.isStuck && e.path && e.pathIndex < e.path.length) {
       const tg = e.path[e.pathIndex];
-      const tx = tg.x * TILE_SIZE + TILE_SIZE / 2;
-      const ty = tg.y * TILE_SIZE + TILE_SIZE / 2;
+      const tx = tg.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
+      const ty = tg.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
       const dx = tx - e.x, dy = ty - e.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
@@ -1347,22 +1013,30 @@ function updatePhysics() {
         e.currentGridX = tg.x; e.currentGridY = tg.y;
         e.pathIndex++;
 
-        const curTarget = e.waypointIndex >= WAYPOINTS.length ? BASE_POINT : WAYPOINTS[e.waypointIndex];
+        const curTarget = e.waypointIndex >= gameState.WAYPOINTS.length ? gameState.BASE_POINT : gameState.WAYPOINTS[e.waypointIndex];
         if (e.currentGridX === curTarget.x && e.currentGridY === curTarget.y) {
           e.waypointIndex++;
-          if (e.waypointIndex > WAYPOINTS.length) {
-            if (currentMap.id !== 'test_level') {
-              hp -= 1;
+          if (e.waypointIndex > gameState.WAYPOINTS.length) {
+            if (gameState.currentMap.id !== 'test_level') {
+              gameState.hp -= 1;
             }
-            enemies.splice(i, 1);
+            gameState.enemies.splice(i, 1);
             updateUI();
-            if (currentMap.id !== 'test_level' && hp <= 0) { endBattle(false); return; }
+            if (gameState.currentMap.id !== 'test_level' && gameState.hp <= 0) { endBattle(false); return; }
             checkWaveEnd();
             continue;
           }
-          const next = e.waypointIndex >= WAYPOINTS.length ? BASE_POINT : WAYPOINTS[e.waypointIndex];
-          const np = astarFind({ x: e.currentGridX, y: e.currentGridY }, next, e.isFlying);
-          if (np) { e.path = np; e.pathIndex = 0; }
+          const next = e.waypointIndex >= gameState.WAYPOINTS.length ? gameState.BASE_POINT : gameState.WAYPOINTS[e.waypointIndex];
+          const np = astarFind({ x: e.currentGridX, y: e.currentGridY }, next, gameState.grid, gameState.COLS, gameState.ROWS, e.isFlying);
+          if (np) {
+            e.path = np; e.pathIndex = 0; e.isStuck = false;
+          } else {
+            e.isStuck = true;
+            if (!e.pathBlockedHintShown) {
+              showFloat(e.x, e.y - 16, '道路被封死！', '#ef4444', 14);
+              e.pathBlockedHintShown = true;
+            }
+          }
         }
       } else {
         e.x += (dx / dist) * e.speed;
@@ -1374,7 +1048,7 @@ function updatePhysics() {
   }
 
   // 2. 砲台射擊
-  for (const tower of towers) {
+  for (const tower of gameState.towers) {
     if (tower.recoilY === undefined) tower.recoilY = 0;
     tower.recoilY *= 0.82;
     if (tower.recoilY < 0.05) tower.recoilY = 0;
@@ -1386,21 +1060,21 @@ function updatePhysics() {
 
     if (tower.cooldown > 0) { tower.cooldown--; continue; }
 
-    const tx = tower.x * TILE_SIZE + TILE_SIZE / 2;
-    const ty = tower.y * TILE_SIZE + TILE_SIZE / 2;
+    const tx = tower.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
+    const ty = tower.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
     let best: Enemy | null = null;
     let minDist = Infinity;
 
-    for (const e of enemies) {
-      const d = Math.sqrt((e.x - tx) ** 2 + (e.y - ty) ** 2) / TILE_SIZE;
+    for (const e of gameState.enemies) {
+      const d = Math.sqrt((e.x - tx) ** 2 + (e.y - ty) ** 2) / gameState.TILE_SIZE;
       if (d <= tower.def.range && d < minDist) { minDist = d; best = e; }
     }
 
     if (best) {
       // 計算傷害（含天賦倍率、五行屬性強化、鍛造塔 buff）
-      let finalDmg = tower.def.damage * dmgMult * getTowerElementDamageMultiplier(talentData, tower.def.element);
+      let finalDmg = tower.def.damage * dmgMult * getTowerElementDamageMultiplier(gameState.talentData, tower.def.element);
       // 鍛造塔附近 buff 檢查
-      for (const bt of towers) {
+      for (const bt of gameState.towers) {
         if (!bt.def.buffAllyDmg) continue;
         const bdist = Math.abs(bt.x - tower.x) + Math.abs(bt.y - tower.y);
         if (bdist <= (bt.def.buffAllyRange ?? 2)) {
@@ -1408,7 +1082,7 @@ function updatePhysics() {
         }
       }
 
-      bullets.push({
+      gameState.bullets.push({
         x: tx, y: ty,
         targetEnemy: best,
         speed: 6,
@@ -1436,17 +1110,19 @@ function updatePhysics() {
   }
 
   // 3. 子彈移動與擊中
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    const b = bullets[i];
-    const alive = enemies.some(e => e.id === b.targetEnemy.id);
+  for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+    const b = gameState.bullets[i];
+    const target = b.targetEnemy;
+    const alive = target && target.hp > 0 && gameState.enemies.some(e => e.id === target.id);
 
-    const targetX = alive ? b.targetEnemy.x : b.targetEnemy.x;
-    const targetY = alive ? b.targetEnemy.y : b.targetEnemy.y;
+    if (!alive) { gameState.bullets.splice(i, 1); continue; }
+
+    const targetX = target.x;
+    const targetY = target.y;
     const dx = targetX - b.x, dy = targetY - b.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist <= b.speed || !alive) {
-      if (!alive) { bullets.splice(i, 1); continue; }
+    if (dist <= b.speed) {
 
       // 擊中處理
       let dmg = b.damage;
@@ -1471,7 +1147,7 @@ function updatePhysics() {
       }
 
       b.targetEnemy.hp -= dmg;
-      totalDamageDealt += dmg;
+      gameState.totalDamageDealt += dmg;
       showFloat(b.targetEnemy.x, b.targetEnemy.y - 10, `-${dmg}`, '#ef4444');
       
       b.targetEnemy.hitFlashFrame = 6;
@@ -1484,8 +1160,8 @@ function updatePhysics() {
         earth: '#d97706', metal: '#e5e7eb', yin: '#a855f7', yang: '#fde047'
       };
       const hitColor = bulletColors[b.element] ?? '#facc15';
-      createHitParticles(b.targetEnemy.x, b.targetEnemy.y, hitColor);
-      createSplatterParticles(b.targetEnemy.x, b.targetEnemy.y, hitColor, 4);
+      createHitParticles(gameState.particles, gameState.TILE_SIZE, b.targetEnemy.x, b.targetEnemy.y, hitColor);
+      createSplatterParticles(gameState.particles, gameState.TILE_SIZE, b.targetEnemy.x, b.targetEnemy.y, hitColor, 4);
 
       // 減速效果
       if (b.slowPct && b.slowDuration) {
@@ -1501,55 +1177,55 @@ function updatePhysics() {
       // AOE 傷害
       if (b.aoeRadius && b.aoeDamagePct) {
         const aoeDmg = Math.floor(dmg * b.aoeDamagePct);
-        const aoeRange = b.aoeRadius * TILE_SIZE;
-        for (const e of enemies) {
+        const aoeRange = b.aoeRadius * gameState.TILE_SIZE;
+        for (const e of gameState.enemies) {
           if (e.id === b.targetEnemy.id) continue;
           const adist = Math.sqrt((e.x - b.targetEnemy.x) ** 2 + (e.y - b.targetEnemy.y) ** 2);
           if (adist <= aoeRange) {
             e.hp -= aoeDmg;
-            totalDamageDealt += aoeDmg;
+            gameState.totalDamageDealt += aoeDmg;
             showFloat(e.x, e.y - 10, `-${aoeDmg}`, '#f97316');
             
             e.hitFlashFrame = 6;
             e.squashX = 1.35;
             e.squashY = 0.65;
-            createSplatterParticles(e.x, e.y, hitColor, 3);
+            createSplatterParticles(gameState.particles, gameState.TILE_SIZE, e.x, e.y, hitColor, 3);
           }
         }
       }
 
       // 治療基地
       if (b.healBase) {
-        hp = Math.min(getBaseHP(talentData), hp + b.healBase);
+        gameState.hp = Math.min(getBaseHP(gameState.talentData), gameState.hp + b.healBase);
       }
 
       // 靈木塔：生成臨時障礙（在怪物當前格，持續 5 秒）
       if (b.spawnWall) {
         const wx = b.targetEnemy.currentGridX;
         const wy = b.targetEnemy.currentGridY;
-        const isFreeCell = grid[wx][wy] === 0 && !tempWalls.some(w => w.x === wx && w.y === wy);
-        if (isFreeCell && validatePlacement(wx, wy)) {
-          grid[wx][wy] = 1;
-          tempWalls.push({ x: wx, y: wy, lifetime: 300 }); // 5秒 (300幀)
-          updateAllEnemyPaths();
+        const isFreeCell = gameState.grid[wx][wy] === 0 && !gameState.tempWalls.some(w => w.x === wx && w.y === wy);
+        if (isFreeCell && validatePlacement(wx, wy, gameState.grid, gameState.COLS, gameState.ROWS, gameState.SPAWN_POINT, gameState.BASE_POINT, gameState.WAYPOINTS, gameState.enemies)) {
+          gameState.grid[wx][wy] = 1;
+          gameState.tempWalls.push({ x: wx, y: wy, lifetime: 300 }); // 5秒 (300幀)
+          updateAllEnemyPaths(gameState.enemies, gameState.grid, gameState.COLS, gameState.ROWS, gameState.SPAWN_POINT, gameState.BASE_POINT, gameState.WAYPOINTS, cachedPathTiles, cachedFullPath);
           showFloat(b.targetEnemy.x, b.targetEnemy.y - 16, '🌿 纏縛！', '#4ade80', 13);
         }
       }
 
       // 檢查目標死亡
       if (b.targetEnemy.hp <= 0) {
-        const eidx = enemies.findIndex(e => e.id === b.targetEnemy.id);
+        const eidx = gameState.enemies.findIndex(e => e.id === b.targetEnemy.id);
         if (eidx !== -1) {
-          gold += b.targetEnemy.goldAward;
-          killCount++;
-          currentKillStreak++;
-          if (currentKillStreak > maxKillStreak) maxKillStreak = currentKillStreak;
+          gameState.gold += b.targetEnemy.goldAward;
+          gameState.killCount++;
+          gameState.currentKillStreak++;
+          if (gameState.currentKillStreak > gameState.maxKillStreak) gameState.maxKillStreak = gameState.currentKillStreak;
           showFloat(b.targetEnemy.x, b.targetEnemy.y, `+${b.targetEnemy.goldAward}g`, '#f59e0b');
           
-          createDeathParticles(b.targetEnemy.x, b.targetEnemy.y, hitColor);
-          createSplatterParticles(b.targetEnemy.x, b.targetEnemy.y, hitColor, 8);
+          createDeathParticles(gameState.particles, gameState.TILE_SIZE, b.targetEnemy.x, b.targetEnemy.y, hitColor);
+          createSplatterParticles(gameState.particles, gameState.TILE_SIZE, b.targetEnemy.x, b.targetEnemy.y, hitColor, 8);
 
-          enemies.splice(eidx, 1);
+          gameState.enemies.splice(eidx, 1);
           playSFX('enemy_death');
           updateUI();
           checkWaveEnd();
@@ -1557,22 +1233,22 @@ function updatePhysics() {
       }
 
       // 檢查 AOE 造成的死亡
-      for (let j = enemies.length - 1; j >= 0; j--) {
-        if (enemies[j].hp <= 0) {
-          gold += enemies[j].goldAward;
-          killCount++;
-          showFloat(enemies[j].x, enemies[j].y, `+${enemies[j].goldAward}g`, '#f59e0b');
-          const pColor = ENEMY_DEFS[enemies[j].type]?.colorPrimary ?? '#facc15';
-          createDeathParticles(enemies[j].x, enemies[j].y, pColor);
-          createSplatterParticles(enemies[j].x, enemies[j].y, pColor, 8);
-          enemies.splice(j, 1);
+      for (let j = gameState.enemies.length - 1; j >= 0; j--) {
+        if (gameState.enemies[j].hp <= 0) {
+          gameState.gold += gameState.enemies[j].goldAward;
+          gameState.killCount++;
+          showFloat(gameState.enemies[j].x, gameState.enemies[j].y, `+${gameState.enemies[j].goldAward}g`, '#f59e0b');
+          const pColor = ENEMY_DEFS[gameState.enemies[j].type]?.colorPrimary ?? '#facc15';
+          createDeathParticles(gameState.particles, gameState.TILE_SIZE, gameState.enemies[j].x, gameState.enemies[j].y, pColor);
+          createSplatterParticles(gameState.particles, gameState.TILE_SIZE, gameState.enemies[j].x, gameState.enemies[j].y, pColor, 8);
+          gameState.enemies.splice(j, 1);
           playSFX('enemy_death');
           updateUI();
         }
       }
       checkWaveEnd();
 
-      bullets.splice(i, 1);
+      gameState.bullets.splice(i, 1);
     } else {
       b.x += (dx / dist) * b.speed;
       b.y += (dy / dist) * b.speed;
@@ -1580,25 +1256,25 @@ function updatePhysics() {
   }
 
   // 4. 飄字
-  for (let i = floatingTexts.length - 1; i >= 0; i--) {
-    const ft = floatingTexts[i];
+  for (let i = gameState.floatingTexts.length - 1; i >= 0; i--) {
+    const ft = gameState.floatingTexts[i];
     ft.y -= 0.5; ft.life--; ft.alpha = ft.life / 45;
-    if (ft.life <= 0) floatingTexts.splice(i, 1);
+    if (ft.life <= 0) gameState.floatingTexts.splice(i, 1);
   }
 
   // 5. 臨時障礙倒計時
-  for (let i = tempWalls.length - 1; i >= 0; i--) {
-    tempWalls[i].lifetime--;
-    if (tempWalls[i].lifetime <= 0) {
-      const tw = tempWalls[i];
-      grid[tw.x][tw.y] = 0;
-      tempWalls.splice(i, 1);
-      updateAllEnemyPaths();
+  for (let i = gameState.tempWalls.length - 1; i >= 0; i--) {
+    gameState.tempWalls[i].lifetime--;
+    if (gameState.tempWalls[i].lifetime <= 0) {
+      const tw = gameState.tempWalls[i];
+      gameState.grid[tw.x][tw.y] = 0;
+      gameState.tempWalls.splice(i, 1);
+      updateAllEnemyPaths(gameState.enemies, gameState.grid, gameState.COLS, gameState.ROWS, gameState.SPAWN_POINT, gameState.BASE_POINT, gameState.WAYPOINTS, cachedPathTiles, cachedFullPath);
     }
   }
 
   // 6. 更新粒子特效 (Phase 4)
-  updateParticles();
+  updateParticles(gameState.particles);
 
   // 7. 更新背景星星與天氣 (Phase 4)
   updateBgStars();
@@ -1606,7 +1282,7 @@ function updatePhysics() {
 }
 
 function updateBgStars() {
-  for (const star of bgStars) {
+  for (const star of gameState.bgStars) {
     star.alpha += star.alphaSpeed;
     if (star.alpha > 1.0 || star.alpha < 0.2) {
       star.alphaSpeed = -star.alphaSpeed;
@@ -1616,38 +1292,38 @@ function updateBgStars() {
 
 function updateWeather() {
   // 更新閃電計時
-  if (currentWeather === 'thunder') {
-    if (lightningActive > 0) {
-      lightningActive--;
+  if (gameState.currentWeather === 'thunder') {
+    if (gameState.lightningActive > 0) {
+      gameState.lightningActive--;
     } else {
-      if (lightningTimer > 0) {
-        lightningTimer--;
+      if (gameState.lightningTimer > 0) {
+        gameState.lightningTimer--;
       } else {
         // 觸發閃電機率
         if (Math.random() < 0.005) {
-          lightningActive = 10 + Math.floor(Math.random() * 15); // 閃電持續 10-25 幀
-          lightningTimer = 180 + Math.floor(Math.random() * 240); // 隨機 3~7 秒冷卻
+          gameState.lightningActive = 10 + Math.floor(Math.random() * 15); // 閃電持續 10-25 幀
+          gameState.lightningTimer = 180 + Math.floor(Math.random() * 240); // 隨機 3~7 秒冷卻
           generateLightningPaths();
         }
       }
     }
   } else {
-    lightningActive = 0;
+    gameState.lightningActive = 0;
   }
 
   // 更新天氣粒子
-  if (currentWeather === 'none') {
-    weatherParticles = [];
+  if (gameState.currentWeather === 'none') {
+    gameState.weatherParticles = [];
     return;
   }
 
   // 1. 產生新粒子
-  if (currentWeather === 'rain' || currentWeather === 'thunder') {
+  if (gameState.currentWeather === 'rain' || gameState.currentWeather === 'thunder') {
     // 雨/雷雨：每幀產生雨粒子
-    const spawnCount = currentWeather === 'thunder' ? 4 : 2;
+    const spawnCount = gameState.currentWeather === 'thunder' ? 4 : 2;
     for (let i = 0; i < spawnCount; i++) {
-      weatherParticles.push({
-        x: Math.random() * canvas.width,
+      gameState.weatherParticles.push({
+        x: Math.random() * getDomRefs().canvas.width,
         y: -10,
         vx: -1.5 - Math.random() * 1.5,
         vy: 8 + Math.random() * 4,
@@ -1656,15 +1332,15 @@ function updateWeather() {
         length: 12 + Math.random() * 15
       });
     }
-  } else if (currentWeather === 'fog') {
+  } else if (gameState.currentWeather === 'fog') {
     // 霧氣粒子初始化與定時補充
-    if (weatherParticles.length < 25) {
-      const isInit = weatherParticles.length === 0;
+    if (gameState.weatherParticles.length < 25) {
+      const isInit = gameState.weatherParticles.length === 0;
       const spawnCount = isInit ? 25 : 1;
       for (let i = 0; i < spawnCount; i++) {
-        weatherParticles.push({
-          x: isInit ? Math.random() * canvas.width : -120,
-          y: Math.random() * canvas.height,
+        gameState.weatherParticles.push({
+          x: isInit ? Math.random() * getDomRefs().canvas.width : -120,
+          y: Math.random() * getDomRefs().canvas.height,
           vx: 0.2 + Math.random() * 0.4,
           vy: (Math.random() - 0.5) * 0.1,
           size: 80 + Math.random() * 80,
@@ -1675,35 +1351,35 @@ function updateWeather() {
   }
 
   // 2. 移動並過濾粒子
-  for (let i = weatherParticles.length - 1; i >= 0; i--) {
-    const p = weatherParticles[i];
+  for (let i = gameState.weatherParticles.length - 1; i >= 0; i--) {
+    const p = gameState.weatherParticles[i];
     p.x += p.vx;
     p.y += p.vy;
 
     // 邊界檢查
-    if (currentWeather === 'rain' || currentWeather === 'thunder') {
-      if (p.y > canvas.height + 20 || p.x < -20) {
-        weatherParticles.splice(i, 1);
+    if (gameState.currentWeather === 'rain' || gameState.currentWeather === 'thunder') {
+      if (p.y > getDomRefs().canvas.height + 20 || p.x < -20) {
+        gameState.weatherParticles.splice(i, 1);
       }
-    } else if (currentWeather === 'fog') {
-      if (p.x > canvas.width + 150) {
-        weatherParticles.splice(i, 1);
+    } else if (gameState.currentWeather === 'fog') {
+      if (p.x > getDomRefs().canvas.width + 150) {
+        gameState.weatherParticles.splice(i, 1);
       }
     }
   }
 }
 
 function generateLightningPaths() {
-  lightningPaths = [];
+  gameState.lightningPaths = [];
   const pathCount = 1 + Math.floor(Math.random() * 2);
   for (let p = 0; p < pathCount; p++) {
     const path: Point[] = [];
-    let curX = 100 + Math.random() * (canvas.width - 200);
+    let curX = 100 + Math.random() * (getDomRefs().canvas.width - 200);
     let curY = 0;
     path.push({ x: curX, y: curY });
     
     const segmentCount = 6 + Math.floor(Math.random() * 6);
-    const targetY = canvas.height * 0.6 + Math.random() * (canvas.height * 0.4);
+    const targetY = getDomRefs().canvas.height * 0.6 + Math.random() * (getDomRefs().canvas.height * 0.4);
     const dy = targetY / segmentCount;
     
     for (let i = 0; i < segmentCount; i++) {
@@ -1711,7 +1387,7 @@ function generateLightningPaths() {
       curX += (Math.random() - 0.5) * 60;
       path.push({ x: curX, y: curY });
     }
-    lightningPaths.push(path);
+    gameState.lightningPaths.push(path);
   }
 }
 
@@ -1720,41 +1396,41 @@ function generateLightningPaths() {
 // ============================================================
 
 function endBattle(isVictory: boolean) {
-  if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
-  spawnTimers.forEach(t => clearInterval(t));
-  spawnTimers = [];
+  if (gameState.animFrameId) { cancelAnimationFrame(gameState.animFrameId); gameState.animFrameId = null; }
+  gameState.spawnTimers.forEach(t => clearInterval(t));
+  gameState.spawnTimers = [];
 
-  const earned = currentMap.id === 'test_level' ? 0 : calcTalentPointsEarned(wave);
-  if (currentMap.id !== 'test_level') {
-    addTalentPoints(talentData, earned);
+  const earned = gameState.currentMap.id === 'test_level' ? 0 : calcTalentPointsEarned(gameState.wave);
+  if (gameState.currentMap.id !== 'test_level') {
+    addTalentPoints(gameState.talentData, earned);
   }
 
   const titleEl = document.getElementById('gameoverTitle')!;
   titleEl.textContent = isVictory ? '🎉 防禦成功！' : '💀 防禦失敗';
   titleEl.className = `gameover-title ${isVictory ? 'victory' : 'defeat'}`;
 
-  document.getElementById('goWaveVal')!.textContent = wave.toString();
-  document.getElementById('goKillVal')!.textContent = killCount.toString();
+  document.getElementById('goWaveVal')!.textContent = gameState.wave.toString();
+  document.getElementById('goKillVal')!.textContent = gameState.killCount.toString();
   document.getElementById('goTalentVal')!.textContent = `+${earned}`;
-  document.getElementById('goDamageVal')!.textContent = totalDamageDealt.toLocaleString();
-  document.getElementById('goStreakVal')!.textContent = maxKillStreak.toString();
+  document.getElementById('goDamageVal')!.textContent = gameState.totalDamageDealt.toLocaleString();
+  document.getElementById('goStreakVal')!.textContent = gameState.maxKillStreak.toString();
 
   switchScene('GAME_OVER');
 }
 
 function checkWaveEnd() {
-  if (enemies.length === 0 && isWaveActive) {
-    isWaveActive = false;
-    currentKillStreak = 0; // 波次間重置連殺計數
+  if (gameState.enemies.length === 0 && gameState.isWaveActive) {
+    gameState.isWaveActive = false;
+    gameState.currentKillStreak = 0; // 波次間重置連殺計數
     showFloat(640, 320, '波次防禦成功！', '#10b981');
-    gold += 15 + wave * 3;
+    gameState.gold += 15 + gameState.wave * 3;
     updateUI();
     // 達到最大波次則勝利 (測試關卡除外)
-    if (currentMap.id !== 'test_level' && wave >= MAX_WAVES) {
+    if (gameState.currentMap.id !== 'test_level' && gameState.wave >= MAX_WAVES) {
       setTimeout(() => endBattle(true), 1500);
     } else {
       // 禁止超過最大波次 (測試關卡除外，可以無限挑戰)
-      btnStartWave.disabled = currentMap.id !== 'test_level' && wave >= MAX_WAVES;
+      getDomRefs().btnStartWave.disabled = gameState.currentMap.id !== 'test_level' && gameState.wave >= MAX_WAVES;
     }
   }
 }
@@ -1764,41 +1440,42 @@ function checkWaveEnd() {
 // ============================================================
 
 function renderGame() {
+  const ctx = getDomRefs().ctx;
   const renderStart = performance.now();
-  drawCallCount = 0;
+  gameState.drawCallCount = 0;
   let bgFillStyle = '#020617';
   let gridStrokeStyle = '#1e293b';
   
-  if (currentTheme === 'chinese') {
+  if (gameState.currentTheme === 'chinese') {
     bgFillStyle = '#2b0909';
     gridStrokeStyle = '#6b1d1d';
-  } else if (currentTheme === 'ink') {
+  } else if (gameState.currentTheme === 'ink') {
     bgFillStyle = '#f8fafc';
     gridStrokeStyle = '#e2e8f0';
-  } else if (currentTheme === 'starry') {
+  } else if (gameState.currentTheme === 'starry') {
     bgFillStyle = '#060a16';
     gridStrokeStyle = '#131e3a';
   }
   
   ctx.fillStyle = bgFillStyle;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, getDomRefs().canvas.width, getDomRefs().canvas.height);
 
   ctx.save();
-  ctx.translate(mapOffsetX, mapOffsetY);
-  ctx.scale(mapScale, mapScale);
+  ctx.translate(gameState.mapOffsetX, gameState.mapOffsetY);
+  ctx.scale(gameState.mapScale, gameState.mapScale);
 
   // 1. 繪製平鋪地板與路徑 Tile (極致原生像素風方案 D)
-  for (let x = 0; x < COLS; x++) {
-    for (let y = 0; y < ROWS; y++) {
+  for (let x = 0; x < gameState.COLS; x++) {
+    for (let y = 0; y < gameState.ROWS; y++) {
       const isPath = cachedPathTiles.has(`${x},${y}`);
-      drawTile(ctx, currentTheme, isPath, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE / 16, x, y);
-      drawCallCount++;
+      drawTile(ctx, gameState.currentTheme, isPath, x * gameState.TILE_SIZE, y * gameState.TILE_SIZE, gameState.TILE_SIZE / 16, x, y);
+      gameState.drawCallCount++;
     }
   }
 
   // 2. 繪製璀璨星空的背景星星 (疊加在星空地板上，微微閃爍)
-  if (currentTheme === 'starry') {
-    for (const star of bgStars) {
+  if (gameState.currentTheme === 'starry') {
+    for (const star of gameState.bgStars) {
       ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
       ctx.beginPath();
       ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
@@ -1808,12 +1485,12 @@ function renderGame() {
 
   // 3. 網格線
   ctx.strokeStyle = gridStrokeStyle; ctx.lineWidth = 0.5;
-  for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x * TILE_SIZE, 0); ctx.lineTo(x * TILE_SIZE, ROWS * TILE_SIZE); ctx.stroke(); }
-  for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * TILE_SIZE); ctx.lineTo(COLS * TILE_SIZE, y * TILE_SIZE); ctx.stroke(); }
+  for (let x = 0; x <= gameState.COLS; x++) { ctx.beginPath(); ctx.moveTo(x * gameState.TILE_SIZE, 0); ctx.lineTo(x * gameState.TILE_SIZE, gameState.ROWS * gameState.TILE_SIZE); ctx.stroke(); }
+  for (let y = 0; y <= gameState.ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * gameState.TILE_SIZE); ctx.lineTo(gameState.COLS * gameState.TILE_SIZE, y * gameState.TILE_SIZE); ctx.stroke(); }
 
   // 4. 繪製常駐的半透明怪物行進路線與方向辨識 (非 MAP_EDITOR 狀態下)
-  if (currentScene === 'BATTLE' && cachedFullPath.length > 0) {
-    const routeScale = TILE_SIZE / 16;
+  if (gameState.currentScene === 'BATTLE' && cachedFullPath.length > 0) {
+    const routeScale = gameState.TILE_SIZE / 16;
     ctx.save();
     ctx.lineWidth = 1.5 * routeScale;
     ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)'; // 非常低調的 25% 透明金黃色
@@ -1821,13 +1498,13 @@ function renderGame() {
     ctx.shadowColor = '#f59e0b';
 
     ctx.beginPath();
-    const startX = cachedFullPath[0].x * TILE_SIZE + TILE_SIZE / 2;
-    const startY = cachedFullPath[0].y * TILE_SIZE + TILE_SIZE / 2;
+    const startX = cachedFullPath[0].x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
+    const startY = cachedFullPath[0].y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
     ctx.moveTo(startX, startY);
 
     for (let i = 1; i < cachedFullPath.length; i++) {
-      const tx = cachedFullPath[i].x * TILE_SIZE + TILE_SIZE / 2;
-      const ty = cachedFullPath[i].y * TILE_SIZE + TILE_SIZE / 2;
+      const tx = cachedFullPath[i].x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
+      const ty = cachedFullPath[i].y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
       ctx.lineTo(tx, ty);
     }
     ctx.stroke();
@@ -1849,10 +1526,10 @@ function renderGame() {
     const animOffset = (Date.now() / 25) % arrowSpacing;
 
     for (let i = 0; i < cachedFullPath.length - 1; i++) {
-      const x1 = cachedFullPath[i].x * TILE_SIZE + TILE_SIZE / 2;
-      const y1 = cachedFullPath[i].y * TILE_SIZE + TILE_SIZE / 2;
-      const x2 = cachedFullPath[i+1].x * TILE_SIZE + TILE_SIZE / 2;
-      const y2 = cachedFullPath[i+1].y * TILE_SIZE + TILE_SIZE / 2;
+      const x1 = cachedFullPath[i].x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
+      const y1 = cachedFullPath[i].y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
+      const x2 = cachedFullPath[i+1].x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
+      const y2 = cachedFullPath[i+1].y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
 
       const dx = x2 - x1;
       const dy = y2 - y1;
@@ -1881,23 +1558,23 @@ function renderGame() {
   }
 
   // 繪製地圖預設地形障礙物
-  for (let x = 0; x < COLS; x++) {
-    for (let y = 0; y < ROWS; y++) {
-      if (grid[x][y] === 2) {
-        drawObstacle(ctx, x * TILE_SIZE, y * TILE_SIZE);
+  for (let x = 0; x < gameState.COLS; x++) {
+    for (let y = 0; y < gameState.ROWS; y++) {
+      if (gameState.grid[x][y] === 2) {
+        drawObstacle(ctx, x * gameState.TILE_SIZE, y * gameState.TILE_SIZE, gameState.currentTheme, gameState.TILE_SIZE);
       }
     }
   }
 
   // 在教學關卡繪製推薦建造位置的高亮提示
-  if (currentMap && currentMap.id === 'tutorial') {
+  if (gameState.currentMap && gameState.currentMap.id === 'tutorial') {
     ctx.save();
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
-    const rx = 58 * TILE_SIZE;
-    const ry = 17 * TILE_SIZE;
-    ctx.strokeRect(rx, ry, TILE_SIZE, TILE_SIZE);
+    const rx = 58 * gameState.TILE_SIZE;
+    const ry = 17 * gameState.TILE_SIZE;
+    ctx.strokeRect(rx, ry, gameState.TILE_SIZE, gameState.TILE_SIZE);
     ctx.fillStyle = '#38bdf8';
     ctx.font = 'bold 9px sans-serif';
     ctx.textAlign = 'left';
@@ -1908,42 +1585,42 @@ function renderGame() {
   // 起點 / 終點
   let spawnColor = '#22c55e';
   let baseColor = '#ef4444';
-  if (currentTheme === 'chinese') {
+  if (gameState.currentTheme === 'chinese') {
     spawnColor = '#fbbf24'; // 帝王金起點
     baseColor = '#dc2626'; // 宮殿紅終點
-  } else if (currentTheme === 'ink') {
+  } else if (gameState.currentTheme === 'ink') {
     spawnColor = '#475569'; // 墨灰起點
     baseColor = '#0f172a'; // 濃墨終點
-  } else if (currentTheme === 'starry') {
+  } else if (gameState.currentTheme === 'starry') {
     spawnColor = '#06b6d4'; // 青色星雲
     baseColor = '#ec4899'; // 粉色超新星
   }
 
   ctx.fillStyle = spawnColor;
-  ctx.fillRect(SPAWN_POINT.x * TILE_SIZE, SPAWN_POINT.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  ctx.fillRect(gameState.SPAWN_POINT.x * gameState.TILE_SIZE, gameState.SPAWN_POINT.y * gameState.TILE_SIZE, gameState.TILE_SIZE, gameState.TILE_SIZE);
   ctx.fillStyle = baseColor;
-  ctx.fillRect(BASE_POINT.x * TILE_SIZE, BASE_POINT.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  ctx.fillRect(gameState.BASE_POINT.x * gameState.TILE_SIZE, gameState.BASE_POINT.y * gameState.TILE_SIZE, gameState.TILE_SIZE, gameState.TILE_SIZE);
 
   // 檢查點
-  WAYPOINTS.forEach((wp, idx) => {
+  gameState.WAYPOINTS.forEach((wp, idx) => {
     ctx.beginPath();
-    const wpScale = TILE_SIZE / 16;
-    ctx.arc(wp.x * TILE_SIZE + TILE_SIZE / 2, wp.y * TILE_SIZE + TILE_SIZE / 2, 10 * wpScale, 0, Math.PI * 2);
+    const wpScale = gameState.TILE_SIZE / 16;
+    ctx.arc(wp.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, wp.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, 10 * wpScale, 0, Math.PI * 2);
     
     let wpBg = '#f59e0b';
     let wpFg = '#fff';
     
-    if (currentTheme === 'chinese') {
+    if (gameState.currentTheme === 'chinese') {
       wpBg = '#ea580c';
-    } else if (currentTheme === 'ink') {
+    } else if (gameState.currentTheme === 'ink') {
       wpBg = '#334155';
-    } else if (currentTheme === 'starry') {
+    } else if (gameState.currentTheme === 'starry') {
       wpBg = '#8b5cf6';
     }
     
     ctx.fillStyle = wpBg; ctx.fill();
     
-    if (currentTheme === 'ink') {
+    if (gameState.currentTheme === 'ink') {
       ctx.strokeStyle = '#0f172a';
       ctx.lineWidth = 1 * wpScale;
       ctx.stroke();
@@ -1951,43 +1628,43 @@ function renderGame() {
     
     ctx.fillStyle = wpFg; ctx.font = `bold ${Math.round(11 * wpScale)}px Outfit, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText((idx + 1).toString(), wp.x * TILE_SIZE + TILE_SIZE / 2, wp.y * TILE_SIZE + TILE_SIZE / 2);
+    ctx.fillText((idx + 1).toString(), wp.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, wp.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2);
   });
 
   // 砲台（使用像素精靈）
-  for (const t of towers) {
-    drawTowerSprite(ctx, t.typeId, t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE / 16, currentStyle, t.cooldown, t.def.fireRate, t.recoilY);
-    drawCallCount++;
+  for (const t of gameState.towers) {
+    drawTowerSprite(ctx, t.typeId, t.x * gameState.TILE_SIZE, t.y * gameState.TILE_SIZE, gameState.TILE_SIZE / 16, gameState.currentStyle, t.cooldown, t.def.fireRate, t.recoilY);
+    gameState.drawCallCount++;
 
     // 合成模式高亮選中的第一座塔
-    if (mergeMode && mergeFirstTower && mergeFirstTower.id === t.id) {
-      ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2 * (TILE_SIZE / 16);
-      ctx.strokeRect(t.x * TILE_SIZE, t.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    if (gameState.mergeMode && gameState.mergeFirstTower && gameState.mergeFirstTower.id === t.id) {
+      ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2 * (gameState.TILE_SIZE / 16);
+      ctx.strokeRect(t.x * gameState.TILE_SIZE, t.y * gameState.TILE_SIZE, gameState.TILE_SIZE, gameState.TILE_SIZE);
     }
   }
 
   // 臨時障礙（靈木塔效果）
-  for (const tw of tempWalls) {
+  for (const tw of gameState.tempWalls) {
     ctx.save();
     const alpha = Math.min(1, tw.lifetime / 60); // 最後 1 秒漸隱
     ctx.globalAlpha = 0.55 * alpha;
     ctx.fillStyle = '#4ade80';
-    ctx.fillRect(tw.x * TILE_SIZE, tw.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    ctx.fillRect(tw.x * gameState.TILE_SIZE, tw.y * gameState.TILE_SIZE, gameState.TILE_SIZE, gameState.TILE_SIZE);
     ctx.globalAlpha = alpha;
-    ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1 * (TILE_SIZE / 16);
-    ctx.strokeRect(tw.x * TILE_SIZE, tw.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-    drawCallCount++;
+    ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1 * (gameState.TILE_SIZE / 16);
+    ctx.strokeRect(tw.x * gameState.TILE_SIZE, tw.y * gameState.TILE_SIZE, gameState.TILE_SIZE, gameState.TILE_SIZE);
+    gameState.drawCallCount++;
     ctx.restore();
   }
 
   // 怪物（使用像素精靈）
-  for (const e of enemies) {
-    drawEnemySprite(ctx, e.type, e.x, e.y, e.hitFlashFrame, TILE_SIZE / 16, currentStyle, e.vx, e.vy, e.squashX, e.squashY);
-    drawCallCount++;
+  for (const e of gameState.enemies) {
+    drawEnemySprite(ctx, e.type, e.x, e.y, e.hitFlashFrame, gameState.TILE_SIZE / 16, gameState.currentStyle, e.vx, e.vy, e.squashX, e.squashY);
+    gameState.drawCallCount++;
 
     // 血條 (依地圖比例縮放)
     const hpPct = e.hp / e.maxHp;
-    const hpScale = TILE_SIZE / 16;
+    const hpScale = gameState.TILE_SIZE / 16;
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(e.x - 8 * hpScale, e.y - 12 * hpScale, 16 * hpScale, 3 * hpScale);
     ctx.fillStyle = e.slowDuration > 0 ? '#06b6d4' : '#10b981';
@@ -2001,8 +1678,8 @@ function renderGame() {
   }
 
   // 子彈
-  for (const b of bullets) {
-    const bScale = TILE_SIZE / 16;
+  for (const b of gameState.bullets) {
+    const bScale = gameState.TILE_SIZE / 16;
     const bulletThemes: Record<string, { core: string; mid: string; glow: string; trail: string; r: number }> = {
       fire: { core: '#fef08a', mid: '#f97316', glow: '#ef4444', trail: '#7f1c1d', r: 5 },
       water: { core: '#ffffff', mid: '#60a5fa', glow: '#2563eb', trail: '#1e3a8a', r: 4 },
@@ -2058,63 +1735,63 @@ function renderGame() {
     ctx.fill();
     ctx.restore();
     
-    drawCallCount++;
+    gameState.drawCallCount++;
   }
 
   // 飄字
-  for (const ft of floatingTexts) {
+  for (const ft of gameState.floatingTexts) {
     ctx.save();
     ctx.globalAlpha = ft.alpha;
-    const fSize = (ft.fontSize || 11) * (TILE_SIZE / 16);
+    const fSize = (ft.fontSize || 11) * (gameState.TILE_SIZE / 16);
     ctx.font = `bold ${fSize}px Outfit, sans-serif`;
     ctx.fillStyle = ft.color;
     ctx.textAlign = 'center';
     ctx.fillText(ft.text, ft.x, ft.y);
-    drawCallCount++;
+    gameState.drawCallCount++;
     ctx.restore();
   }
 
   // 粒子特效 (Phase 4)
-  for (const p of particles) {
+  for (const p of gameState.particles) {
     ctx.save();
     ctx.globalAlpha = p.alpha;
     if (p.isRing) {
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       ctx.strokeStyle = p.color;
-      ctx.lineWidth = 2 * (TILE_SIZE / 16);
-      ctx.shadowBlur = 12 * (TILE_SIZE / 16);
+      ctx.lineWidth = 2 * (gameState.TILE_SIZE / 16);
+      ctx.shadowBlur = 12 * (gameState.TILE_SIZE / 16);
       ctx.shadowColor = p.color;
       ctx.stroke();
-      drawCallCount++;
+      gameState.drawCallCount++;
     } else if (p.isPixel) {
       // 懷舊硬派像素粒子：繪製正方形，不加發光陰影
       ctx.fillStyle = p.color;
       ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-      drawCallCount++;
+      gameState.drawCallCount++;
     } else {
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       ctx.fillStyle = p.color;
-      ctx.shadowBlur = 4 * (TILE_SIZE / 16);
+      ctx.shadowBlur = 4 * (gameState.TILE_SIZE / 16);
       ctx.shadowColor = p.color;
       ctx.fill();
-      drawCallCount++;
+      gameState.drawCallCount++;
     }
     ctx.restore();
   }
 
-  if (routePreviewTimer > 0) {
-    drawRoutePreview();
+  if (gameState.routePreviewTimer > 0) {
+    drawRoutePreview(ctx, gameState.cachedPreviewRoute, gameState.TILE_SIZE, gameState.routePreviewTimer);
   }
 
   ctx.restore(); // 結束地圖相關縮放與平移 (Phase 4)
 
   // === 繪製天氣特效 Overlay ===
-  if (currentWeather === 'rain' || currentWeather === 'thunder') {
+  if (gameState.currentWeather === 'rain' || gameState.currentWeather === 'thunder') {
     ctx.save();
     ctx.strokeStyle = 'rgba(156, 163, 175, 0.4)';
-    for (const p of weatherParticles) {
+    for (const p of gameState.weatherParticles) {
       ctx.lineWidth = p.size;
       ctx.beginPath();
       ctx.moveTo(p.x, p.y);
@@ -2122,9 +1799,9 @@ function renderGame() {
       ctx.stroke();
     }
     ctx.restore();
-  } else if (currentWeather === 'fog') {
+  } else if (gameState.currentWeather === 'fog') {
     ctx.save();
-    for (const p of weatherParticles) {
+    for (const p of gameState.weatherParticles) {
       const radGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
       radGrad.addColorStop(0, `rgba(226, 232, 240, ${p.alpha})`);
       radGrad.addColorStop(0.5, `rgba(226, 232, 240, ${p.alpha * 0.5})`);
@@ -2138,11 +1815,11 @@ function renderGame() {
   }
 
   // 繪製雷電效果
-  if (currentWeather === 'thunder' && lightningActive > 0) {
+  if (gameState.currentWeather === 'thunder' && gameState.lightningActive > 0) {
     ctx.save();
     if (Math.random() < 0.7) {
       ctx.fillStyle = `rgba(255, 255, 255, ${0.15 + Math.random() * 0.25})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, getDomRefs().canvas.width, getDomRefs().canvas.height);
     }
 
     ctx.strokeStyle = 'rgba(224, 242, 254, 0.9)';
@@ -2150,7 +1827,7 @@ function renderGame() {
     ctx.shadowColor = '#e0f2fe';
     ctx.lineWidth = 2.5 + Math.random() * 2;
     
-    for (const path of lightningPaths) {
+    for (const path of gameState.lightningPaths) {
       if (path.length > 0) {
         ctx.beginPath();
         ctx.moveTo(path[0].x, path[0].y);
@@ -2164,334 +1841,76 @@ function renderGame() {
   }
 
   // 繪製阻塞警告文字（固定在畫布中心，不受平移和縮放影響）
-  if (routePreviewTimer > 0 && cachedPreviewRoute.length === 0) {
+  if (gameState.routePreviewTimer > 0 && gameState.cachedPreviewRoute.length === 0) {
     ctx.save();
     ctx.fillStyle = '#ef4444';
     ctx.font = 'bold 16px Outfit, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('⚠️ 路線被完全阻塞！無法通往基地', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('⚠️ 路線被完全阻塞！無法通往基地', getDomRefs().canvas.width / 2, getDomRefs().canvas.height / 2);
     ctx.restore();
   }
 
   // 性能監控指標更新
   const latency = performance.now() - renderStart;
-  frameCount++;
+  gameState.frameCount++;
   const now = performance.now();
-  if (now - lastFpsUpdateTime > 1000) {
-    currentFps = Math.round((frameCount * 1000) / (now - lastFpsUpdateTime));
-    frameCount = 0;
-    lastFpsUpdateTime = now;
+  if (now - gameState.lastFpsUpdateTime > 1000) {
+    gameState.currentFps = Math.round((gameState.frameCount * 1000) / (now - gameState.lastFpsUpdateTime));
+    gameState.frameCount = 0;
+    gameState.lastFpsUpdateTime = now;
   }
 
-  if (isDiagnosticOpen) {
-    diagFps.textContent = currentFps.toString();
-    diagLatency.textContent = latency.toFixed(1) + ' ms';
-    diagDrawCalls.textContent = drawCallCount.toString();
-    diagCacheSize.textContent = spriteCache.size.toString();
-    diagMonsters.textContent = enemies.length.toString();
-    diagTowers.textContent = towers.length.toString();
-    diagFilterWarning.textContent = '0'; // 所有主渲染濾鏡已完全移除快取化，調用次數為 0
+  if (gameState.isDiagnosticOpen) {
+    getDomRefs().diagFps.textContent = gameState.currentFps.toString();
+    getDomRefs().diagLatency.textContent = latency.toFixed(1) + ' ms';
+    getDomRefs().diagDrawCalls.textContent = gameState.drawCallCount.toString();
+    getDomRefs().diagCacheSize.textContent = spriteCache.size.toString();
+    getDomRefs().diagMonsters.textContent = gameState.enemies.length.toString();
+    getDomRefs().diagTowers.textContent = gameState.towers.length.toString();
+    getDomRefs().diagFilterWarning.textContent = '0'; // 所有主渲染濾鏡已完全移除快取化，調用次數為 0
   }
-}
-
-// ============================================================
-// 粒子特效輔助函數 (Phase 4)
-// ============================================================
-
-function createSplatterParticles(x: number, y: number, color: string, count: number = 4) {
-  const pScale = TILE_SIZE / 16;
-  for (let i = 0; i < count; i++) {
-    const vx = (Math.random() - 0.5) * 3 * pScale;
-    const vy = (-1.5 - Math.random() * 2.5) * pScale;
-    particles.push({
-      x, y,
-      vx, vy,
-      color,
-      alpha: 1.0,
-      size: (1.5 + Math.random() * 2) * pScale,
-      life: 0,
-      maxLife: 20 + Math.floor(Math.random() * 15),
-      gravity: 0.18 * pScale,
-      isPixel: true,
-      dragMultiplier: 0.98
-    });
-  }
-}
-
-function createHitParticles(x: number, y: number, color: string) {
-  const pScale = TILE_SIZE / 16;
-  const count = 8 + Math.floor(Math.random() * 5);
-  for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = (1 + Math.random() * 3) * pScale;
-    particles.push({
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      color,
-      alpha: 1.0,
-      size: (2 + Math.random() * 3) * pScale,
-      life: 0,
-      maxLife: 20 + Math.floor(Math.random() * 15)
-    });
-  }
-}
-
-function createDeathParticles(x: number, y: number, color: string) {
-  const pScale = TILE_SIZE / 16;
-  const count = 15 + Math.floor(Math.random() * 10);
-  for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = (1.5 + Math.random() * 4) * pScale;
-    particles.push({
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      color,
-      alpha: 1.0,
-      size: (3 + Math.random() * 4) * pScale,
-      life: 0,
-      maxLife: 30 + Math.floor(Math.random() * 20)
-    });
-  }
-  // 額外生成一圈元素色環狀死亡衝擊波
-  particles.push({
-    x, y,
-    vx: 0, vy: 0,
-    color,
-    alpha: 1.0,
-    size: 4 * pScale,
-    life: 0,
-    maxLife: 35,
-    isRing: true,
-    maxRadius: 60 * pScale
-  });
-}
-
-function createMergeParticles(x: number, y: number) {
-  const pScale = TILE_SIZE / 16;
-  const count = 36;
-  const radius = 8 * pScale;
-  for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2;
-    const speed = 1.8 * pScale;
-    particles.push({
-      x: x + Math.cos(angle) * radius,
-      y: y + Math.sin(angle) * radius,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      color: '#c084fc',
-      alpha: 1.0,
-      size: 3 * pScale,
-      life: 0,
-      maxLife: 40
-    });
-  }
-}
-
-function updateParticles() {
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.life++;
-    if (p.life >= p.maxLife) {
-      particles.splice(i, 1);
-      continue;
-    }
-    
-    if (p.isRing) {
-      p.size += (p.maxRadius! - p.size) * 0.15;
-    } else {
-      if (p.gravity !== undefined) {
-        p.vy += p.gravity;
-      }
-      p.x += p.vx;
-      p.y += p.vy;
-      const drag = p.dragMultiplier !== undefined ? p.dragMultiplier : 0.95;
-      p.vx *= drag;
-      p.vy *= drag;
-    }
-    
-    p.alpha = 1.0 - p.life / p.maxLife;
-  }
-}
-
-function drawObstacle(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  ctx.save();
-  if (currentTheme === 'scifi') {
-    // 藍色高科技合金柱
-    ctx.fillStyle = '#1e293b';
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 1.5;
-    ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-    ctx.strokeRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-    ctx.fillStyle = '#06b6d4';
-    ctx.fillRect(x + 6, y + 6, TILE_SIZE - 12, TILE_SIZE - 12);
-  } else if (currentTheme === 'chinese') {
-    // 古風暗紅色石墩
-    ctx.fillStyle = '#7f1d1d';
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 1;
-    ctx.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
-    ctx.strokeRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-    ctx.beginPath();
-    ctx.moveTo(x + TILE_SIZE / 2, y + 2);
-    ctx.lineTo(x + TILE_SIZE / 2, y + TILE_SIZE - 2);
-    ctx.moveTo(x + 2, y + TILE_SIZE / 2);
-    ctx.lineTo(x + TILE_SIZE - 2, y + TILE_SIZE / 2);
-    ctx.stroke();
-  } else if (currentTheme === 'ink') {
-    // 濃墨山石
-    ctx.fillStyle = '#475569';
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE / 2 - 1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  } else if (currentTheme === 'starry') {
-    // 紫色晶體隕石
-    ctx.fillStyle = '#4c1d95';
-    ctx.strokeStyle = '#c084fc';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(x + 8, y + 1);
-    ctx.lineTo(x + 15, y + 6);
-    ctx.lineTo(x + 13, y + 14);
-    ctx.lineTo(x + 3, y + 14);
-    ctx.lineTo(x + 1, y + 6);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function drawRoutePreview() {
-  if (cachedPreviewRoute.length === 0) {
-    return;
-  }
-
-  const routeScale = TILE_SIZE / 16;
-  ctx.save();
-  
-  // 設定高對比度、與 Sci-Fi 藍色障礙物對比強烈的霓虹金黃/橘黃色路線
-  ctx.lineWidth = 4 * routeScale;
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.75)'; // 橘黃色半透明
-  ctx.shadowBlur = 8 * routeScale;
-  ctx.shadowColor = '#f59e0b'; // 黃金霓虹光
-
-  if (routePreviewTimer < 60) {
-    ctx.globalAlpha = routePreviewTimer / 60;
-  } else {
-    ctx.globalAlpha = 1.0;
-  }
-
-  // 1. 繪製路徑底線
-  ctx.beginPath();
-  const startX = cachedPreviewRoute[0].x * TILE_SIZE + TILE_SIZE / 2;
-  const startY = cachedPreviewRoute[0].y * TILE_SIZE + TILE_SIZE / 2;
-  ctx.moveTo(startX, startY);
-
-  for (let i = 1; i < cachedPreviewRoute.length; i++) {
-    const tx = cachedPreviewRoute[i].x * TILE_SIZE + TILE_SIZE / 2;
-    const ty = cachedPreviewRoute[i].y * TILE_SIZE + TILE_SIZE / 2;
-    ctx.lineTo(tx, ty);
-  }
-  ctx.stroke();
-
-  // 2. 繪製黃金流動虛線 (流動方向與怪物前進方向一致)
-  ctx.lineWidth = 2 * routeScale;
-  ctx.strokeStyle = '#ffffff';
-  ctx.setLineDash([6 * routeScale, 12 * routeScale]);
-  ctx.lineDashOffset = -(Date.now() / 15) * routeScale;
-  ctx.stroke();
-
-  // 3. 繪製沿著路徑前進的方向箭頭 (Direction Indicators)
-  ctx.fillStyle = '#ffffff';
-  ctx.shadowBlur = 4 * routeScale;
-  ctx.shadowColor = '#fbbf24'; // 亮金色 shadow
-
-  const arrowSpacing = 48 * routeScale; // 箭頭間距
-  const arrowSize = 4 * routeScale; // 箭頭大小
-  const animOffset = (Date.now() / 15) % arrowSpacing; // 箭頭隨時間向前移動
-
-  for (let i = 0; i < cachedPreviewRoute.length - 1; i++) {
-    const x1 = cachedPreviewRoute[i].x * TILE_SIZE + TILE_SIZE / 2;
-    const y1 = cachedPreviewRoute[i].y * TILE_SIZE + TILE_SIZE / 2;
-    const x2 = cachedPreviewRoute[i+1].x * TILE_SIZE + TILE_SIZE / 2;
-    const y2 = cachedPreviewRoute[i+1].y * TILE_SIZE + TILE_SIZE / 2;
-
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    if (len === 0) continue;
-
-    const ux = dx / len;
-    const uy = dy / len;
-
-    // 在當前路徑段上繪製多個方向箭頭
-    let dist = animOffset;
-    while (dist < len) {
-      const ax = x1 + ux * dist;
-      const ay = y1 + uy * dist;
-
-      // 繪製指向 (ux, uy) 方向的箭頭三角形
-      ctx.beginPath();
-      // 前端點 (指向方向)
-      ctx.moveTo(ax + ux * arrowSize * 1.5, ay + uy * arrowSize * 1.5);
-      // 後左端點
-      ctx.lineTo(ax - ux * arrowSize + uy * arrowSize * 0.8, ay - uy * arrowSize - ux * arrowSize * 0.8);
-      // 後右端點
-      ctx.lineTo(ax - ux * arrowSize - uy * arrowSize * 0.8, ay - uy * arrowSize + ux * arrowSize * 0.8);
-      ctx.closePath();
-      ctx.fill();
-
-      dist += arrowSpacing;
-    }
-  }
-
-  ctx.restore();
 }
 
 function showFloat(x: number, y: number, text: string, color: string, fontSize?: number) {
-  floatingTexts.push({ x, y, text, color, alpha: 1.0, life: 45, fontSize });
+  gameState.floatingTexts.push({ x, y, text, color, alpha: 1.0, life: 45, fontSize });
 }
 
 function updateUI() {
-  hpVal.textContent = currentMap.id === 'test_level' ? '∞' : Math.floor(hp).toString();
-  goldVal.textContent = currentMap.id === 'test_level' ? '∞' : gold.toString();
-  waveVal.textContent = wave.toString();
-  killVal.textContent = killCount.toString();
-  btnStartWave.disabled = isWaveActive || (currentMap.id !== 'test_level' && wave >= MAX_WAVES);
+  getDomRefs().hpVal.textContent = gameState.currentMap.id === 'test_level' ? '∞' : Math.floor(gameState.hp).toString();
+  getDomRefs().goldVal.textContent = gameState.currentMap.id === 'test_level' ? '∞' : gameState.gold.toString();
+  getDomRefs().waveVal.textContent = gameState.wave.toString();
+  getDomRefs().killVal.textContent = gameState.killCount.toString();
+  getDomRefs().btnStartWave.disabled = gameState.isWaveActive || (gameState.currentMap.id !== 'test_level' && gameState.wave >= MAX_WAVES);
   updateWaveProgress();
 
   const testControls = document.getElementById('testControls');
   if (testControls) {
-    testControls.style.display = currentMap.id === 'test_level' ? 'flex' : 'none';
+    testControls.style.display = gameState.currentMap.id === 'test_level' ? 'flex' : 'none';
   }
 }
 
 function updateWaveProgress() {
-  if (!isWaveActive) {
-    waveProgressLabel.textContent = '待機中';
-    waveEnemyCount.textContent = '';
-    waveProgressFill.style.width = '0%';
-    waveProgressFill.classList.add('idle');
+  if (!gameState.isWaveActive) {
+    getDomRefs().waveProgressLabel.textContent = '待機中';
+    getDomRefs().waveEnemyCount.textContent = '';
+    getDomRefs().waveProgressFill.style.width = '0%';
+    getDomRefs().waveProgressFill.classList.add('idle');
     return;
   }
-  waveProgressFill.classList.remove('idle');
-  const alive = enemies.length;
-  // remaining = 已生成中還活著的 + 尚未生成的 (waveTotal - waveSpawned)
-  const remaining = alive + Math.max(0, waveTotal - waveSpawned);
-  const pct = waveTotal > 0 ? (1 - remaining / waveTotal) * 100 : 100;
-  waveProgressFill.style.width = `${Math.min(100, pct)}%`;
-  waveProgressLabel.textContent = `波次 ${wave} 進行中`;
-  waveEnemyCount.textContent = remaining > 0 ? `剩餘 ${remaining} 隻` : '即將結束...';
+  getDomRefs().waveProgressFill.classList.remove('idle');
+  const alive = gameState.enemies.length;
+  // remaining = 已生成中還活著的 + 尚未生成的 (gameState.waveTotal - gameState.waveSpawned)
+  const remaining = alive + Math.max(0, gameState.waveTotal - gameState.waveSpawned);
+  const pct = gameState.waveTotal > 0 ? (1 - remaining / gameState.waveTotal) * 100 : 100;
+  getDomRefs().waveProgressFill.style.width = `${Math.min(100, pct)}%`;
+  getDomRefs().waveProgressLabel.textContent = `波次 ${gameState.wave} 進行中`;
+  getDomRefs().waveEnemyCount.textContent = remaining > 0 ? `剩餘 ${remaining} 隻` : '即將結束...';
 }
 
 // ============================================================
 // 11. 事件綁定與初始化
 // ============================================================
+
 
 // 主介面按鈕
 document.getElementById('btnStartGame')!.addEventListener('click', () => { playSFX('click'); switchScene('LEVEL_SELECT'); });
@@ -2501,55 +1920,55 @@ document.getElementById('btnBackFromTalent')!.addEventListener('click', () => { 
 document.getElementById('btnBackToMenu')!.addEventListener('click', () => { playSFX('click'); switchScene('MAIN_MENU'); });
 document.getElementById('btnResetTalents')!.addEventListener('click', () => {
   if (confirm('確定要重置所有天賦嗎？已花費的天賦點將全部退回。')) {
-    resetTalents(talentData);
+    resetTalents(gameState.talentData);
     renderTalentScreen();
   }
 });
 
 // 戰鬥場景按鈕
-btnMerge.addEventListener('click', () => {
+getDomRefs().btnMerge.addEventListener('click', () => {
   playSFX('click');
-  mergeMode = !mergeMode;
-  mergeFirstTower = null;
-  if (mergeMode) selectedTool = '';
+  gameState.mergeMode = !gameState.mergeMode;
+  gameState.mergeFirstTower = null;
+  if (gameState.mergeMode) gameState.selectedTool = '';
   refreshToolSelection();
 });
-btnSell.addEventListener('click', () => {
+getDomRefs().btnSell.addEventListener('click', () => {
   playSFX('click');
-  mergeMode = false; mergeFirstTower = null;
-  selectedTool = 'sell';
+  gameState.mergeMode = false; gameState.mergeFirstTower = null;
+  gameState.selectedTool = 'sell';
   refreshToolSelection();
 });
-btnQuitBattle.addEventListener('click', () => {
+getDomRefs().btnQuitBattle.addEventListener('click', () => {
   playSFX('click');
   if (confirm('確定放棄本局嗎？將進行天賦結算。')) {
     endBattle(false);
   }
 });
 
-btnDiagnostics.addEventListener('click', () => {
+getDomRefs().btnDiagnostics.addEventListener('click', () => {
   playSFX('click');
-  isDiagnosticOpen = !isDiagnosticOpen;
-  (diagnosticPanel as HTMLElement).style.display = isDiagnosticOpen ? 'block' : 'none';
-  btnDiagnostics.classList.toggle('active', isDiagnosticOpen);
+  gameState.isDiagnosticOpen = !gameState.isDiagnosticOpen;
+  (getDomRefs().diagnosticPanel as HTMLElement).style.display = gameState.isDiagnosticOpen ? 'block' : 'none';
+  getDomRefs().btnDiagnostics.classList.toggle('active', gameState.isDiagnosticOpen);
 });
 
-btnDiagExport.addEventListener('click', () => {
+getDomRefs().btnDiagExport.addEventListener('click', () => {
   playSFX('click');
   const cacheKeys = Array.from(spriteCache.keys());
   const report = {
     timestamp: new Date().toISOString(),
-    fps: currentFps,
-    monstersCount: enemies.length,
-    towersCount: towers.length,
-    bulletsCount: bullets.length,
-    particlesCount: particles.length,
-    drawCalls: drawCallCount,
+    fps: gameState.currentFps,
+    monstersCount: gameState.enemies.length,
+    towersCount: gameState.towers.length,
+    bulletsCount: gameState.bullets.length,
+    particlesCount: gameState.particles.length,
+    drawCalls: gameState.drawCallCount,
     spriteCacheSize: spriteCache.size,
     spriteCacheKeys: cacheKeys,
-    userGold: gold,
-    userHP: hp,
-    currentWave: wave,
+    userGold: gameState.gold,
+    userHP: gameState.hp,
+    currentWave: gameState.wave,
     talentSaveData: loadTalentData(),
     devicePixelRatio: window.devicePixelRatio,
     browserAgent: navigator.userAgent
@@ -2573,9 +1992,9 @@ btnDiagExport.addEventListener('click', () => {
   console.log('%cComplete Raw Profile Data:', 'color: #10b981; font-weight: bold;', report);
   console.groupEnd();
 
-  floatingTexts.push({
-    x: canvas.width / 2,
-    y: canvas.height / 2 - 40,
+  gameState.floatingTexts.push({
+    x: getDomRefs().canvas.width / 2,
+    y: getDomRefs().canvas.height / 2 - 40,
     text: '📋 性能診斷報告已導出至 Console (F12)！',
     color: '#fbbf24',
     alpha: 1.0,
@@ -2584,15 +2003,15 @@ btnDiagExport.addEventListener('click', () => {
   });
 });
 
-btnShowRoute.addEventListener('click', () => {
+getDomRefs().btnShowRoute.addEventListener('click', () => {
   playSFX('click');
   let fullPath: Point[] = [];
-  let currentStart = SPAWN_POINT;
-  const targets = [...WAYPOINTS, BASE_POINT];
+  let currentStart = gameState.SPAWN_POINT;
+  const targets = [...gameState.WAYPOINTS, gameState.BASE_POINT];
   let blocked = false;
   
   for (const target of targets) {
-    const segment = astarFind(currentStart, target, false);
+    const segment = astarFind(currentStart, target, gameState.grid, gameState.COLS, gameState.ROWS, false);
     if (segment) {
       if (fullPath.length > 0) {
         fullPath = fullPath.concat(segment.slice(1));
@@ -2607,36 +2026,38 @@ btnShowRoute.addEventListener('click', () => {
   }
 
   if (blocked) {
-    cachedPreviewRoute = [];
+    gameState.cachedPreviewRoute = [];
   } else {
-    cachedPreviewRoute = fullPath;
+    gameState.cachedPreviewRoute = fullPath;
   }
-  routePreviewTimer = 180; // 3 秒
+  gameState.routePreviewTimer = 180; // 3 秒
 });
 
-selectTheme.addEventListener('change', () => {
-  currentTheme = selectTheme.value as ThemeId;
+getDomRefs().selectTheme.addEventListener('change', () => {
+  gameState.currentTheme = getDomRefs().selectTheme.value as ThemeId;
   playSFX('click');
 });
 
-selectWeather.addEventListener('change', () => {
-  currentWeather = selectWeather.value as WeatherId;
+getDomRefs().selectWeather.addEventListener('change', () => {
+  gameState.currentWeather = getDomRefs().selectWeather.value as WeatherId;
   playSFX('click');
-  if (currentWeather === 'thunder') {
-    lightningTimer = 60 + Math.random() * 120;
+  if (gameState.currentWeather === 'thunder') {
+    gameState.lightningTimer = 60 + Math.random() * 120;
   }
 });
 
-selectStyle.addEventListener('change', () => {
-  currentStyle = selectStyle.value as 'pixel' | 'highres';
+getDomRefs().selectStyle.addEventListener('change', () => {
+  gameState.currentStyle = getDomRefs().selectStyle.value as 'pixel' | 'highres';
   playSFX('click');
 });
 
 // 初始化
-talentData = loadTalentData();
+gameState.talentData = loadTalentData();
 initSprites();
 loadAllHighResSprites();
 refreshMenuTalentInfo();
+initBgmUnlocker();
+setupMusicToggle();
 
 /** 批量載入所有防禦塔與怪物的高品質 SD 精靈圖 */
 function loadAllHighResSprites(): void {
@@ -2737,7 +2158,7 @@ function resizeGameContainer() {
 
   const baseWidth = 1304; // 1280px + padding + border
   // 測試關卡因為有額外的測試工具面板，高度會比較高，給予較大的 baseHeight
-  const isTest = typeof currentMap !== 'undefined' && currentMap && currentMap.id === 'test_level';
+  const isTest = typeof gameState.currentMap !== 'undefined' && gameState.currentMap && gameState.currentMap.id === 'test_level';
   const baseHeight = isTest ? 830 : 780; 
 
   const padding = 12; // 留點邊距緩衝
@@ -2769,48 +2190,48 @@ window.addEventListener('resize', resizeGameContainer);
 
 // 滑鼠/觸控拖曳平移與縮放實現
 function handlePointerDown(clientX: number, clientY: number) {
-  isPointerDown = true;
-  startPointerX = clientX;
-  startPointerY = clientY;
-  isDraggingMap = false;
+  gameState.isPointerDown = true;
+  gameState.startPointerX = clientX;
+  gameState.startPointerY = clientY;
+  gameState.isDraggingMap = false;
 }
 
 function handlePointerMove(clientX: number, clientY: number) {
-  if (!isPointerDown) return;
-  const dx = clientX - startPointerX;
-  const dy = clientY - startPointerY;
+  if (!gameState.isPointerDown) return;
+  const dx = clientX - gameState.startPointerX;
+  const dy = clientY - gameState.startPointerY;
 
-  if (!isDraggingMap && (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold)) {
-    isDraggingMap = true;
+  if (!gameState.isDraggingMap && (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold)) {
+    gameState.isDraggingMap = true;
   }
 
-  if (isDraggingMap) {
-    mapOffsetX += dx;
-    mapOffsetY += dy;
+  if (gameState.isDraggingMap) {
+    gameState.mapOffsetX += dx;
+    gameState.mapOffsetY += dy;
 
     // 限制拖曳邊界，避免完全拖出視野
-    const limitX = canvas.width * mapScale - canvas.width;
-    const limitY = canvas.height * mapScale - canvas.height;
-    mapOffsetX = Math.max(-limitX - 100, Math.min(100, mapOffsetX));
-    mapOffsetY = Math.max(-limitY - 100, Math.min(100, mapOffsetY));
+    const limitX = getDomRefs().canvas.width * gameState.mapScale - getDomRefs().canvas.width;
+    const limitY = getDomRefs().canvas.height * gameState.mapScale - getDomRefs().canvas.height;
+    gameState.mapOffsetX = Math.max(-limitX - 100, Math.min(100, gameState.mapOffsetX));
+    gameState.mapOffsetY = Math.max(-limitY - 100, Math.min(100, gameState.mapOffsetY));
 
-    startPointerX = clientX;
-    startPointerY = clientY;
+    gameState.startPointerX = clientX;
+    gameState.startPointerY = clientY;
   }
 }
 
 function handlePointerUp() {
-  isPointerDown = false;
+  gameState.isPointerDown = false;
 }
 
 // 註冊滑鼠事件
-canvas.addEventListener('mousedown', (e) => {
+getDomRefs().canvas.addEventListener('mousedown', (e) => {
   if (e.button === 0) { // 左鍵
     handlePointerDown(e.clientX, e.clientY);
   }
 });
 
-canvas.addEventListener('mousemove', (e) => {
+getDomRefs().canvas.addEventListener('mousemove', (e) => {
   handlePointerMove(e.clientX, e.clientY);
 });
 
@@ -2819,21 +2240,21 @@ window.addEventListener('mouseup', () => {
 });
 
 // 註冊觸控事件（包含雙指捏合縮放）
-canvas.addEventListener('touchstart', (e) => {
-  if (currentScene !== 'BATTLE') return;
+getDomRefs().canvas.addEventListener('touchstart', (e) => {
+  if (gameState.currentScene !== 'BATTLE') return;
   if (e.touches.length === 1) {
     handlePointerDown(e.touches[0].clientX, e.touches[0].clientY);
   } else if (e.touches.length === 2) {
-    isPointerDown = false;
-    isDraggingMap = true; // 雙指操作時禁止下塔
+    gameState.isPointerDown = false;
+    gameState.isDraggingMap = true; // 雙指操作時禁止下塔
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
-    lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+    gameState.lastTouchDist = Math.sqrt(dx * dx + dy * dy);
   }
 }, { passive: true });
 
-canvas.addEventListener('touchmove', (e) => {
-  if (currentScene !== 'BATTLE') return;
+getDomRefs().canvas.addEventListener('touchmove', (e) => {
+  if (gameState.currentScene !== 'BATTLE') return;
   if (e.touches.length === 1) {
     handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
   } else if (e.touches.length === 2) {
@@ -2841,191 +2262,46 @@ canvas.addEventListener('touchmove', (e) => {
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (lastTouchDist > 0) {
-      const factor = dist / lastTouchDist;
-      const newScale = Math.max(0.5, Math.min(3.0, mapScale * factor));
+    if (gameState.lastTouchDist > 0) {
+      const factor = dist / gameState.lastTouchDist;
+      const newScale = Math.max(0.5, Math.min(3.0, gameState.mapScale * factor));
 
-      const rect = canvas.getBoundingClientRect();
+      const rect = getDomRefs().canvas.getBoundingClientRect();
       const rawCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
       const rawCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
-      const centerX = rawCenterX * (canvas.width / rect.width);
-      const centerY = rawCenterY * (canvas.height / rect.height);
+      const centerX = rawCenterX * (getDomRefs().canvas.width / rect.width);
+      const centerY = rawCenterY * (getDomRefs().canvas.height / rect.height);
 
-      const worldX = (centerX - mapOffsetX) / mapScale;
-      const worldY = (centerY - mapOffsetY) / mapScale;
+      const worldX = (centerX - gameState.mapOffsetX) / gameState.mapScale;
+      const worldY = (centerY - gameState.mapOffsetY) / gameState.mapScale;
 
-      mapScale = newScale;
-      mapOffsetX = centerX - worldX * mapScale;
-      mapOffsetY = centerY - worldY * mapScale;
+      gameState.mapScale = newScale;
+      gameState.mapOffsetX = centerX - worldX * gameState.mapScale;
+      gameState.mapOffsetY = centerY - worldY * gameState.mapScale;
     }
-    lastTouchDist = dist;
+    gameState.lastTouchDist = dist;
   }
 }, { passive: true });
 
-canvas.addEventListener('touchend', () => {
+getDomRefs().canvas.addEventListener('touchend', () => {
   handlePointerUp();
-  lastTouchDist = 0;
+  gameState.lastTouchDist = 0;
 });
 
-canvas.addEventListener('wheel', (e) => {
-  if (currentScene !== 'BATTLE') return;
+getDomRefs().canvas.addEventListener('wheel', (e) => {
+  if (gameState.currentScene !== 'BATTLE') return;
   e.preventDefault();
-  const rect = canvas.getBoundingClientRect();
-  const centerX = (e.clientX - rect.left) * (canvas.width / rect.width);
-  const centerY = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const rect = getDomRefs().canvas.getBoundingClientRect();
+  const centerX = (e.clientX - rect.left) * (getDomRefs().canvas.width / rect.width);
+  const centerY = (e.clientY - rect.top) * (getDomRefs().canvas.height / rect.height);
   const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-  const newScale = Math.max(0.5, Math.min(3.0, mapScale * factor));
-  const worldX = (centerX - mapOffsetX) / mapScale;
-  const worldY = (centerY - mapOffsetY) / mapScale;
-  mapScale = newScale;
-  mapOffsetX = centerX - worldX * mapScale;
-  mapOffsetY = centerY - worldY * mapScale;
+  const newScale = Math.max(0.5, Math.min(3.0, gameState.mapScale * factor));
+  const worldX = (centerX - gameState.mapOffsetX) / gameState.mapScale;
+  const worldY = (centerY - gameState.mapOffsetY) / gameState.mapScale;
+  gameState.mapScale = newScale;
+  gameState.mapOffsetX = centerX - worldX * gameState.mapScale;
+  gameState.mapOffsetY = centerY - worldY * gameState.mapScale;
 }, { passive: false });
-
-// ============================================================
-// 12. 遊戲音效與播控系統 (Phase 4)
-// ============================================================
-
-const sfxAssets: Record<string, HTMLAudioElement[]> = {};
-const MAX_POOL_SIZE = 10; // 每種音效最多 10 個實例
-const sfxPaths: Record<string, string> = {
-  click: 'assets/audio/click.mp3',
-  shoot: 'assets/audio/shoot.mp3',
-  enemy_death: 'assets/audio/enemy_death.mp3',
-  merge_success: 'assets/audio/merge_success.mp3'
-};
-
-function initSFX() {
-  // 預先初始化每種音效的播放池 (池中先放 2 個，後續依需生成)
-  for (const [key, path] of Object.entries(sfxPaths)) {
-    sfxAssets[key] = [];
-    for (let i = 0; i < 2; i++) {
-      const audio = new Audio(path);
-      audio.preload = 'auto';
-      sfxAssets[key].push(audio);
-    }
-  }
-}
-
-function playSFX(type: 'click' | 'shoot' | 'enemy_death' | 'merge_success') {
-  if (!isMusicEnabled) return; // 與靜音開關連動
-  
-  const pool = sfxAssets[type];
-  if (!pool) return;
-  
-  // 1. 尋找池中閒置的 HTMLAudioElement
-  let audioToPlay = pool.find(audio => audio.paused || audio.ended);
-  
-  // 2. 如果都正在播放，且池的大小還沒到上限，則新建一個加入池中
-  if (!audioToPlay && pool.length < MAX_POOL_SIZE) {
-    audioToPlay = new Audio(sfxPaths[type]);
-    audioToPlay.preload = 'auto';
-    pool.push(audioToPlay);
-  }
-  
-  // 3. 如果池已滿，則強制複用最舊（第一個）的 HTMLAudioElement
-  if (!audioToPlay) {
-    audioToPlay = pool[0];
-    audioToPlay.pause();
-  }
-  
-  // 4. 播放音效
-  audioToPlay.volume = type === 'shoot' ? 0.2 : 0.45;
-  audioToPlay.currentTime = 0;
-  audioToPlay.play().catch(() => {
-    // 默默捕獲錯誤，防止資源不存在或瀏覽器安全策略導致中斷
-  });
-}
-
-// ============================================================
-// 13. 背景音樂輪播與控制 (Phase 4)
-// ============================================================
-
-let bgmErrorCount = 0; // 全域變數，紀錄連續 BGM 錯誤次數
-
-function playNextBGM() {
-  if (!isMusicEnabled) return;
-  stopBGM();
-
-  const track = BGM_PLAYLIST[currentBgmIndex];
-  bgmAudio = new Audio(track);
-  bgmAudio.volume = 0.35; // 35% 音量
-
-  // 防禦性加載錯誤處理：當前音軌不存在時，自動安全切換至下一首，防止死循環報錯
-  bgmAudio.addEventListener('error', () => {
-    console.warn(`[BGM] 載入音樂失敗: ${track}。嘗試播放下一首。`);
-    stopBGM();
-    bgmErrorCount++;
-    if (bgmErrorCount >= BGM_PLAYLIST.length) {
-      console.error('[BGM] 所有背景音樂皆無法加載，停止背景音樂播放系統。');
-      return; 
-    }
-    currentBgmIndex = (currentBgmIndex + 1) % BGM_PLAYLIST.length;
-    playNextBGM();
-  });
-
-  bgmAudio.addEventListener('canplaythrough', () => {
-    bgmErrorCount = 0; // 成功加載後重置錯誤計數
-  }, { once: true });
-
-  bgmAudio.addEventListener('ended', () => {
-    // 播放結束後，間隔 5 秒播放下一首
-    currentBgmIndex = (currentBgmIndex + 1) % BGM_PLAYLIST.length;
-    bgmTimeoutId = setTimeout(() => {
-      playNextBGM();
-    }, 5000); // 5000 毫秒 = 5 秒
-  });
-
-  bgmAudio.play().catch((err) => {
-    console.warn('[BGM] 自動播放被瀏覽器阻擋，等待玩家點擊解鎖：', err);
-  });
-}
-
-function stopBGM() {
-  if (bgmAudio) {
-    bgmAudio.pause();
-    bgmAudio = null;
-  }
-  if (bgmTimeoutId) {
-    clearTimeout(bgmTimeoutId);
-    bgmTimeoutId = null;
-  }
-}
-
-// 註冊第一次點擊畫面任何地方以解鎖音訊自動播放
-function initBgmUnlocker() {
-  const unlock = () => {
-    if (hasUserInteracted) return;
-    hasUserInteracted = true;
-    initSFX(); // 初始化遊戲音效
-    playNextBGM();
-    window.removeEventListener('click', unlock);
-    window.removeEventListener('touchstart', unlock);
-  };
-  window.addEventListener('click', unlock);
-  window.addEventListener('touchstart', unlock);
-}
-initBgmUnlocker();
-
-// 註冊靜音/播控按鈕事件
-const btnToggleMusic = document.getElementById('btnToggleMusic')!;
-if (btnToggleMusic) {
-  btnToggleMusic.addEventListener('click', (e) => {
-    e.stopPropagation();
-    isMusicEnabled = !isMusicEnabled;
-    if (isMusicEnabled) {
-      btnToggleMusic.textContent = '🎵';
-      btnToggleMusic.style.borderColor = '#6366f1';
-      if (hasUserInteracted) {
-        playNextBGM();
-      }
-    } else {
-      btnToggleMusic.textContent = '🔇';
-      btnToggleMusic.style.borderColor = '#ef4444';
-      stopBGM();
-    }
-  });
-}
 
 // 註冊測試調試放怪按鈕事件
 const btnSpawnTestMonster = document.getElementById('btnSpawnTestMonster')! as HTMLButtonElement;
@@ -3033,7 +2309,7 @@ const testMonsterSelect = document.getElementById('testMonsterSelect')! as HTMLS
 
 btnSpawnTestMonster.addEventListener('click', (e) => {
   e.stopPropagation();
-  if (currentScene !== 'BATTLE') return;
+  if (gameState.currentScene !== 'BATTLE') return;
   playSFX('click');
   const enemyType = testMonsterSelect.value as EnemyTypeId;
   spawnTestEnemy(enemyType);

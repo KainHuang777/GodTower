@@ -71,7 +71,13 @@ export interface WaveConfig {
 /** 取得指定波次的怪物配置（多種怪混合出場） */
 export function getWaveConfig(waveNum: number): WaveConfig[] {
   const configs: WaveConfig[] = [];
-  const hpMult = 1.0 + (waveNum - 1) * 0.25;
+  // Segmented exponential: linear for waves 1-5, then 1.8 * 1.16^(wave-5) for waves 6-20
+  let hpMult: number;
+  if (waveNum <= 5) {
+    hpMult = 1.0 + (waveNum - 1) * 0.20; // Wave 1-5: 1.0x -> 1.8x (gentle intro)
+  } else {
+    hpMult = 1.8 * Math.pow(1.16, waveNum - 5); // Wave 6-20: exponential growth -> ~23x at wave 20
+  }
 
   // 每波必有基礎地面怪
   const groundTypes: EnemyTypeId[] = ['snake', 'salamander', 'water_spirit', 'golem', 'beetle'];

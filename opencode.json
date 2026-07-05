@@ -17,6 +17,81 @@
       "description": "發行新版本 (執行打包、更新副版號、簡化更新日誌、推送GitHub)",
       "template": "node scripts/release.cjs"
     }
+  },
+  "skills": {
+    "paths": [".opencode/skills"]
+  },
+  "agent": {
+    "fusion-deepseek": {
+      "mode": "subagent",
+      "model": "opencode-go/deepseek-v4-pro",
+      "hidden": true,
+      "description": "Fusion panel: DeepSeek V4 Pro — technical depth, code reasoning, logical analysis. WARNING: conflicts if Judge is also DeepSeek V4 Pro"
+    },
+    "fusion-kimi": {
+      "mode": "subagent",
+      "model": "opencode-go/kimi-k2.7-code",
+      "hidden": true,
+      "description": "Fusion panel: Kimi K2.7 Code — code architecture, logic flow, implementation"
+    },
+    "fusion-qwen": {
+      "mode": "subagent",
+      "model": "opencode-go/qwen3.7-plus",
+      "hidden": true,
+      "description": "Fusion panel: Qwen3.7 Plus — comprehensive analysis, broad context, strategy (budget tier)"
+    },
+    "fusion-glm": {
+      "mode": "subagent",
+      "model": "opencode-go/glm-5.2",
+      "hidden": true,
+      "description": "Fusion panel: GLM-5.2 — creative thinking, alternative angles, counterarguments"
+    },
+    "fusion-gemini": {
+      "mode": "subagent",
+      "model": "google/gemini-3.5-flash",
+      "hidden": true,
+      "description": "Fusion panel: Gemini 3.5 Flash (free tier) — Google architecture diversity, alternative framing, blind spot detection"
+    },
+    "fusion-skyunion": {
+      "mode": "subagent",
+      "model": "skyunion/claude-haiku-4-5-20251001",
+      "hidden": true,
+      "description": "Fusion panel: Claude Haiku 4.5 (第三方API) — Anthropic architecture diversity (Haiku), nuanced reasoning, safety perspective"
+    },
+    "fusion-sonnet": {
+      "mode": "subagent",
+      "model": "skyunion/claude-sonnet-5",
+      "hidden": true,
+      "description": "Fusion panel: Claude Sonnet 5 (第三方API) — Anthropic flagship, deep contextual reasoning"
+    },
+    "fusion-budget-ds": {
+      "mode": "subagent",
+      "model": "opencode-go/deepseek-v4-flash",
+      "hidden": true,
+      "description": "Fusion budget panel: DeepSeek V4 Flash — fast, low-cost technical analysis. WARNING: conflicts if Judge is DeepSeek family"
+    },
+    "fusion-budget-mimo": {
+      "mode": "subagent",
+      "model": "opencode-go/mimo-v2.5",
+      "hidden": true,
+      "description": "Fusion budget panel: MiMo V2.5 — fast, low-cost broad coverage"
+    },
+    "general": {
+      "mode": "subagent",
+      "model": "opencode-go/kimi-k2.7-code",
+      "hidden": true,
+      "permission": {
+        "task": {
+          "fusion-*": "allow",
+          "*": "allow"
+        }
+      }
+    }
+  },
+  "permission": {
+    "skill": {
+      "fusion-research": "allow",
+      "*": "allow"
+    }
   }
 }
-

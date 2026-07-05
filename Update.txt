@@ -1,3 +1,8 @@
+2026-07-01 (61st Update)
+- Resolved OpenCode background dependency and encoding issues:
+  1. Fixed OpenCode plugin loading: Created package.json in both E:/WORK/novelist/.opencode and E:/WORK/Fusion/.opencode referencing "@opencode-ai/plugin": "1.14.46", resolving background bootstrap crash "No matching version found for @opencode-ai/plugin@local".
+  2. Fixed terminal encoding crash: Reconfigured stdout encoding to UTF-8 in verify_opencode.py to prevent UnicodeEncodeError crashes when executing in Windows CP950 environments.
+
 2026-06-28 (60th Update)
 - Resolved GitHub Actions push configuration.
   1. Release script: Included the newly created .github/workflows/deploy.yml in scripts/release.cjs git add parameters, ensuring the workflow config is properly committed and pushed.

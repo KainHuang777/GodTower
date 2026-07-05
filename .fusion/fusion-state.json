@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "detected_at": "2026-07-05T00:00:00.000Z",
+  "environment": { "type": "opencode-multi", "confidence": "high" },
+  "available_providers": ["opencode-go"],
+  "available_agents": {
+    "research": ["fusion-kimi", "fusion-qwen", "fusion-glm", "fusion-budget-mimo"]
+  },
+  "selected_tier": {
+    "research": "standard"
+  },
+  "preflight": { "last_ok_at": "2026-07-05T00:00:00.000Z" }
+}
