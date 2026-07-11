@@ -3,10 +3,13 @@
 exports[`Snapshot Tests > Wave 1 snapshot 1`] = `
 [
   {
+    "armor": undefined,
     "count": 6,
-    "enemyType": "salamander",
+    "enemyType": "water_spirit",
     "hpMultiplier": 1,
-    "spawnIntervalMs": 585,
+    "regen": undefined,
+    "spawnIntervalMs": 800,
+    "split": undefined,
   },
 ]
 `;
@@ -14,22 +17,22 @@ exports[`Snapshot Tests > Wave 1 snapshot 1`] = `
 exports[`Snapshot Tests > Wave 5 snapshot 1`] = `
 [
   {
-    "count": 10,
-    "enemyType": "snake",
-    "hpMultiplier": 1.8,
-    "spawnIntervalMs": 525,
-  },
-  {
-    "count": 10,
+    "armor": undefined,
+    "count": 8,
     "enemyType": "salamander",
-    "hpMultiplier": 1.8,
-    "spawnIntervalMs": 525,
+    "hpMultiplier": 1.4,
+    "regen": undefined,
+    "spawnIntervalMs": 600,
+    "split": undefined,
   },
   {
+    "armor": undefined,
     "count": 1,
     "enemyType": "boss_dragon",
-    "hpMultiplier": 2.7,
+    "hpMultiplier": 2.1,
+    "regen": undefined,
     "spawnIntervalMs": 0,
+    "split": undefined,
   },
 ]
 `;
@@ -37,34 +40,22 @@ exports[`Snapshot Tests > Wave 5 snapshot 1`] = `
 exports[`Snapshot Tests > Wave 10 snapshot 1`] = `
 [
   {
-    "count": 14,
-    "enemyType": "snake",
-    "hpMultiplier": 3.7806149836799987,
-    "spawnIntervalMs": 450,
+    "armor": undefined,
+    "count": 8,
+    "enemyType": "beetle",
+    "hpMultiplier": 2,
+    "regen": undefined,
+    "spawnIntervalMs": 600,
+    "split": undefined,
   },
   {
-    "count": 14,
-    "enemyType": "salamander",
-    "hpMultiplier": 3.7806149836799987,
-    "spawnIntervalMs": 450,
-  },
-  {
-    "count": 14,
-    "enemyType": "water_spirit",
-    "hpMultiplier": 3.7806149836799987,
-    "spawnIntervalMs": 450,
-  },
-  {
-    "count": 14,
-    "enemyType": "golem",
-    "hpMultiplier": 3.7806149836799987,
-    "spawnIntervalMs": 450,
-  },
-  {
+    "armor": true,
     "count": 1,
     "enemyType": "boss_dragon",
-    "hpMultiplier": 5.670922475519998,
+    "hpMultiplier": 4,
+    "regen": undefined,
     "spawnIntervalMs": 0,
+    "split": undefined,
   },
 ]
 `;
@@ -72,46 +63,22 @@ exports[`Snapshot Tests > Wave 10 snapshot 1`] = `
 exports[`Snapshot Tests > Wave 15 snapshot 1`] = `
 [
   {
-    "count": 18,
-    "enemyType": "snake",
-    "hpMultiplier": 7.940583141569842,
-    "spawnIntervalMs": 375,
-  },
-  {
-    "count": 18,
-    "enemyType": "salamander",
-    "hpMultiplier": 7.940583141569842,
-    "spawnIntervalMs": 375,
-  },
-  {
-    "count": 18,
-    "enemyType": "water_spirit",
-    "hpMultiplier": 7.940583141569842,
-    "spawnIntervalMs": 375,
-  },
-  {
-    "count": 18,
-    "enemyType": "golem",
-    "hpMultiplier": 7.940583141569842,
-    "spawnIntervalMs": 375,
-  },
-  {
-    "count": 18,
-    "enemyType": "beetle",
-    "hpMultiplier": 7.940583141569842,
-    "spawnIntervalMs": 375,
-  },
-  {
+    "armor": undefined,
     "count": 10,
-    "enemyType": "fly",
-    "hpMultiplier": 6.352466513255874,
-    "spawnIntervalMs": 800,
+    "enemyType": "salamander",
+    "hpMultiplier": 3.6,
+    "regen": undefined,
+    "spawnIntervalMs": 500,
+    "split": undefined,
   },
   {
+    "armor": undefined,
     "count": 1,
     "enemyType": "boss_dragon",
-    "hpMultiplier": 11.910874712354763,
+    "hpMultiplier": 7.2,
+    "regen": true,
     "spawnIntervalMs": 0,
+    "split": undefined,
   },
 ]
 `;
@@ -119,40 +86,13 @@ exports[`Snapshot Tests > Wave 15 snapshot 1`] = `
 exports[`Snapshot Tests > Wave 20 snapshot 1`] = `
 [
   {
-    "count": 22,
-    "enemyType": "snake",
-    "hpMultiplier": 16.677937557875413,
-    "spawnIntervalMs": 300,
-  },
-  {
-    "count": 22,
-    "enemyType": "salamander",
-    "hpMultiplier": 16.677937557875413,
-    "spawnIntervalMs": 300,
-  },
-  {
-    "count": 22,
-    "enemyType": "water_spirit",
-    "hpMultiplier": 16.677937557875413,
-    "spawnIntervalMs": 300,
-  },
-  {
-    "count": 22,
-    "enemyType": "golem",
-    "hpMultiplier": 16.677937557875413,
-    "spawnIntervalMs": 300,
-  },
-  {
-    "count": 22,
-    "enemyType": "beetle",
-    "hpMultiplier": 16.677937557875413,
-    "spawnIntervalMs": 300,
-  },
-  {
+    "armor": undefined,
     "count": 1,
     "enemyType": "boss_dragon",
-    "hpMultiplier": 25.016906336813122,
+    "hpMultiplier": 20,
+    "regen": undefined,
     "spawnIntervalMs": 0,
+    "split": true,
   },
 ]
 `;

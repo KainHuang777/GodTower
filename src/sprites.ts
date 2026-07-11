@@ -7,17 +7,9 @@
 
 import { ENEMY_DEFS, type EnemyTypeId } from './enemies';
 import type { TowerTypeId } from './towers';
+import { ELEMENT_RING_COLORS, OUTLINE_COLOR, hexToRgba, getElementAccent } from './theme';
 
-/** 五行屬性代表色（用於描邊與底盤發光） */
-const ELEMENT_COLORS: Record<string, string> = {
-  fire: '#ef4444',   // 火：紅色
-  water: '#38bdf8',  // 水：冰藍
-  wood: '#22c55e',   // 木：翠綠
-  earth: '#d97706',  // 土：黃褐
-  metal: '#cbd5e1',  // 金：銀灰/白
-  yin: '#c084fc',    // 陰：暗紫
-  yang: '#fde047',   // 陽：耀眼金黃
-};
+// 元素主題色現從 theme.ts 匯入（Mindustry 高飽和螢光風格）
 
 /** 精靈快取 */
 export const spriteCache = new Map<string, HTMLCanvasElement>();
@@ -1794,19 +1786,17 @@ function prerenderSprite(
 export function initSprites(): void {
   spriteCache.clear();
 
-  // 1. 怪物精靈多幀渲染 (1:1 像素)
+  // 1. 怪物精靈多幀渲染 (1:1 像素) — 統一深色描邊切割形狀
   for (const [id, data] of Object.entries(ENEMY_SPRITE_MAP)) {
-    const def = ENEMY_DEFS[id as EnemyTypeId];
-    const elementColor = def ? ELEMENT_COLORS[def.element] : '#0f172a';
     data.matrices.forEach((matrix, frameIdx) => {
-      prerenderSprite(`enemy_${id}_${frameIdx}`, data.palette, matrix, 1, elementColor);
+      prerenderSprite(`enemy_${id}_${frameIdx}`, data.palette, matrix, 1, OUTLINE_COLOR);
     });
   }
 
-  // 2. 砲台精靈多幀渲染 (1:1 像素)
+  // 2. 砲台精靈多幀渲染 (1:1 像素) — 統一深色描邊
   for (const [id, data] of Object.entries(TOWER_SPRITE_MAP)) {
     data.matrices.forEach((matrix, frameIdx) => {
-      prerenderSprite(`tower_${id}_${frameIdx}`, data.palette, matrix, 1, 'rgba(0,0,0,0.45)');
+      prerenderSprite(`tower_${id}_${frameIdx}`, data.palette, matrix, 1, OUTLINE_COLOR);
     });
   }
 
@@ -1983,19 +1973,25 @@ export function drawEnemySprite(
       
       const drawCvs = (hitFlashFrame > 0) ? (spriteCache.get(`${imgKey}_flash`) || cvs) : cvs;
       
-      // 應用屬性發光或受擊閃紅外發光
+      // 應用雙層螢光發光或受擊閃紅外發光 (Mindustry 風格)
       ctx.save();
       if (hitFlashFrame > 0) {
         ctx.shadowBlur = 12 * scale;
         ctx.shadowColor = '#ff3b30'; // 受擊亮紅外發光
+        ctx.drawImage(drawCvs, x - (drawCvs.width * scale) / 2, y - (drawCvs.height * scale) / 2, drawCvs.width * scale, drawCvs.height * scale);
       } else {
         const def = ENEMY_DEFS[enemyType];
-        const elementColor = def ? (ELEMENT_COLORS[def.element] || '#ffffff') : '#ffffff';
-        ctx.shadowBlur = 8 * scale;
-        ctx.shadowColor = elementColor; // 屬性外發光
+        const elementColor = def ? getElementAccent(def.element) : '#ffffff';
+        // 外層擴散 glow
+        ctx.shadowBlur = 14 * scale;
+        ctx.shadowColor = hexToRgba(elementColor, 0.5);
+        ctx.drawImage(drawCvs, x - (drawCvs.width * scale) / 2, y - (drawCvs.height * scale) / 2, drawCvs.width * scale, drawCvs.height * scale);
+        // 內層銳利 glow
+        ctx.shadowBlur = 7 * scale;
+        ctx.shadowColor = elementColor;
+        ctx.drawImage(drawCvs, x - (drawCvs.width * scale) / 2, y - (drawCvs.height * scale) / 2, drawCvs.width * scale, drawCvs.height * scale);
       }
       
-      ctx.drawImage(drawCvs, x - (drawCvs.width * scale) / 2, y - (drawCvs.height * scale) / 2, drawCvs.width * scale, drawCvs.height * scale);
       ctx.restore();
       ctx.restore();
     }
@@ -2023,14 +2019,23 @@ export function drawTowerSprite(
   };
   if (recipeMap[towerType]) baseType = recipeMap[towerType];
 
-  // 1. 繪製半透明五行屬性底座 (3D 透視橢圓)
-  const elementColor = ELEMENT_COLORS[baseType] ?? ELEMENT_COLORS[towerType.split('_')[0]] ?? '#ffffff';
+  // 1. 繪製五行屬性底盤光環 (Mindustry 風格 — 擴大光環 + 呼吸動畫 + 雙層)
+  const elementColor = getElementAccent(baseType);
+  const ringColor = ELEMENT_RING_COLORS[baseType] ?? elementColor;
+  const breathT = Date.now() / 600;
+  const breath = 0.85 + Math.sin(breathT) * 0.15; // 0.7~1.0 呼吸
   ctx.save();
+  // 外層大光環（半透明擴散，alpha 隨呼吸脈動）
+  ctx.beginPath();
+  ctx.ellipse(x + 8 * scale, y + 14 * scale, 13 * scale * breath, 6 * scale * breath, 0, 0, Math.PI * 2);
+  ctx.fillStyle = hexToRgba(elementColor, 0.18 * breath);
+  ctx.fill();
+  // 內層底盤（3D 透視橢圓，較實心）
   ctx.beginPath();
   ctx.ellipse(x + 8 * scale, y + 12 * scale, 10 * scale, 5 * scale, 0, 0, Math.PI * 2);
-  ctx.fillStyle = elementColor + '22';
+  ctx.fillStyle = hexToRgba(elementColor, 0.20);
   ctx.fill();
-  ctx.strokeStyle = elementColor + '88';
+  ctx.strokeStyle = hexToRgba(ringColor, 0.65);
   ctx.lineWidth = 1.5 * scale;
   ctx.stroke();
   ctx.restore();
@@ -2117,9 +2122,14 @@ export function drawTowerSprite(
       
       const drawY = y - (cvs.height - 16) * scale;
       
-      // 應用屬性發光效果
+      // 應用雙層螢光 Glow (Mindustry 風格 — 內層銳利 + 外層擴散)
       ctx.save();
-      ctx.shadowBlur = 10 * scale;
+      // 外層擴散 glow (shadowBlur=16, 低 alpha 疊加)
+      ctx.shadowBlur = 16 * scale;
+      ctx.shadowColor = hexToRgba(elementColor, 0.5);
+      ctx.drawImage(cvs, x, drawY, cvs.width * scale, cvs.height * scale);
+      // 內層銳利 glow (shadowBlur=8, 實心 accent)
+      ctx.shadowBlur = 8 * scale;
       ctx.shadowColor = elementColor;
       ctx.drawImage(cvs, x, drawY, cvs.width * scale, cvs.height * scale);
       ctx.restore();

@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>五行迷宮塔防 - Wuxing Maze TD</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DotGothic16&family=VT323&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #0f172a;
-      --panel-bg: rgba(30, 41, 59, 0.85);
+      --bg-color: #0E1117;
+      --panel-bg: rgba(26, 31, 42, 0.95);
       --border-color: #334155;
       --text-color: #f8fafc;
       --text-muted: #94a3b8;
-      --primary: #6366f1;
-      --primary-hover: #4f46e5;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
       --danger: #ef4444;
       --accent: #10b981;
       --gold: #f59e0b;
@@ -23,7 +23,7 @@
     body {
       background: var(--bg-color);
       color: var(--text-color);
-      font-family: 'Outfit', -apple-system, sans-serif;
+      font-family: 'DotGothic16', 'VT323', 'Outfit', -apple-system, sans-serif;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       min-height: 100vh; overflow: hidden; padding: 10px;
     }
@@ -124,13 +124,13 @@
     }
     .talent-nav-btn {
       background: rgba(30, 41, 59, 0.7);
-      border: 1.5px solid var(--border-color);
+      border: 2px solid var(--border-color) !important;
       color: var(--text-muted);
-      padding: 5px 14px;
-      border-radius: 20px;
+      padding: 10px 20px !important;
+      border-radius: 0px !important;
       cursor: pointer;
-      font-size: 0.82rem;
-      font-weight: 600;
+      font-size: 1.05rem !important;
+      font-weight: bold;
       transition: all 0.2s ease;
       white-space: nowrap;
       backdrop-filter: blur(4px);
@@ -237,6 +237,18 @@
       opacity: 1.0;
       text-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
     }
+    /* 新手引導閃爍按鈕 */
+    .btn-guide-pulse {
+      animation: guideBtnPulse 1s infinite alternate !important;
+      border-color: #fbbf24 !important;
+      box-shadow: 0 0 15px #fbbf24 !important;
+      position: relative;
+    }
+    @keyframes guideBtnPulse {
+      from { transform: scale(1); box-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
+      to { transform: scale(1.08); box-shadow: 0 0 25px #fbbf24, inset 0 0 8px rgba(251, 191, 36, 0.7); }
+    }
+
     .talent-card {
       display: flex;
       align-items: center;
@@ -463,12 +475,13 @@
     h1 { font-size: 1.15rem; font-weight: 700; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     canvas { background: #020617; border: 1px solid var(--border-color); border-radius: 6px; display: block; cursor: crosshair; }
 
-    .control-panel { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .tools { display: flex; gap: 6px; flex-wrap: wrap; }
+    .control-panel { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .btn {
       background: #1e293b; border: 1px solid var(--border-color); color: var(--text-color);
-      padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 0.8rem;
-      transition: all 0.2s ease; display: flex; align-items: center; gap: 4px; white-space: nowrap;
+      padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem;
+      transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
+      min-height: 48px;
     }
     .btn:hover { background: #334155; border-color: #475569; }
     .btn.active { background: var(--primary); border-color: var(--primary-hover); box-shadow: 0 0 8px rgba(99,102,241,0.4); }
@@ -480,6 +493,193 @@
     .btn-merge.active { background: #5b21b6; box-shadow: 0 0 10px rgba(139,92,246,0.5); }
     .btn-quit { background: transparent; border-color: var(--danger); color: var(--danger); }
     .btn-quit:hover { background: rgba(239,68,68,0.1); }
+
+    /* === 垂直卡片砲台按鈕 === */
+    .tower-btn {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 64px;
+      min-height: 72px;
+      padding: 8px 4px !important;
+      border-radius: 8px;
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      cursor: pointer;
+      gap: 2px;
+      transition: all 0.2s ease;
+    }
+    .tower-btn-color-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+    }
+    .tower-btn-icon {
+      font-size: 1.3rem;
+      margin-top: 2px;
+    }
+    .tower-btn-name {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-color);
+    }
+    .tower-btn-cost {
+      font-size: 0.62rem;
+      color: var(--gold);
+      font-weight: bold;
+    }
+
+    /* === 五行羅盤常駐面板 === */
+    .wuxing-compass-panel {
+      position: absolute;
+      bottom: 75px;
+      right: 20px;
+      width: 130px;
+      height: 130px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 2px solid var(--border-color);
+      border-radius: 50%;
+      z-index: 100;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      user-select: none;
+    }
+    .wuxing-compass-panel.compact {
+      width: 44px;
+      height: 44px;
+      bottom: 75px;
+      right: 20px;
+    }
+    .wuxing-compass-panel:hover {
+      border-color: var(--primary);
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.45);
+    }
+    .compass-svg {
+      width: 100%;
+      height: 100%;
+      transition: opacity 0.2s;
+    }
+    .wuxing-compass-panel.compact .compass-svg {
+      display: none;
+    }
+    .compass-mini-icon {
+      display: none;
+      font-size: 1.2rem;
+    }
+    .wuxing-compass-panel.compact .compass-mini-icon {
+      display: block;
+    }
+    
+    /* === 配方書 Codex 樣式 === */
+    .codex-container {
+      background: var(--panel-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 720px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+      backdrop-filter: blur(12px);
+      color: var(--text-color);
+    }
+    .codex-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      width: 100%;
+    }
+    .codex-header h3 {
+      font-size: 1.4rem;
+      color: var(--gold);
+      font-weight: 700;
+      margin: 0;
+    }
+    .codex-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 2rem;
+      cursor: pointer;
+      transition: color 0.2s;
+      line-height: 1;
+      padding: 0 5px;
+    }
+    .codex-close:hover {
+      color: var(--danger);
+    }
+    .codex-body {
+      overflow-y: auto;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding-right: 8px;
+    }
+    .codex-section-title {
+      font-size: 1rem;
+      font-weight: bold;
+      color: #a5b4fc;
+      border-left: 3px solid var(--primary);
+      padding-left: 8px;
+      margin-bottom: 10px;
+      text-align: left;
+    }
+    .codex-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .codex-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+    .codex-card:hover {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.05);
+    }
+    .codex-formula {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.95rem;
+    }
+    .codex-arrow {
+      color: var(--text-muted);
+      font-weight: bold;
+    }
+    .codex-result {
+      font-weight: bold;
+      color: var(--gold);
+    }
+    .codex-desc {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
 
     .instructions { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 2px; }
     .merge-hint { color: #c084fc; font-weight: 500; }
@@ -499,6 +699,43 @@
       width: 0%;
     }
     .wave-progress-fill.idle { background: #334155; }
+
+    /* === 戰鬥介面專屬緊湊化覆寫 === */
+    .game-container .btn {
+      min-height: 38px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+    }
+    .game-container .header-panel {
+      padding-bottom: 6px;
+    }
+    .game-container .header-panel h1 {
+      font-size: 1.1rem;
+    }
+    .game-container .stats {
+      gap: 14px;
+    }
+    .game-container .instructions {
+      margin-top: 2px;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      line-height: 1.3;
+    }
+    .game-container .wave-progress-bar {
+      margin-top: 4px;
+      font-size: 0.75rem;
+    }
+    #battleScene {
+      overflow: auto;
+    }
+    @keyframes pulse-yellow {
+      0%, 100% { color: #f59e0b; text-shadow: 0 0 2px rgba(245, 158, 11, 0.3); }
+      50% { color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.8); }
+    }
+    .merge-tutorial-highlight {
+      animation: pulse-yellow 1.2s infinite;
+      font-weight: bold;
+    }
 
     /* === 行動裝置適配與去邊框 (Phase 4) === */
     @media (max-width: 1300px) {
@@ -526,6 +763,226 @@
       cursor: pointer;
       color: var(--text-color);
     }
+    
+    /* P2 HUD Restructure & Talent SVG Line styles */
+    .wave-progress-track {
+      flex: 1; height: 12px !important; background: #1e293b; border-radius: 6px !important;
+      border: 1px solid var(--border-color); overflow: hidden;
+    }
+    .wave-progress-fill.boss-wave {
+      background: linear-gradient(to right, #dc2626, #ef4444) !important;
+      animation: bossPulse 1s infinite alternate;
+    }
+    @keyframes bossPulse {
+      from { opacity: 0.65; box-shadow: 0 0 4px #ef4444; }
+      to { opacity: 1; box-shadow: 0 0 12px #ef4444; }
+    }
+    
+    .talent-arrow {
+      display: none !important;
+    }
+    
+    .talent-card {
+      position: relative;
+      z-index: 2;
+    }
+    
+    .talent-tree-container {
+      position: relative;
+    }
+    
+    .talent-flow-line {
+      stroke: #fbbf24;
+      stroke-width: 2.5;
+      fill: none;
+      stroke-dasharray: 8, 8;
+      animation: talentFlow 15s linear infinite;
+      filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.6));
+    }
+    .talent-bg-line {
+      stroke: #334155;
+      stroke-width: 2.5;
+      fill: none;
+    }
+    .talent-bg-line.active {
+      stroke: #b45309; /* Dark gold background for active flow */
+    }
+    @keyframes talentFlow {
+      from { stroke-dashoffset: 1000; }
+      to { stroke-dashoffset: 0; }
+    }
+    .talent-locked-line {
+      stroke: #475569;
+      stroke-width: 2;
+      fill: none;
+      stroke-dasharray: 4, 4;
+      opacity: 0.5;
+    }
+
+    /* ========================================== */
+    /* 🧱 極致像素風 (9-slice / 像素面板) 覆寫系統 */
+    /* ========================================== */
+    
+    /* 移除所有圓角，貼合像素風格 */
+    .scene, 
+    #mainMenu,
+    #levelSelectScreen,
+    #mapEditorScene,
+    #talentScreen,
+    .talent-card,
+    .level-card,
+    .editor-toolbar,
+    .header-panel,
+    .bottom-panel,
+    .side-panel,
+    .floating-details,
+    .gameover-modal,
+    .modal-content,
+    .recipe-codex-panel,
+    .wave-progress-track,
+    .wave-progress-fill,
+    .badge {
+      border-radius: 0px !important;
+    }
+
+    /* 像素邊框 9-slice (SVG 網格 Data URI) 與像素立體陰影 */
+    .talent-card,
+    .level-card,
+    .editor-toolbar,
+    .floating-details,
+    .recipe-codex-panel,
+    .gameover-modal,
+    .modal-content,
+    .header-panel,
+    .bottom-panel,
+    .side-panel {
+      border: 4px solid #1e293b !important;
+      border-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12'><rect x='0' y='0' width='12' height='12' fill='none' stroke='%23334155' stroke-width='4'/><rect x='4' y='4' width='4' height='4' fill='none'/></svg>") 4 repeat !important;
+      background: var(--panel-bg) !important;
+      box-shadow: 6px 6px 0px 0px #020617 !important;
+      image-rendering: pixelated;
+    }
+
+    /* 像素風格立體按鈕 */
+    .menu-btn,
+    .btn,
+    .tool-btn,
+    .tool-action,
+    .talent-nav-btn,
+    .build-btn,
+    .editor-toolbar button {
+      border-radius: 0px !important;
+      border: 3px solid #0f172a !important;
+      background: #1e293b !important;
+      color: #f8fafc !important;
+      box-shadow: inset -2px -2px 0px 0px rgba(0,0,0,0.6), inset 2px 2px 0px 0px rgba(255,255,255,0.15), 4px 4px 0px 0px #020617 !important;
+      image-rendering: pixelated;
+      font-weight: bold;
+      transition: transform 0.1s, box-shadow 0.1s, background-color 0.1s;
+    }
+    
+    .menu-btn:hover,
+    .btn:hover,
+    .tool-btn:hover,
+    .tool-action:hover,
+    .talent-nav-btn:hover,
+    .build-btn:hover,
+    .editor-toolbar button:hover {
+      background: #273549 !important;
+      transform: translate(1px, 1px) !important;
+      box-shadow: inset -1px -1px 0px 0px rgba(0,0,0,0.6), inset 1px 1px 0px 0px rgba(255,255,255,0.15), 3px 3px 0px 0px #020617 !important;
+    }
+    
+    .menu-btn:active,
+    .btn:active,
+    .tool-btn:active,
+    .tool-action:active,
+    .talent-nav-btn:active,
+    .build-btn:active,
+    .editor-toolbar button:active,
+    .menu-btn.primary,
+    .btn.primary,
+    .tool-btn.active,
+    .talent-nav-btn.active {
+      background: var(--primary) !important;
+      border-color: #0f172a !important;
+      box-shadow: inset 2px 2px 0px 0px rgba(0,0,0,0.6), inset -2px -2px 0px 0px rgba(255,255,255,0.1), 2px 2px 0px 0px #020617 !important;
+    }
+    
+    .menu-btn.primary:hover,
+    .btn.primary:hover {
+      background: var(--primary-hover) !important;
+    }
+
+    /* 確保被停用的按鈕樣式符合像素風格 */
+    .menu-btn:disabled,
+    .btn:disabled,
+    .tool-btn:disabled,
+    .tool-action:disabled {
+      opacity: 0.5 !important;
+      cursor: not-allowed !important;
+      box-shadow: 2px 2px 0px 0px #020617 !important;
+      transform: none !important;
+    }
+    
+    /* 波次進度條等像素化 */
+    .wave-progress-track {
+      border: 3px solid #0f172a !important;
+      background: #1e293b !important;
+      box-shadow: inset 2px 2px 0px 0px rgba(0,0,0,0.4) !important;
+    }
+    
+    .wave-progress-fill {
+      background: linear-gradient(to right, #3b82f6, #60a5fa) !important;
+    }
+
+    /* 全局標題與文字適度放大/加粗 */
+    .menu-title {
+      font-family: 'DotGothic16', sans-serif;
+      font-weight: 900;
+    }
+    .gameover-title {
+      font-family: 'DotGothic16', sans-serif;
+    }
+
+    /* 新手引導高亮與氣泡 */
+    .guide-highlight {
+      outline: 4px solid var(--gold) !important;
+      animation: guidePulse 0.8s infinite alternate !important;
+      z-index: 100 !important;
+    }
+    @keyframes guidePulse {
+      from { box-shadow: 0 0 4px var(--gold), 6px 6px 0px 0px #020617; }
+      to { box-shadow: 0 0 20px var(--gold), 6px 6px 0px 0px #020617; }
+    }
+    
+    .talent-guide-bubble {
+      position: absolute;
+      top: 105%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e1b4b !important;
+      border: 3px solid var(--gold) !important;
+      color: #ffffff !important;
+      padding: 8px 12px;
+      width: 220px;
+      font-size: 0.8rem;
+      text-align: center;
+      z-index: 999;
+      box-shadow: 4px 4px 0px 0px #000 !important;
+      image-rendering: pixelated;
+      border-radius: 0px !important;
+    }
+    .talent-guide-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      margin-left: -6px;
+      border-width: 6px;
+      border-style: solid;
+      border-color: transparent transparent var(--gold) transparent;
+    }
   </style>
 </head>
 <body>
@@ -541,6 +998,7 @@
     <div class="menu-buttons">
       <button id="btnStartGame" class="menu-btn primary">⚔️ 開始遊戲</button>
       <button id="btnTalent" class="menu-btn">🌟 天賦系統</button>
+      <button id="btnStore" class="menu-btn" style="opacity: 0.5; cursor: not-allowed; color: var(--text-muted);" disabled>🛒 商店 (Web不可用)</button>
       <button id="btnReleaseNotes" class="menu-btn">📜 更新日誌</button>
       <div id="menuTalentInfo" class="menu-talent-info" style="text-align:center;"></div>
     </div>
@@ -551,7 +1009,7 @@
     <div class="level-header">
       <h2>🗺️ 選擇戰鬥關卡</h2>
       <div style="display:flex; gap:8px;">
-        <button id="btnCreateMap" class="menu-btn" style="padding: 8px 16px; font-size: 0.9rem; background: #4f46e5; border-color: #6366f1;">🛠️ 自建地圖</button>
+        <button id="btnCreateMap" class="menu-btn" style="padding: 8px 16px; font-size: 0.9rem; background: #4f46e5; border-color: #6366f1; display: none;">🛠️ 自建地圖</button>
         <button id="btnBackFromLevel" class="menu-btn" style="padding: 8px 16px; font-size: 0.9rem;">← 返回主選單</button>
       </div>
     </div>
@@ -596,17 +1054,46 @@
     <!-- ===== Track 快速導覽列 ===== -->
     <div class="talent-nav" id="talentNav">
       <span class="talent-nav-label">跳至分支：</span>
-      <button class="talent-nav-btn active" data-track="track-base">🛡️ 基礎強化</button>
-      <button class="talent-nav-btn" data-track="track-attack">⚔️ 攻擊強化</button>
-      <button class="talent-nav-btn" data-track="track-element">🌿 五行覺醒</button>
-      <button class="talent-nav-btn" data-track="track-yinyang">☯️ 陰陽解鎖</button>
+      <button class="talent-nav-btn active" data-track="track-base">🛡️ 任督二脈</button>
+      <button class="talent-nav-btn" data-track="track-attack">⚔️ 氣血運行</button>
+      <button class="talent-nav-btn" data-track="track-element">🌿 五臟氣機</button>
+      <button class="talent-nav-btn" data-track="track-yinyang">☯️ 陰陽歸一</button>
     </div>
     <div class="talent-tree-wrapper">
-      <div class="talent-tree-container">
+      <div class="talent-tree-container" style="position: relative;">
+        <svg id="talentSvg" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></svg>
+        
+        <!-- P3: 人體經脈五臟背景 SVG -->
+        <div class="meridian-bg-container" style="position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: 0.18; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+          <svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; max-height: 100%;">
+             <!-- 經脈輪廓 -->
+             <path d="M 400 40 C 440 40, 450 80, 400 120 C 350 80, 360 40, 400 40" fill="none" stroke="#818cf8" stroke-width="2.5"/>
+             <path d="M 400 120 C 460 150, 490 240, 470 360 C 450 480, 415 570, 400 600 C 385 570, 350 480, 330 360 C 310 240, 340 150, 400 120" fill="none" stroke="#818cf8" stroke-width="2.5"/>
+             <!-- 五行對應五臟標記 -->
+             <!-- 肝(木) -->
+             <circle cx="360" cy="270" r="22" fill="none" stroke="#4ade80" stroke-width="2" stroke-dasharray="4,4"/>
+             <text x="360" y="274" fill="#4ade80" font-size="12" text-anchor="middle" font-family="'DotGothic16', sans-serif" font-weight="bold">肝 (木)</text>
+             <!-- 心(火) -->
+             <circle cx="400" cy="210" r="22" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="4,4"/>
+             <text x="400" y="214" fill="#ef4444" font-size="12" text-anchor="middle" font-family="'DotGothic16', sans-serif" font-weight="bold">心 (火)</text>
+             <!-- 脾(土) -->
+             <circle cx="440" cy="275" r="22" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4,4"/>
+             <text x="440" y="279" fill="#fbbf24" font-size="12" text-anchor="middle" font-family="'DotGothic16', sans-serif" font-weight="bold">脾 (土)</text>
+             <!-- 肺(金) -->
+             <circle cx="400" cy="170" r="24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+             <text x="400" y="174" fill="#cbd5e1" font-size="12" text-anchor="middle" font-family="'DotGothic16', sans-serif" font-weight="bold">肺 (金)</text>
+             <!-- 腎(水) -->
+             <circle cx="400" cy="340" r="22" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4,4"/>
+             <text x="400" y="344" fill="#38bdf8" font-size="12" text-anchor="middle" font-family="'DotGothic16', sans-serif" font-weight="bold">腎 (水)</text>
+             
+             <!-- 任督二脈 -->
+             <path d="M 400 40 L 400 600" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="6,6"/>
+          </svg>
+        </div>
         
         <!-- Track 1: 🛡️ 基礎強化 -->
         <div id="track-base" class="talent-track">
-          <div class="track-label">🛡️<br>基<br>礎<br>強<br>化</div>
+          <div class="track-label">🛡️<br>任<br>督<br>二<br>脈</div>
           <div class="track-paths">
             <div class="path-row">
               <div class="talent-card" data-id="fortress_1"></div>
@@ -623,7 +1110,7 @@
 
         <!-- Track 2: ⚔️ 攻擊強化 -->
         <div id="track-attack" class="talent-track">
-          <div class="track-label">⚔️<br>攻<br>擊<br>強<br>化</div>
+          <div class="track-label">⚔️<br>氣<br>血<br>運<br>行</div>
           <div class="track-paths">
             <div class="path-row">
               <div class="talent-card" data-id="precise_1"></div>
@@ -643,7 +1130,7 @@
 
         <!-- Track 3: 🌿 五行覺醒 -->
         <div id="track-element" class="talent-track">
-          <div class="track-label">🌿<br>五<br>行<br>覺<br>醒</div>
+          <div class="track-label">🌿<br>五<br>臟<br>氣<br>機</div>
           <div class="track-paths">
             <div class="path-row-grid">
               <div class="grid-cell"><div class="talent-card" data-id="wood_awakening"></div></div>
@@ -661,7 +1148,7 @@
 
         <!-- Track 4: ☯️ 陰陽解鎖 -->
         <div id="track-yinyang" class="talent-track">
-          <div class="track-label">☯️<br>陰<br>陽<br>解<br>鎖</div>
+          <div class="track-label">☯️<br>陰<br>陽<br>歸<br>一</div>
           <div class="track-paths">
             <div class="path-row-merge">
               <div class="merge-sources">
@@ -694,6 +1181,7 @@
       <div>總傷害輸出: <span id="goDamageVal" class="highlight">0</span></div>
       <div>獲得天賦點: <span id="goTalentVal" class="highlight">0</span></div>
     </div>
+    <div id="goDpsStats" style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 10px; width: 100%; max-width: 320px; font-size: 0.85rem; text-align: left;"></div>
     <button id="btnBackToMenu" class="menu-btn primary">返回主介面</button>
   </div>
 
@@ -704,35 +1192,47 @@
         <div style="display:flex; align-items:center; gap:16px;">
           <h1>五行迷宮塔防</h1>
           <div style="display:flex; gap:8px;">
-            <select id="selectTheme" class="btn">
-              <option value="scifi">🛸 暗黑科幻</option>
-              <option value="chinese">🏮 古典中式</option>
-              <option value="ink">🖌️ 山水墨畫</option>
-              <option value="starry">🌌 璀璨星空</option>
-            </select>
-            <select id="selectWeather" class="btn">
-              <option value="none">☀️ 晴空萬里</option>
-              <option value="rain">🌧️ 煙雨濛濛</option>
-              <option value="fog">🌫️ 迷霧繚繞</option>
-              <option value="thunder">⚡ 狂風暴雷</option>
-            </select>
             <select id="selectStyle" class="btn">
               <option value="pixel">👾 懷舊像素 (推薦)</option>
               <option value="highres">🎨 AI 高清</option>
             </select>
           </div>
         </div>
-        <div class="stats">
-          <div class="stat-item"><span>HP:</span><span id="hpVal" class="stat-val-hp">20</span></div>
-          <div class="stat-item"><span>GOLD:</span><span id="goldVal" class="stat-val-gold">60</span></div>
-          <div class="stat-item"><span>WAVE:</span><span id="waveVal" class="stat-val-wave">0</span><span style="color:#475569;font-size:0.75rem;">/20</span></div>
-          <div class="stat-item"><span>KILL:</span><span id="killVal" class="stat-val-wave">0</span></div>
+        <div class="stats" style="display: flex; align-items: center; gap: 20px;">
+          <div class="stat-item" style="display: flex; flex-direction: column; align-items: center;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">HP</span>
+            <span id="hpVal" class="stat-val-hp" style="font-size: 1.6rem; font-weight: 800; line-height: 1.2;">20</span>
+          </div>
+          <div class="stat-item" style="display: flex; flex-direction: column; align-items: center;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">GOLD</span>
+            <span id="goldVal" class="stat-val-gold" style="font-size: 1.6rem; font-weight: 800; line-height: 1.2;">60</span>
+          </div>
+          <!-- 波次進度環 -->
+          <div class="wave-ring-container" style="position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; margin: 0 4px;">
+            <svg width="56" height="56" viewBox="0 0 36 36" style="transform: rotate(-90deg);">
+              <circle cx="18" cy="18" r="16" fill="none" stroke="#1e293b" stroke-width="3.5" />
+              <circle id="waveRingFill" cx="18" cy="18" r="16" fill="none" stroke="#10b981" stroke-width="3.5" stroke-dasharray="100" stroke-dashoffset="100" stroke-linecap="round" style="transition: stroke-dashoffset 0.3s ease; stroke: #10b981;" />
+            </svg>
+            <div style="position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+              <span id="waveVal" style="font-size: 1.2rem; font-weight: 800; color: #10b981;">0</span>
+              <span style="font-size: 0.5rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em;">WAVE</span>
+            </div>
+          </div>
+          <div class="stat-item" style="display: flex; flex-direction: column; align-items: center;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">KILL</span>
+            <span id="killVal" class="stat-val-wave" style="font-size: 1.4rem; font-weight: 800; line-height: 1.2; color: #a5b4fc;">0</span>
+          </div>
         </div>
       </div>
       <canvas id="gameCanvas" width="1280" height="640"></canvas>
       <div class="control-panel">
         <div class="tools" id="towerButtons">
           <!-- 動態生成砲台按鈕 -->
+        </div>
+        <!-- Roguelike Buff 顯示欄 -->
+        <div id="rogueBuffBar" style="display:none; gap:4px; align-items:center; flex-wrap:wrap; padding:2px 6px; background:rgba(15,23,42,0.85); border:1px solid #334155; border-radius:6px; margin-bottom:2px; min-height:26px;">
+          <span style="color:#a78bfa; font-size:0.7rem; font-weight:bold; white-space:nowrap;">✨ 增益：</span>
+          <span id="rogueBuffList" style="display:flex; gap:4px; flex-wrap:wrap;"></span>
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           <!-- 測試關卡專用調試工具 -->
@@ -750,6 +1250,9 @@
             <button id="btnSpawnTestMonster" class="btn" style="background:#8b5cf6; border-color:#7c3aed; height:26px; padding:2px 10px; font-size: 0.8rem; font-weight: bold; line-height:1; color:#fff; display:flex; align-items:center; justify-content:center;">放怪</button>
           </div>
 
+          <button id="btnSpeed" class="btn" style="background:#ea580c; border-color:#c2410c; min-width:64px;">⚡ 1x</button>
+          <button id="btnCodex" class="btn" style="background:#0891b2; border-color:#0e7490;">📖 配方</button>
+          <button id="btnMystery" class="btn" style="background:#7c3aed; border-color:#6d28d9; position:relative;" title="神秘召喚">🎲 神秘召喚 <span id="mysteryPrice" style="font-size:0.7rem;color:#fde047;"></span></button>
           <button id="btnMerge" class="btn btn-merge" data-tool="merge">🔮 合成</button>
           <button id="btnSell" class="btn" data-tool="sell">💰 拆除</button>
           <button id="btnShowRoute" class="btn" style="background:#0284c7; border-color:#0369a1;">🗺️ 路線預覽</button>
@@ -766,7 +1269,10 @@
       <div id="diagnosticPanel" style="display: none; position: absolute; top: 60px; right: 20px; width: 320px; background: rgba(15, 23, 42, 0.95); border: 2px solid #334155; border-radius: 12px; padding: 16px; z-index: 999; box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-family: monospace; backdrop-filter: blur(8px);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 6px;">
           <span style="font-weight: bold; color: #a78bfa; font-size: 0.9rem;">⚙️ 性能診斷面板</span>
-          <button id="btnDiagExport" class="btn" style="padding: 2px 8px; font-size: 0.72rem; background: #6366f1;">Export Profile</button>
+          <div style="display: flex; gap: 6px;">
+            <button id="btnDiagBench" class="btn" style="padding: 2px 8px; font-size: 0.72rem; background: #ea580c;">Run Benchmark</button>
+            <button id="btnDiagExport" class="btn" style="padding: 2px 8px; font-size: 0.72rem; background: #6366f1;">Export Profile</button>
+          </div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.8rem; color: #f8fafc;">
           <div style="display: flex; justify-content: space-between;"><span>FPS:</span><span id="diagFps" style="color: #10b981; font-weight: bold;">60</span></div>
@@ -777,6 +1283,25 @@
           <div style="display: flex; justify-content: space-between;"><span>當前防禦塔數量:</span><span id="diagTowers" style="color: #fb7185;">0</span></div>
           <div style="display: flex; justify-content: space-between;"><span>濾鏡調用警報:</span><span id="diagFilterWarning" style="color: #10b981; font-weight: bold;">0</span></div>
         </div>
+        
+        <!-- 地圖主題與天氣（僅除錯面板可開，預設中式且晴天） -->
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 12px; border-top: 1px solid #334155; padding-top: 10px;">
+          <span style="font-weight: bold; color: #a78bfa; font-size: 0.78rem;">🛠️ 環境除錯切換：</span>
+          <div style="display: flex; gap: 6px;">
+            <select id="selectTheme" class="btn" style="padding: 2px 6px; font-size: 0.75rem; background: #1e293b; border-color: #334155; height: 28px; line-height: 1; color: #fff; cursor: pointer; flex: 1;">
+              <option value="scifi">🛸 暗黑科幻</option>
+              <option value="chinese" selected>🏮 古典中式</option>
+              <option value="ink">🖌️ 山水墨畫</option>
+              <option value="starry">🌌 璀璨星空</option>
+            </select>
+            <select id="selectWeather" class="btn" style="padding: 2px 6px; font-size: 0.75rem; background: #1e293b; border-color: #334155; height: 28px; line-height: 1; color: #fff; cursor: pointer; flex: 1;">
+              <option value="none" selected>☀️ 晴空萬里</option>
+              <option value="rain">🌧️ 煙雨濛濛</option>
+              <option value="fog">🌫️ 迷霧繞</option>
+              <option value="thunder">⚡ 狂風暴雷</option>
+            </select>
+          </div>
+        </div>
       </div>
       <div class="wave-progress-bar">
         <span id="waveProgressLabel">待機中</span>
@@ -784,6 +1309,91 @@
           <div id="waveProgressFill" class="wave-progress-fill idle"></div>
         </div>
         <span id="waveEnemyCount" style="min-width:60px;text-align:right;"></span>
+      </div>
+
+      <!-- 展開詳細數據面板 (Priority 2) -->
+      <div id="detailsPanel" class="details-panel" style="margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px; width: 100%;">
+        <button id="btnToggleDetails" class="btn" style="width: 100%; min-height: 32px; height: 32px; padding: 4px 12px; font-size: 0.8rem; background: #1e293b; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 6px;">
+          📊 展開詳細數據 (怪物預覽 & 防禦塔DPS統計)
+        </button>
+        <div id="detailsContent" style="display: none; margin-top: 8px; gap: 12px; flex-direction: row; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 260px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px;">
+            <div style="color: var(--accent); font-weight: bold; font-size: 0.82rem; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">👾 下波/當前怪物預覽</div>
+            <div id="monsterPreviewList" style="display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; color: var(--text-muted); text-align: left; max-height: 120px; overflow-y: auto;">
+              <!-- 怪物預覽動態內容 -->
+              <span style="font-style: italic; color: #475569;">無怪物資料</span>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 260px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px;">
+            <div style="color: var(--gold); font-weight: bold; font-size: 0.82rem; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">⚔️ 防禦塔累積傷害與 DPS 統計</div>
+            <div id="dpsStatsList" style="display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; color: var(--text-muted); text-align: left; max-height: 120px; overflow-y: auto;">
+              <!-- DPS 動態內容 -->
+              <span style="font-style: italic; color: #475569;">尚未建造防禦塔</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 五行羅盤常駐面板 ===== -->
+      <div id="wuxingCompass" class="wuxing-compass-panel compact">
+        <div class="compass-mini-icon">☯️</div>
+        <svg class="compass-svg" viewBox="0 0 100 100">
+          <defs>
+            <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L6,3 Z" fill="#94a3b8" />
+            </marker>
+            <marker id="arrow-green" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L6,3 Z" fill="#22c55e" />
+            </marker>
+            <marker id="arrow-red" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L6,3 Z" fill="#ef4444" />
+            </marker>
+          </defs>
+          
+          <!-- 相生路徑 (木 -> 火 -> 土 -> 金 -> 水 -> 木) 順時針 -->
+          <!-- 木(12,38) 火(50,12) 土(88,38) 金(74,80) 水(26,80) -->
+          <path id="gen-wood-fire" d="M 15 35 Q 28 17 45 14" stroke="#4ade80" stroke-width="1.2" fill="none" marker-end="url(#arrow)" />
+          <path id="gen-fire-earth" d="M 55 14 Q 72 17 85 35" stroke="#ef4444" stroke-width="1.2" fill="none" marker-end="url(#arrow)" />
+          <path id="gen-earth-metal" d="M 86 43 Q 83 62 76 75" stroke="#fbbf24" stroke-width="1.2" fill="none" marker-end="url(#arrow)" />
+          <path id="gen-metal-water" d="M 70 80 Q 50 82 30 80" stroke="#e5e7eb" stroke-width="1.2" fill="none" marker-end="url(#arrow)" />
+          <path id="gen-water-wood" d="M 24 75 Q 17 62 14 43" stroke="#38bdf8" stroke-width="1.2" fill="none" marker-end="url(#arrow)" />
+          
+          <!-- 相剋路徑 (木->土, 土->水, 水->火, 火->金, 金->木) 內五角星 -->
+          <path id="cnt-wood-earth" d="M 18 38 L 82 38" stroke="#ef4444" stroke-dasharray="2,2" stroke-width="1.0" fill="none" marker-end="url(#arrow-red)" />
+          <path id="cnt-earth-water" d="M 85 41 L 30 78" stroke="#ef4444" stroke-dasharray="2,2" stroke-width="1.0" fill="none" marker-end="url(#arrow-red)" />
+          <path id="cnt-water-fire" d="M 28 76 L 49 18" stroke="#ef4444" stroke-dasharray="2,2" stroke-width="1.0" fill="none" marker-end="url(#arrow-red)" />
+          <path id="cnt-fire-metal" d="M 51 18 L 72 76" stroke="#ef4444" stroke-dasharray="2,2" stroke-width="1.0" fill="none" marker-end="url(#arrow-red)" />
+          <path id="cnt-metal-wood" d="M 70 78 L 16 41" stroke="#ef4444" stroke-dasharray="2,2" stroke-width="1.0" fill="none" marker-end="url(#arrow-red)" />
+          
+          <!-- 五行頂點標籤 -->
+          <circle cx="12" cy="38" r="6" fill="#14532d" stroke="#4ade80" stroke-width="1.5" />
+          <text x="12" y="41" font-size="7" font-weight="bold" fill="#fff" text-anchor="middle">木</text>
+          
+          <circle cx="50" cy="12" r="6" fill="#991b1b" stroke="#ef4444" stroke-width="1.5" />
+          <text x="50" y="15" font-size="7" font-weight="bold" fill="#fff" text-anchor="middle">火</text>
+          
+          <circle cx="88" cy="38" r="6" fill="#78350f" stroke="#fbbf24" stroke-width="1.5" />
+          <text x="88" y="41" font-size="7" font-weight="bold" fill="#fff" text-anchor="middle">土</text>
+          
+          <circle cx="74" cy="80" r="6" fill="#374151" stroke="#e5e7eb" stroke-width="1.5" />
+          <text x="74" y="83" font-size="7" font-weight="bold" fill="#fff" text-anchor="middle">金</text>
+          
+          <circle cx="26" cy="80" r="6" fill="#1e3a5f" stroke="#38bdf8" stroke-width="1.5" />
+          <text x="26" y="83" font-size="7" font-weight="bold" fill="#fff" text-anchor="middle">水</text>
+        </svg>
+      </div>
+
+      <!-- ===== 配方書 Codex 彈窗 ===== -->
+      <div id="recipeCodexModal" class="scene" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
+        <div class="codex-container">
+          <div class="codex-header">
+            <h3>📖 五行相生相剋配方秘籍</h3>
+            <button id="btnCloseCodex" class="codex-close">&times;</button>
+          </div>
+          <div class="codex-body" id="codexBody">
+            <!-- 內容由 JS 動態生成 -->
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -798,6 +1408,124 @@
       <div id="releaseNotesBody" style="overflow-y: auto; flex-grow: 1; font-size: 0.95rem; line-height: 1.6; color: var(--text-color); text-align: left; padding-right: 8px;">
         <!-- 內容由 JS 動態填充 -->
       </div>
+    </div>
+  </div>
+
+  <!-- ===== 卡牌選擇 Modal (Roguelike) ===== -->
+  <div id="cardPickerModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:20000; justify-content:center; align-items:center; padding:20px; backdrop-filter:blur(6px); transition:opacity 0.3s; opacity:0;">
+    <div style="text-align:center; max-width:860px; width:100%;">
+      <div style="margin-bottom:18px;">
+        <div style="font-size:1.8rem; font-weight:800; color:#fde047; letter-spacing:2px; text-shadow:0 0 18px #fde04788;">⚔️ 波次結束 — 選擇增益</div>
+        <div style="color:#94a3b8; font-size:0.85rem; margin-top:4px;">選擇一張卡牌作為本波獎勵</div>
+      </div>
+      <div id="cardPickerGrid" style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <style>
+    #cardPickerModal.visible { opacity: 1; }
+    .rogue-card {
+      background: rgba(15, 23, 42, 0.96);
+      border: 2px solid #4f46e5;
+      border-radius: 14px;
+      padding: 20px 16px;
+      width: 220px;
+      min-height: 240px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.18s, box-shadow 0.18s, opacity 0.3s;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .rogue-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .rogue-card:hover { transform: translateY(-8px) scale(1.04); box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
+    .rogue-card.selected {
+      animation: cardSelect 0.5s ease forwards;
+      pointer-events: none;
+    }
+    .rogue-card.dismissed {
+      opacity: 0.25;
+      transform: scale(0.92);
+      pointer-events: none;
+      transition: all 0.3s;
+    }
+    @keyframes cardSelect {
+      0% { transform: scale(1.04); }
+      30% { transform: scale(1.12); box-shadow: 0 0 40px currentColor; }
+      100% { transform: scale(1.08); opacity: 0.9; }
+    }
+    .rogue-card-emoji { font-size: 2.8rem; line-height: 1; margin-bottom: 4px; }
+    .rogue-card-category {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #64748b;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      padding: 2px 8px;
+    }
+    .rogue-card-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin: 4px 0;
+    }
+    .rogue-card-desc {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+    .rogue-buff-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      white-space: nowrap;
+      animation: buffTagPulse 2s ease-in-out infinite;
+    }
+    @keyframes buffTagPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .rogue-buff-tag.free-build {
+      color: #fde047;
+      border-color: #fde047;
+      animation: buffTagGlow 0.8s ease-in-out infinite alternate;
+    }
+    @keyframes buffTagGlow {
+      from { box-shadow: 0 0 4px #fde04788; }
+      to { box-shadow: 0 0 12px #fde047; }
+    }
+  </style>
+
+  <!-- 全局防禦塔 Tooltip -->
+  <div id="towerTooltip" style="display: none; position: absolute; background: rgba(15, 23, 42, 0.95); border: 2px solid var(--border-color); border-radius: 8px; padding: 10px; z-index: 10001; pointer-events: none; max-width: 240px; font-size: 0.78rem; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(8px); text-align: left; font-family: sans-serif;">
+  </div>
+
+  <!-- ===== 教學關卡引導面板 (P3) ===== -->
+  <div id="levelTutorialPanel" class="level-tutorial-panel" style="display: none; position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 550px; background: rgba(15, 23, 42, 0.95); border: 4px solid var(--gold); border-image: url('data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;12&quot; height=&quot;12&quot;><rect x=&quot;0&quot; y=&quot;0&quot; width=&quot;12&quot; height=&quot;12&quot; fill=&quot;none&quot; stroke=&quot;%23f59e0b&quot; stroke-width=&quot;4&quot;/><rect x=&quot;4&quot; y=&quot;4&quot; width=&quot;4&quot; height=&quot;4&quot; fill=&quot;none&quot;/></svg>') 4 repeat; box-shadow: 6px 6px 0px 0px #020617; padding: 14px; color: #fff; font-family: 'DotGothic16', sans-serif;">
+    <div style="font-weight: bold; color: var(--gold); font-size: 1.05rem; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+      <span>💡 新手關卡引導</span>
+    </div>
+    <div id="levelTutorialText" style="font-size: 0.85rem; line-height: 1.4; margin-bottom: 12px;"></div>
+    <div style="display: flex; justify-content: flex-end;">
+      <button id="btnLevelTutorialNext" class="btn" style="padding: 6px 12px; font-size: 0.8rem; background: #1e293b;">我知道了</button>
     </div>
   </div>
 

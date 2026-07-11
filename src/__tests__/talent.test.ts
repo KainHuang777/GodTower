@@ -432,3 +432,17 @@ describe('talent damage amplification sanity', () => {
     }
   });
 });
+
+describe('hasPlayedBefore save/load', () => {
+  it('default hasPlayedBefore should be false', () => {
+    const data = loadTalentData();
+    expect(data.hasPlayedBefore).toBe(false);
+  });
+
+  it('can save and load hasPlayedBefore flag correctly', () => {
+    const data = mockSaveData({ hasPlayedBefore: true });
+    saveTalentData(data);
+    const loaded = loadTalentData();
+    expect(loaded.hasPlayedBefore).toBe(true);
+  });
+});

@@ -1,0 +1,164 @@
+{
+  "waves": [
+    {
+      "wave": 1,
+      "theme": "教學波",
+      "enemies": [
+        { "enemyType": "water_spirit", "count": 6, "spawnIntervalMs": 800, "hpMultiplier": 1.0 }
+      ]
+    },
+    {
+      "wave": 2,
+      "theme": "教學波",
+      "enemies": [
+        { "enemyType": "beetle", "count": 6, "spawnIntervalMs": 700, "hpMultiplier": 1.1 }
+      ]
+    },
+    {
+      "wave": 3,
+      "theme": "教學波",
+      "enemies": [
+        { "enemyType": "water_spirit", "count": 6, "spawnIntervalMs": 650, "hpMultiplier": 1.2 },
+        { "enemyType": "beetle", "count": 4, "spawnIntervalMs": 650, "hpMultiplier": 1.2 }
+      ]
+    },
+    {
+      "wave": 4,
+      "theme": "探索波",
+      "enemies": [
+        { "enemyType": "snake", "count": 8, "spawnIntervalMs": 600, "hpMultiplier": 1.3 },
+        { "enemyType": "fly", "count": 3, "spawnIntervalMs": 800, "hpMultiplier": 1.0 }
+      ]
+    },
+    {
+      "wave": 5,
+      "theme": "探索波 (基礎Boss)",
+      "enemies": [
+        { "enemyType": "salamander", "count": 8, "spawnIntervalMs": 600, "hpMultiplier": 1.4 },
+        { "enemyType": "boss_dragon", "count": 1, "spawnIntervalMs": 0, "hpMultiplier": 2.1 }
+      ]
+    },
+    {
+      "wave": 6,
+      "theme": "探索波",
+      "enemies": [
+        { "enemyType": "golem", "count": 6, "spawnIntervalMs": 700, "hpMultiplier": 1.5 },
+        { "enemyType": "snake", "count": 6, "spawnIntervalMs": 700, "hpMultiplier": 1.5 }
+      ]
+    },
+    {
+      "wave": 7,
+      "theme": "壓力波",
+      "enemies": [
+        { "enemyType": "beetle", "count": 10, "spawnIntervalMs": 500, "hpMultiplier": 1.6 },
+        { "enemyType": "fly", "count": 5, "spawnIntervalMs": 800, "hpMultiplier": 1.3 }
+      ]
+    },
+    {
+      "wave": 8,
+      "theme": "壓力波",
+      "enemies": [
+        { "enemyType": "water_spirit", "count": 12, "spawnIntervalMs": 550, "hpMultiplier": 1.7 },
+        { "enemyType": "golem", "count": 6, "spawnIntervalMs": 600, "hpMultiplier": 1.7 }
+      ]
+    },
+    {
+      "wave": 9,
+      "theme": "壓力波",
+      "enemies": [
+        { "enemyType": "salamander", "count": 10, "spawnIntervalMs": 500, "hpMultiplier": 1.8 },
+        { "enemyType": "snake", "count": 10, "spawnIntervalMs": 500, "hpMultiplier": 1.8 }
+      ]
+    },
+    {
+      "wave": 10,
+      "theme": "Boss波 (裝甲 Boss)",
+      "enemies": [
+        { "enemyType": "beetle", "count": 8, "spawnIntervalMs": 600, "hpMultiplier": 2.0 },
+        { "enemyType": "boss_dragon", "count": 1, "spawnIntervalMs": 0, "hpMultiplier": 4.0, "armor": true }
+      ]
+    },
+    {
+      "wave": 11,
+      "theme": "喘息波",
+      "enemies": [
+        { "enemyType": "snake", "count": 15, "spawnIntervalMs": 400, "hpMultiplier": 2.2 }
+      ]
+    },
+    {
+      "wave": 12,
+      "theme": "第二危機",
+      "enemies": [
+        { "enemyType": "golem", "count": 12, "spawnIntervalMs": 500, "hpMultiplier": 2.5 },
+        { "enemyType": "fly", "count": 10, "spawnIntervalMs": 600, "hpMultiplier": 2.0 }
+      ]
+    },
+    {
+      "wave": 13,
+      "theme": "第二危機",
+      "enemies": [
+        { "enemyType": "water_spirit", "count": 15, "spawnIntervalMs": 450, "hpMultiplier": 2.8 },
+        { "enemyType": "salamander", "count": 12, "spawnIntervalMs": 450, "hpMultiplier": 2.8 }
+      ]
+    },
+    {
+      "wave": 14,
+      "theme": "第二危機",
+      "enemies": [
+        { "enemyType": "beetle", "count": 15, "spawnIntervalMs": 400, "hpMultiplier": 3.2 },
+        { "enemyType": "golem", "count": 10, "spawnIntervalMs": 500, "hpMultiplier": 3.2 }
+      ]
+    },
+    {
+      "wave": 15,
+      "theme": "Boss波 (再生 Boss)",
+      "enemies": [
+        { "enemyType": "salamander", "count": 10, "spawnIntervalMs": 500, "hpMultiplier": 3.6 },
+        { "enemyType": "boss_dragon", "count": 1, "spawnIntervalMs": 0, "hpMultiplier": 7.2, "regen": true }
+      ]
+    },
+    {
+      "wave": 16,
+      "theme": "終局考驗",
+      "enemies": [
+        { "enemyType": "snake", "count": 20, "spawnIntervalMs": 350, "hpMultiplier": 4.2 },
+        { "enemyType": "fly", "count": 15, "spawnIntervalMs": 500, "hpMultiplier": 3.4 }
+      ]
+    },
+    {
+      "wave": 17,
+      "theme": "終局考驗",
+      "enemies": [
+        { "enemyType": "golem", "count": 15, "spawnIntervalMs": 400, "hpMultiplier": 4.8 },
+        { "enemyType": "water_spirit", "count": 20, "spawnIntervalMs": 400, "hpMultiplier": 4.8 }
+      ]
+    },
+    {
+      "wave": 18,
+      "theme": "終局考驗",
+      "enemies": [
+        { "enemyType": "beetle", "count": 20, "spawnIntervalMs": 350, "hpMultiplier": 5.5 },
+        { "enemyType": "salamander", "count": 20, "spawnIntervalMs": 350, "hpMultiplier": 5.5 }
+      ]
+    },
+    {
+      "wave": 19,
+      "theme": "終局考驗",
+      "enemies": [
+        { "enemyType": "snake", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 6.5 },
+        { "enemyType": "fly", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 5.2 },
+        { "enemyType": "salamander", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 6.5 },
+        { "enemyType": "water_spirit", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 6.5 },
+        { "enemyType": "golem", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 6.5 },
+        { "enemyType": "beetle", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 6.5 }
+      ]
+    },
+    {
+      "wave": 20,
+      "theme": "最終 Boss波 (分裂 Boss)",
+      "enemies": [
+        { "enemyType": "boss_dragon", "count": 1, "spawnIntervalMs": 0, "hpMultiplier": 20.0, "split": true }
+      ]
+    }
+  ]
+}

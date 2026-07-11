@@ -17,12 +17,152 @@ let bgmErrorCount = 0;
 
 const sfxAssets: Record<string, HTMLAudioElement[]> = {};
 const MAX_POOL_SIZE = 10;
-const sfxPaths: Record<string, string> = {
+const sfxPaths = {
   click: 'assets/audio/click.mp3',
   shoot: 'assets/audio/shoot.mp3',
   enemy_death: 'assets/audio/enemy_death.mp3',
-  merge_success: 'assets/audio/merge_success.mp3'
+  merge_success: 'assets/audio/merge_success.mp3',
+  hit: 'assets/audio/hit.mp3',
+  crit: 'assets/audio/crit.mp3',
+  hit_fire: 'assets/audio/hit_fire.mp3',
+  hit_water: 'assets/audio/hit_water.mp3',
+  hit_wood: 'assets/audio/hit_wood.mp3',
+  hit_metal: 'assets/audio/hit_metal.mp3',
+  hit_earth: 'assets/audio/hit_earth.mp3',
+  hit_yin: 'assets/audio/hit_yin.mp3',
+  hit_yang: 'assets/audio/hit_yang.mp3'
 };
+
+export type SFXType = keyof typeof sfxPaths;
+
+let audioCtx: AudioContext | null = null;
+
+function getAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  return audioCtx;
+}
+
+export function playSynthSFX(type: SFXType) {
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+
+    if (type === 'click') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === 'shoot') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(350, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.12);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.12);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    } else if (type === 'hit') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(700, now);
+      osc.frequency.linearRampToValueAtTime(1000, now + 0.05);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === 'crit') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(250, now);
+      osc.frequency.exponentialRampToValueAtTime(700, now + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.18);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.18);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } else if (type === 'enemy_death') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else if (type === 'merge_success') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(261.63, now); // C4
+      osc.frequency.setValueAtTime(329.63, now + 0.07); // E4
+      osc.frequency.setValueAtTime(392.00, now + 0.14); // G4
+      osc.frequency.setValueAtTime(523.25, now + 0.21); // C5
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.linearRampToValueAtTime(0.15, now + 0.21);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } else if (type === 'hit_fire') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.exponentialRampToValueAtTime(10, now + 0.15);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } else if (type === 'hit_water') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.exponentialRampToValueAtTime(1500, now + 0.08);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } else if (type === 'hit_wood') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(200, now + 0.06);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.06);
+      osc.start(now);
+      osc.stop(now + 0.06);
+    } else if (type === 'hit_metal') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(800, now + 0.04);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.04);
+      osc.start(now);
+      osc.stop(now + 0.04);
+    } else if (type === 'hit_earth') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(100, now);
+      osc.frequency.linearRampToValueAtTime(50, now + 0.1);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.1);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } else if (type === 'hit_yin' || type === 'hit_yang') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(660, now + 0.12);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.12);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    }
+  } catch (e) {
+    // 默默捕獲錯誤，防止資源不存在或瀏覽器安全策略導致中斷
+  }
+}
 
 export function initSFX() {
   for (const [key, path] of Object.entries(sfxPaths)) {
@@ -35,11 +175,14 @@ export function initSFX() {
   }
 }
 
-export function playSFX(type: 'click' | 'shoot' | 'enemy_death' | 'merge_success') {
+export function playSFX(type: SFXType) {
   if (!isMusicEnabled) return;
 
   const pool = sfxAssets[type];
-  if (!pool) return;
+  if (!pool) {
+    playSynthSFX(type);
+    return;
+  }
 
   let audioToPlay = pool.find(audio => audio.paused || audio.ended);
 
@@ -54,10 +197,10 @@ export function playSFX(type: 'click' | 'shoot' | 'enemy_death' | 'merge_success
     audioToPlay.pause();
   }
 
-  audioToPlay.volume = type === 'shoot' ? 0.2 : 0.45;
+  audioToPlay.volume = type === 'shoot' || type.startsWith('hit') ? 0.2 : 0.45;
   audioToPlay.currentTime = 0;
   audioToPlay.play().catch(() => {
-    // 默默捕獲錯誤，防止資源不存在或瀏覽器安全策略導致中斷
+    playSynthSFX(type);
   });
 }
 

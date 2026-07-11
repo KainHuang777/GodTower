@@ -1,7 +1,8 @@
 // ============================================================
-// src/maps.ts — 關卡地圖配置（不同難度、起終點、檢查點及預設障礙物）
+// src/maps.ts — 關卡地圖配置與平台存檔持久化
 // ============================================================
 
+import { currentSaveStorage } from './system/platform';
 import type { Point } from './types';
 
 export interface MapConfig {
@@ -161,7 +162,7 @@ const CUSTOM_MAPS_KEY = 'td_custom_maps';
 
 export function loadCustomMaps(): MapConfig[] {
   try {
-    const raw = localStorage.getItem(CUSTOM_MAPS_KEY);
+    const raw = currentSaveStorage.getItem(CUSTOM_MAPS_KEY);
     if (!raw) return [];
     return JSON.parse(raw) as MapConfig[];
   } catch {
@@ -170,7 +171,7 @@ export function loadCustomMaps(): MapConfig[] {
 }
 
 export function saveCustomMaps(maps: MapConfig[]): void {
-  localStorage.setItem(CUSTOM_MAPS_KEY, JSON.stringify(maps));
+  currentSaveStorage.setItem(CUSTOM_MAPS_KEY, JSON.stringify(maps));
 }
 
 export function deleteCustomMap(mapId: string): void {

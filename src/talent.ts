@@ -1,7 +1,8 @@
 // ============================================================
-// src/talent.ts — 天賦樹定義、localStorage 持久化
+// src/talent.ts — 天賦樹定義、平台抽象存檔持久化
 // ============================================================
 
+import { currentSaveStorage } from './system/platform';
 import type { Element } from './towers';
 
 const STORAGE_KEY = 'checkpoint_maze_td_talent';
@@ -59,12 +60,13 @@ export interface TalentSaveData {
   spentTalentPoints: number;
   talentLevels: Partial<Record<TalentId, number>>;
   unlockedTalents?: TalentId[]; // 舊資料相容用
+  hasPlayedBefore?: boolean;    // P3: 新手引導標誌
 }
 
-/** 從 localStorage 載入天賦資料 */
+/** 從 platform 載入天賦資料 */
 export function loadTalentData(): TalentSaveData {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = currentSaveStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       // 舊存檔相容性轉換
@@ -85,13 +87,14 @@ export function loadTalentData(): TalentSaveData {
   return {
     totalTalentPoints: 0,
     spentTalentPoints: 0,
-    talentLevels: {} as Record<TalentId, number>
+    talentLevels: {} as Record<TalentId, number>,
+    hasPlayedBefore: false
   };
 }
 
-/** 儲存天賦資料到 localStorage */
+/** 儲存天賦資料到 platform */
 export function saveTalentData(data: TalentSaveData): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  currentSaveStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
 /** 計算可用天賦點 */

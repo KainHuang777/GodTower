@@ -164,8 +164,6 @@ describe('Cross-Element Recipes (getCrossRecipeResult)', () => {
     ['wood', 'fire', 'wood_fire'],
     ['fire', 'earth', 'fire_earth'],
     ['earth', 'metal', 'earth_metal'],
-    ['metal', 'water', 'metal_water'],
-    ['water', 'wood', 'water_wood'],
     ['yin', 'yang', 'yin_yang'],
   ];
 
@@ -181,8 +179,6 @@ describe('Cross-Element Recipes (getCrossRecipeResult)', () => {
       ['fire', 'wood', 'wood_fire'],
       ['earth', 'fire', 'fire_earth'],
       ['metal', 'earth', 'earth_metal'],
-      ['water', 'metal', 'metal_water'],
-      ['wood', 'water', 'water_wood'],
       ['yang', 'yin', 'yin_yang'],
     ];
     for (const [a, b, expected] of reversed) {
@@ -196,6 +192,11 @@ describe('Cross-Element Recipes (getCrossRecipeResult)', () => {
     expect(getCrossRecipeResult('yin', 'fire')).toBeNull();
     expect(getCrossRecipeResult('fire', 'fire')).toBeNull();
   });
+
+  it('returns null for frozen combos', () => {
+    expect(getCrossRecipeResult('metal', 'water')).toBeNull();
+    expect(getCrossRecipeResult('water', 'wood')).toBeNull();
+  });
 });
 
 // ===================================================================
@@ -203,13 +204,13 @@ describe('Cross-Element Recipes (getCrossRecipeResult)', () => {
 // ===================================================================
 
 describe('Element Counter Bonus (getElementBonus)', () => {
-  it('counter pairs return 1.3', () => {
+  it('counter pairs return 1.3 at wave 0', () => {
     // ELEMENT_COUNTER: metal→wood, wood→earth, earth→water, water→fire, fire→metal
-    expect(getElementBonus('metal', 'wood')).toBe(1.3);
-    expect(getElementBonus('wood', 'earth')).toBe(1.3);
-    expect(getElementBonus('earth', 'water')).toBe(1.3);
-    expect(getElementBonus('water', 'fire')).toBe(1.3);
-    expect(getElementBonus('fire', 'metal')).toBe(1.3);
+    expect(getElementBonus('metal', 'wood', 0)).toBe(1.3);
+    expect(getElementBonus('wood', 'earth', 0)).toBe(1.3);
+    expect(getElementBonus('earth', 'water', 0)).toBe(1.3);
+    expect(getElementBonus('water', 'fire', 0)).toBe(1.3);
+    expect(getElementBonus('fire', 'metal', 0)).toBe(1.3);
   });
 
   it('non-counter returns 1.0', () => {

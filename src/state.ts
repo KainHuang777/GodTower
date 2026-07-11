@@ -12,6 +12,25 @@ import type {
 import { MAPS } from './maps';
 import type { MapConfig } from './maps';
 import type { TalentSaveData } from './talent';
+import type { Element } from './towers';
+
+/** Roguelike Buff 狀態（每局重置） */
+export interface RoguelikeState {
+  /** 各元素傷害加成倍率（0.0 = 無加成），最多疊加 2 層 */
+  elementDmgBonus: Partial<Record<Element, number>>;
+  /** 下次合成費用倍率（1.0 = 正常，0.5 = 半價） */
+  nextMergeCostPct: number;
+  /** 全場射程加成格數 */
+  rangeBonusGlobal: number;
+  /** 攻速加成（攻速冷卻縮短幀數，0 = 無） */
+  attackSpeedBonus: number;
+  /** 攻速加成剩餘波次（0 = 無效果） */
+  attackSpeedWavesLeft: number;
+  /** 下次建塔免費 */
+  freeNextBuild: boolean;
+  /** 神秘召喚當前定價（每局開始時計算一次） */
+  mysteryBoxPrice: number;
+}
 
 export interface GameState {
   // 地圖尺寸（會隨關卡改變）
@@ -70,6 +89,8 @@ export interface GameState {
   spawnTimers: ReturnType<typeof setInterval>[];
   routePreviewTimer: number;
   cachedPreviewRoute: Point[];
+  cachedPathTiles: Set<string>;
+  cachedFullPath: Point[];
   waveTotal: number;
   waveSpawned: number;
 
@@ -98,6 +119,65 @@ export interface GameState {
   lastFpsUpdateTime: number;
   frameCount: number;
   currentFps: number;
+
+  // 基準測試 (Benchmark) 狀態
+  isBenchmarking: boolean;
+  benchStartTime: number;
+  benchFrames: number[];
+  benchDrawCalls: number[];
+
+  // 跨模組回呼函式
+  switchScene?: (scene: GameScene) => void;
+  startBattle?: () => void;
+  renderTalentScreen?: () => void;
+  renderLevelSelectScreen?: () => void;
+  refreshMenuTalentInfo?: () => void;
+  initEditor?: () => void;
+  renderEditor?: () => void;
+  spawnWave?: (waveNum: number) => void;
+  spawnTestEnemy?: (enemyType: any) => void;
+  updateUI?: () => void;
+  updateWaveProgress?: () => void;
+  buildTowerButtons?: () => void;
+  refreshToolSelection?: () => void;
+  resizeGameContainer?: () => void;
+  startPerformanceBenchmark?: () => void;
+  endPerformanceBenchmark?: () => void;
+
+    // Juice & Range Visualization
+    hitStopFrames: number;
+    shakeIntensity: number;
+    shakeDecay: number;
+    hoverGridX: number | null;
+    hoverGridY: number | null;
+    selectedTower: Tower | null;
+    gameSpeed: number;
+    hoveredTowerBtn: string | null;
+    draggedTowerTypeId: string | null;
+    dragMousePos: Point | null;
+    
+    // P2 features
+    waveTicks: number; // Wave duration frame counter
+    mergeTutorialState: 'idle' | 'active' | 'completed'; // Merge tutorial flow
+    mergeTutorialTowers: number[]; // Towers highlighted for merging tutorial
+
+    // P3 features
+    mergeAnimation: {
+      active: boolean;
+      timer: number;
+      duration: number;
+      t1: { x: number, y: number, typeId: string };
+      t2: { x: number, y: number, typeId: string };
+      resultX: number;
+      resultY: number;
+      resultTypeId: string;
+    } | null;
+    talentTutorialActive: boolean;
+    levelTutorialStep: 'idle' | 'intro' | 'build_wall' | 'build_tower' | 'start_wave' | 'wave_1_active' | 'merge_guide' | 'speed_guide' | 'wave_5_guide' | 'completed';
+    activeTalentTrack: 'track-base' | 'track-attack' | 'track-element' | 'track-yinyang';
+
+    // Roguelike 系統狀態
+    roguelikeState: RoguelikeState;
 }
 
 function createInitialGrid(cols: number, rows: number): number[][] {
@@ -156,10 +236,12 @@ export function createGameState(): GameState {
     spawnTimers: [],
     routePreviewTimer: 0,
     cachedPreviewRoute: [],
+    cachedPathTiles: new Set<string>(),
+    cachedFullPath: [],
     waveTotal: 0,
     waveSpawned: 0,
 
-    currentTheme: 'scifi',
+    currentTheme: 'chinese',
     currentWeather: 'none',
     bgStars: [],
     weatherParticles: [],
@@ -181,6 +263,44 @@ export function createGameState(): GameState {
     lastFpsUpdateTime: 0,
     frameCount: 0,
     currentFps: 60,
+    isBenchmarking: false,
+    benchStartTime: 0,
+    benchFrames: [],
+    benchDrawCalls: [],
+
+    // Juice & Range Visualization
+    hitStopFrames: 0,
+    shakeIntensity: 0,
+    shakeDecay: 0,
+    hoverGridX: null,
+    hoverGridY: null,
+    selectedTower: null,
+    gameSpeed: 1,
+    hoveredTowerBtn: null,
+    draggedTowerTypeId: null,
+    dragMousePos: null,
+    
+    // P2 features
+    waveTicks: 0,
+    mergeTutorialState: (typeof window !== 'undefined' && window.localStorage.getItem('td_shown_merge_tutorial') === 'true') ? 'completed' : 'idle',
+    mergeTutorialTowers: [],
+
+    // P3 合成動畫與新手引導
+    mergeAnimation: null,
+    talentTutorialActive: false,
+    levelTutorialStep: 'idle',
+    activeTalentTrack: 'track-base',
+
+    // Roguelike 系統狀態
+    roguelikeState: {
+      elementDmgBonus: {},
+      nextMergeCostPct: 1.0,
+      rangeBonusGlobal: 0,
+      attackSpeedBonus: 0,
+      attackSpeedWavesLeft: 0,
+      freeNextBuild: false,
+      mysteryBoxPrice: 0,
+    },
   };
 }
 

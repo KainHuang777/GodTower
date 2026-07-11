@@ -1,0 +1,112 @@
+2026-07-11 Talent UI Tabbed Overhaul & Layout Optimization
+- [state.ts] GameState: Added `activeTalentTrack` to manage tab switches for talent trees, defaulting to 'track-base'.
+- [input/inputHandler.ts] Refactored nav buttons event: Handled tab switches by changing activeTalentTrack and rendering screen. Disabled switches during onboarding guidance to secure target focus. Removed IntersectionObserver code.
+- [scenes/scenesManager.ts] renderTalentScreen(): Capped display to one talent track at a time by hiding inactive tracks, computed each tab's unlocked progress vs max levels, and appended the count to button labels. Fixed TS7053 index type error.
+- [scenes/scenesManager.ts] drawTalentLines(): Skipped SVG line drawing if connected cards are hidden (width === 0) to prevent line rendering corruption.
+- [index.html] CSS: Enlarged .talent-nav-btn padding to 10px 20px and font-size to 1.05rem to match premium pixel tab style.
+- Build verified: npm run test (159 tests passed) and npm run build successful (Vite production bundle generated).
+
+2026-07-11 Tutorial Onboarding Flow Overhaul & Refactoring
+- [state.ts] Extended levelTutorialStep types with new guiding steps: 'wave_1_active', 'merge_guide', 'speed_guide', and 'wave_5_guide'.
+- [battle/battleManager.ts] checkWaveEnd(): Dynamically capped the tutorial map waves to 5 (using local maxWaves). Triggered 'merge_guide' and directly spawned a matching L1 Fire tower adjacent to the user's first Fire tower upon Wave 1 success. Activated 'wave_5_guide' once Wave 4 succeeds to warm up for the final Boss round.
+- [battle/towerActions.ts] updateMergeAnimation(): Automatically transitioned the tutorial step from 'merge_guide' to 'speed_guide' upon the successful birth of L2 Fire tower.
+- [input/inputHandler.ts] Refactored btnStartWave and btnSpeed events: Supported the transition of levelTutorialStep sequentially through the onboarding flow, updated Space keydown logic to support dynamic maxWaves, and cleared the tutorial step back to 'idle' once player interacts with the 2x/3x speed control.
+- [ui/uiManager.ts] updateLevelTutorial(): Created detailed tutorial modal text structures for the L1 merge, game acceleration, and final Boss wave steps. Configured active button glow highlights and hid the Mystery Summon (#btnMystery) button during the tutorial session to preserve onboarding clean.
+- [__tests__/tutorial.test.ts] Created new comprehensive unit tests verifying dynamic waves limit, automated L1 tower spawning, and state transitions. Passed all 159 unit tests and production Vite builds.
+
+2026-07-11 Game Loop Crash Fix
+- [main.ts] gameLoop(): Cached `gameState.mergeAnimation.timer` to `currentTimer` before calling `updateMergeAnimation()`. This prevents a TypeError crash (Cannot read properties of null reading 'timer') when the merge animation completes and `mergeAnimation` is set to null.
+- Build verified: npm run test (155 tests passed) and npm run build successful (Vite production bundle generated).
+
+2026-07-11 Roguelike Mechanics Bugfixes & Unit Tests
+- [roguelikeSystem.ts] calcMysteryBoxPrice() & rollMysteryBox(): Filtered mystery box summon pool to only include unlocked towers and exclude wall tower ('earth'), and corrected pricing calculation to dynamically reflect the unlocked towers progress. Removed unused getWallCost import.
+- [battle/towerActions.ts] handleBuild(): Optimized free build logic to bypass the gold check when freeNextBuild is active, and implemented startBonusTowers iteration to automatically switch selected tool and grant next start bonus free tower sequentially.
+- [battle/towerActions.ts] updateMergeAnimation(): Implemented resonance merge refund—when nextMergeCostPct < 1.0 (Five Elements Resonance active), refunds 50% of the combined material towers' costs back to the player at the end of the merge animation. Casted typeId as TowerTypeId to fix compile warnings.
+- [__tests__/roguelike.test.ts] Created new comprehensive unit tests verifying mystery box summoning pricing & filters, starter bonus free building, and resonance merge refund. Mocked pathfinding/render/audio to bypass Node environment limits.
+- [ROADMAP.md] Marked "Roguelike 機制導入" under P2 as fully completed [x].
+- Build verified: npm run test (155 tests passed) and npm run build successful (Vite production bundle generated).
+
+2026-07-10 Tutorial Onboarding Step 2 & 3 Enhancements
+- [index.html] Added `.btn-guide-pulse` keyframe animation for flashing guidance effects.
+- [uiManager.ts] refreshToolSelection(): dynamically added/removed `.btn-guide-pulse` to highlight recommended tower buttons (Earth for build_wall, Fire for build_tower) and Next Wave button (#btnStartWave) during specific tutorial steps.
+- [battle/towerActions.ts] handleBuild(): strictly limited the tutorial build_tower stage completion to only when the player builds a Fire (烈焰) tower; triggered `refreshToolSelection()` on stage change to sync buttons.
+- [renderer/gameRenderer.ts] renderGame(): added pulsing reddish dashed highlight box on tiles (61/64, 8-10) for recommended Fire tower placement in tutorial build_tower stage.
+
+2026-07-10 Tutorial Flow Fix — Onboarding Overhaul
+- [roguelikeSystem.ts] grantStartBonus(): excluded 'tutorial' map in addition to 'test_level' to prevent random tower grants from overriding the guided tool selection during tutorial.
+- [battleManager.ts] checkWaveEnd(): restricted Roguelike card picker (showCardPicker + tickWaveBuffs) to non-tutorial, non-test maps only; added wave-1 encouragement float for tutorial map.
+- [battleManager.ts] endBattle(): moved hasPlayedBefore=true assignment BEFORE addTalentPoints() call; added explicit saveTalentData() call immediately after to persist the flag—prevents repeated talent tutorial trigger if player skips talent screen and plays again.
+- [battleManager.ts] import: added saveTalentData to talent import list.
+- [uiManager.ts] updateLevelTutorial(): rewrote all four step texts (intro, build_wall, build_tower, start_wave): removed reference to non-existent blue dashed frame, improved visual cue language, added coordinate hints for build_wall, added color highlights, added post-wave talent tip in start_wave.
+- [renderer/gameRenderer.ts] renderGame(): added tutorial hint tile rendering—when levelTutorialStep === 'build_wall', draws pulsing blue dashed highlight on tiles (62-63, 8-10) near checkpoint 3 as recommended build position.
+- Build verified: tsc && vite build successful, 37 modules, 197KB JS bundle.
+
+2026-07-10 Roguelike Mechanics Implementation (Priority 2)
+- Created src/system/roguelikeSystem.ts: 16-card roguelike pool (7 element blessings, 3 resource, 2 tower, 4 resonance cards), drawCards(), showCardPicker() modal with animation, hideCardPicker(), grantStartBonus() (start of battle 2 random unlocked towers, free placement), calcMysteryBoxPrice() (floor(E[cost]*0.75)), rollMysteryBox(), tickWaveBuffs() for wave-duration buffs.
+- Modified src/state.ts: Added RoguelikeState interface and roguelikeState field to GameState with elementDmgBonus, nextMergeCostPct, rangeBonusGlobal, attackSpeedBonus, attackSpeedWavesLeft, freeNextBuild, mysteryBoxPrice.
+- Modified src/battle/battleManager.ts: Reset roguelikeState at startBattle(), call calcMysteryBoxPrice(), call grantStartBonus() after loop init, call tickWaveBuffs() + showCardPicker() (800ms delay) in checkWaveEnd() for non-test-level waves > 0.
+- Modified src/battle/physics.ts: Applied elementDmgBonus to finalDmg in tower shooting, rangeBonusGlobal to effectiveRange in target selection, attackSpeedBonus/attackSpeedWavesLeft to fireCooldown calculation.
+- Modified src/battle/towerActions.ts: In handleBuild(), check roguelikeState.freeNextBuild flag - if true, skip gold deduction and clear flag.
+- Modified src/ui/uiManager.ts: Added updateRoguelikeHUD() called in updateUI() to render active buff tags (element bonuses, range, speed, free build, merge discount) and mystery box price; wired btnMystery click to rollMysteryBox().
+- Modified index.html: Added #rogueBuffBar + #rogueBuffList Buff display strip below towerButtons; added #btnMystery (mystery summon) button in control panel; added #cardPickerModal with card picker grid and full CSS styles (.rogue-card, .rogue-buff-tag, animations).
+- Build verified: tsc && vite build successful, 37 modules, 196KB JS bundle.
+
+2026-07-10 Updated ROADMAP.md
+
+- Checked all completed Priority 3 (P3) items in ROADMAP.md after verifying the codebase.
+
+2026-07-10 Completed Priority 3 (P3) Batch 1: Gameplay Depth & Visuals Impact
+- Implemented elemental hit sfx synthesis in playSynthSFX and expanded playSFX support for elements.
+- Implemented createElementalHitParticles in particles.ts for elemental impact visuals (rising fire sparks, falling water drops, spinning wood leaves, scattering earth debris, metal rays, yin-yang swirl).
+- Added element labels and element-specific colors in battle screen monster preview list.
+- Implemented wave-based elemental resistance decay: Wave >= 6 non-countered damages are decreased by 10% (waves 6-10), 15% (waves 11-15), or 20% (waves 16-20). True damage bypasses the resistance decay.
+- Implemented early sell refund (100% refund during waves 1-4) in handleSell to allow map flexibility.
+- Implemented low-health gold compensation (+5g per wave when HP < 50%) in checkWaveEnd with central float text notification.
+- Added top 3 MVP tower output damage and real-time DPS stats inside gameOverScreen (#goDpsStats) in endBattle.
+- Verified TypeScript compilation and production bundles via npm run build.
+
+2026-07-10 Completed Priority 2 (P2): Advanced HUD Elements & Merge Tutorial
+- Restored and restructured full index.html to fix checkout loss, integrating P2 HUD improvements.
+- Redesigned HUD statistics: Enlarged HP/Gold fonts and added dynamic SVG Wave Progress Ring.
+- Enhanced Wave Progress Bar: increased height to 12px and implemented flashing red pulse styling for Boss waves.
+- Integrated details fold-out panel (#detailsPanel) featuring real-time "Monster Previews" and "Tower DPS Statistics".
+- Configured Chinese Classical theme as default; weather starts as sunny, other themes moved to diagnostic panel controls.
+- Enabled SVG topology dynamic flow-line connections inside talent tree container, utilizing CSS animated dashes and removing old arrow labels.
+- Implemented real-time DPS and Damage credit tracking (normal, crit, DOT, AOE) for all tower types.
+- Replaced build buttons text emojis with pixelated canvases drawn procedurally via drawTowerSprite.
+- Implemented hover tooltips on both build card buttons and built map towers displaying element properties, basic damage stats, and accumulated outputs.
+- Frozen metal_water and water_wood merges, filtering them out from getCrossRecipeResult and Codex listings.
+- Implemented sequential "First Merge Tutorial": highlights eligible adjacent towers with pulsing gold aura and highlights target merging steps.
+- Successfully verified Typescript type definitions and production Vite bundles via npm run build.
+
+2026-07-10 Completed Priority 1 (P1): Information Visualization & UX Flow
+- Implemented persistent dynamic Wuxing Compass SVG panel with fold/unfold interaction, blinking counter arrows, and active element vertex highlighting.
+- Designed element counter feedback system:
+  * Floats 'Counter +xx%' indicators on counter hits.
+  * Doubles splatter hit particle count on element counter hits.
+  * Displays glowing red pulse outline on map enemies that are countered by the active selected/hovered element.
+- Added Merge Ghost Preview: hover compatibility check, transparent sprite/name tag preview on adjacent mergeable towers, and red X overlay on incompatible ones.
+- Created interactive Recipe Codex Modal outlining same-tier upgrades, cross-element fusions, and yin-yang merges.
+- Optimized overall control panel & inputs flow:
+  * Refactored control buttons for 48dp touch optimization (min-height 48px and increased gaps).
+  * Turned tower buttons into vertical card blocks with individual element colored accent bars.
+  * Implemented snapToTileCenter coordinate snapping helper for ±12px touch-point tolerance.
+  * Added Drag and Drop building support on tower buttons.
+  * Added keyboard shortcuts: 1-7 for select tower, S for sell hover tile, Space for start wave, and G for game speed toggle (1x/2x/3x).
+- Added comprehensive unit tests in test_cli.py verifying game speed multiplier transitions and element counter cyclic logic.
+
+2026-07-10 Completed Priority 0 (P0): Core Gameplay & Balance Calibration
+- Refactored waves.json to support 20 hand-tuned waves with elements themes, spawn counts, intervals, and boss traits.
+- Rewrote getWaveConfig in enemies.ts to read directly from hand-tuned waves config.
+- Implemented boss mechanics:
+  * Armor Boss (Wave 10): -25% damage from non-critical hits.
+  * Regen Boss (Wave 15): 1% max HP healed per second (1% / 60 frames per tick).
+  * Split Boss (Wave 20): Splits into 3 salamanders at <30% HP.
+- Added dynamic Counter Damage scaling based on wave number (0.30 to 0.50 Counter Bonus).
+- Implemented Gold Award Decay: goldMultiplier = max(0.4, 1.0 - (wave - 1) * 0.03) to prevent late-game gold accumulation.
+- Synced all modifications (mirrors and functions) in test_cli.py and added corresponding test cases verifying armor, regen, split, and gold decay.
+
+2026-07-10 Restructured ROADMAP.md
+- Reorganized all remaining tasks into Priorities (P0 to P4)
+- Pushed commercialization features, Tauri packaging, SDK integration, and PVP to Priority 4
+- Highlighted single-player core game feel, balance (P0), and visual/UI feedback (P1/P2) as highest priorities

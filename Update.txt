@@ -1,3 +1,102 @@
+2026-07-10 (72nd Update)
+- Upgraded Talent Tree Line visual effects to Y-Split SVG Paths:
+  1. Refactored `drawTalentLines()` in src/scenes/scenesManager.ts to filter out standard connections from Yin Law and Yang Law to Taiji Dao.
+  2. Implemented geometric calculation of a mid-point `M` at 40% horizontal span and midpoint height between Yin/Yang Law.
+  3. Rendered separate bezier curves from Yin Law and Yang Law to `M` respectively, controlled by their individual unlocked levels, and drew a single main trunk bezier path from `M` to Taiji Dao activated only when both prerequisites are unlocked.
+  4. Updated task checkboxes in `ROADMAP.md` for both tower button icon pixelization and talent lines SVG tasks.
+
+2026-07-10 (71st Update)
+- Implemented First-time Merge Guide under Roadmap P2:
+  1. Added CSS pulse-yellow animation keyframes and `.merge-tutorial-highlight` styling inside index.html.
+  2. Extended `FloatingText` interface in src/types.ts and updated `showFloat` in src/renderer/gameRenderer.ts to support typewriter float text animations.
+  3. Added check for `td_shown_merge_tutorial` inside `createGameState` in src/state.ts to persist tutorial completed status between refreshes.
+  4. Modified `updateUI` in src/ui/uiManager.ts to display pulsing highlight guide instructions when merge tutorial is active.
+  5. Updated `performMerge` and animation triggers in src/battle/towerActions.ts to save tutorial completion to localStorage and apply typewriter float texts for newly merged towers.
+  6. Updated `ROADMAP.md` task states for P2 HUD and tooltips tasks.
+
+2026-07-10 (70th Update)
+- Optimized game viewport auto-fit scaling and compacted battle layout:
+  1. Added compact style rules inside index.html for `.game-container .btn` (reducing min-height to 38px, font-size to 0.8rem, padding to 6px 12px) and adjusted margins/paddings on header panels and instructions to reduce the baseline vertical height.
+  2. Modified `#battleScene` style to support `overflow: auto` as a fallback safety scroll layer.
+  3. Refactored `resizeGameContainer()` in src/input/inputHandler.ts to clear previous scales first, dynamically query `container.offsetWidth` and `offsetHeight` as non-scaled layout targets, bound scale factor between `0.5` and `1.0`, and set `transform-origin` to `center center`.
+  4. Registered `resizeGameContainer()` callback triggers within details panel toggle onclick handler in src/ui/uiManager.ts to update scales dynamically on panel state transitions.
+
+2026-07-10 (69th Update)
+- Resolved compilation issues and reference errors:
+  1. Imported `MAPS` configuration in src/input/inputHandler.ts to fix `Uncaught ReferenceError: MAPS is not defined` when starting the game.
+  2. Removed unused type import `WaveConfig` from src/__tests__/enemies.test.ts to address TypeScript compiler error TS6196.
+  3. Added explicit type cast to `TowerTypeId` for `resultTypeId` assignment in src/battle/towerActions.ts to resolve TypeScript compiler error TS2322.
+
+2026-07-10 (68th Update)
+- Resolved the issue where the talent system navigation buttons were unresponsive when clicked:
+  1. Bound click event listeners to ".talent-nav-btn" in src/input/inputHandler.ts to smoothly scroll the page to corresponding talent tracks (e.g., track-base, track-attack, track-element, track-yinyang) via scrollIntoView.
+  2. Implemented an IntersectionObserver in src/input/inputHandler.ts to automatically update the active state of navigation buttons based on the user's current scroll position.
+
+2026-07-10 (67th Update)
+- Implemented Phase 4.7 Tier 1: Juice & Range Visualization:
+  1. Extended GameState interface and createGameState in src/state.ts with hitStopFrames, shakeIntensity, shakeDecay, hoverGridX, hoverGridY, and selectedTower.
+  2. Enhanced audio system in src/audio/audioSystem.ts with Web Audio API synthesizer playSynthSFX to dynamically generate 8-bit sound effects (click, shoot, hit, crit, enemy_death, merge_success) as fallback if .mp3 assets are missing or fail to play.
+  3. Modified input events in src/input/inputHandler.ts to track mouse hoverGridX/Y, select/deselect towers, and clear tool selection on Escape key press.
+  4. Updated physics and impact logic in src/battle/physics.ts to play hit/crit sounds on hit, trigger hit-stop (3 frames) and screen shake on critical hits, and apply strong screen shake (intensity 8.0) when monsters leak to base.
+  5. Updated main.ts gameLoop to decrement hitStopFrames and pause physics updates while continuing rendering during hit-stop.
+  6. Updated gameRenderer.ts to apply screen shake offsets to the main context transform, display translucent range preview circles (color-coded by element style) in build mode, and highlight mergeable tower pairs with purple connection lines and range indicators in merge mode.
+  7. Updated tower actions in src/battle/towerActions.ts to reset selectedTower reference upon selling or merging to prevent dangling pointer references.
+  8. Bound click listener to btnStartWave and registered Space key shortcut in src/input/inputHandler.ts to resolve the issue where clicking "Next Wave" button or pressing Space did not spawn the next wave of enemies.
+
+2026-07-10 (66th Update)
+- Implemented Canvas 2D performance optimizations to resolve rendering bottlenecks:
+  1. Created src/renderer/tileCache.ts to implement a static map tile and grid-line pre-rendering Offscreen Canvas cache.
+  2. Integrated updateTileCacheCanvas inside recalculatePathTiles in src/battle/pathfinding.ts, ensuring map cache updates automatically on startBattle or path alterations.
+  3. Added updateTileCacheCanvas trigger to theme change listener in src/input/inputHandler.ts.
+  4. Modified src/renderer/gameRenderer.ts to draw the pre-rendered tile cache instead of the COLS*ROWS nested tile loops and grid lines, cutting draw calls from 3,320 down to 1 per frame for tiles and grid.
+  5. Refactored bullet and particle rendering in src/renderer/gameRenderer.ts to cache shadowBlur and RadialGradient objects into spriteCache, drawing them with drawImage to bypass heavy math recalculations.
+  6. Implemented Batch Rendering for monster HP bars and DOT status bars in src/renderer/gameRenderer.ts, decreasing state changes and drawings down to at most 4 calls per frame.
+  7. Tested and verified optimized performance baseline: Avg FPS improved from 36.7 to 42.0 (+14.4%), and Avg Draw Calls reduced from 441 to 268 (-39.2%) on Test Level stress tests.
+  8. Updated ROADMAP.md to document the completed Canvas 2D optimizations.
+
+2026-07-09 (65th Update)
+- Implemented One-Click Performance Benchmark tool to establish rendering baseline data:
+  1. Updated src/state.ts to add benchmarking states (isBenchmarking, benchStartTime, benchFrames, benchDrawCalls) and callback declarations.
+  2. Modified index.html to add a "Run Benchmark" button inside the diagnosticPanel.
+  3. Refactored src/domRefs.ts to obtain the btnDiagBench element reference.
+  4. Updated src/input/inputHandler.ts to bind the click event of btnDiagBench to trigger startPerformanceBenchmark.
+  5. Implemented startPerformanceBenchmark and endPerformanceBenchmark in src/battle/battleManager.ts, handling game scene backup/restoration, placing 30 random towers on non-path spots, forcing thunder weather, collecting statistics, and outputting average/max latency and FPS.
+  6. Modified src/battle/physics.ts to dynamically keep enemy count at 50 with 999,999 HP during benchmark and trigger completion after 10 seconds.
+  7. Updated src/renderer/gameRenderer.ts to push latency and drawCallCount per frame when benchmarking is active.
+  8. Verified TypeScript compilation via "npm run build" and successfully ran vitest suite. Established performance baseline metrics: Avg FPS 36.7, Avg Latency 1.82ms, Max Latency 5.60ms, Avg Draw Calls 441/frame.
+  9. Updated ROADMAP.md to log performance benchmark results and mark the task completed.
+
+2026-07-09 (64th Update)
+- Implemented platform and persistence abstraction layer (IPlatform, IPayment, ISaveStorage):
+  1. Created src/system/platform.ts to declare IPlatform, IPayment, and ISaveStorage interfaces with their default Web-compatible implementations.
+  2. Refactored src/talent.ts to run talent tree save/load persistence logic via currentSaveStorage interface instead of direct window.localStorage calls.
+  3. Refactored src/maps.ts to save and load custom-made maze maps using the currentSaveStorage abstraction.
+  4. Added a visually muted, disabled shop button in index.html mainMenu to reserve the payment interface slot for future platform releases.
+  5. Updated ROADMAP.md to track platform abstraction progress.
+
+2026-07-09 (63rd Update)
+- Externalized game configurations to config/*.json for data-driven design:
+  1. Created src/config/towers.json to store attributes for base, Lv2, and recipe-merged towers, element counters, and cross recipes.
+  2. Created src/config/enemies.json to hold definitions for regular monsters and bosses.
+  3. Created src/config/waves.json to configure dynamic wave spawning rules, difficulty scaling rates, and group spawn definitions.
+  4. Refactored src/towers.ts to dynamically import and typecast tower configurations from JSON.
+  5. Refactored src/enemies.ts to load enemy definitions from JSON and dynamically build monster waves using externalized coefficients.
+  6. Updated ROADMAP.md to track the progress of configuration externalization.
+
+2026-07-09 (62nd Update)
+- Modularized src/main.ts to improve codebase maintainability:
+  1. Updated GameState interface in src/state.ts to declare callbacks for cross-module function invocation, resolving circular dependencies between submodules.
+  2. Created src/scenes/scenesManager.ts to handle scene transitions and screen rendering (MainMenu, LevelSelect, TalentScreen).
+  3. Created src/scenes/mapEditor.ts to encapsulate map editor logic, drawing loops, path validation, saving, and input listeners.
+  4. Created src/battle/battleManager.ts to manage battle lifecycle events (startBattle, endBattle, wave spawning, and wave ending checks).
+  5. Created src/battle/physics.ts to handle runtime physics simulation, bullet-monster collision checks, floating text lifecycles, and weather/lightning updates.
+  6. Created src/battle/towerActions.ts to implement tower placement (handleBuild), sale (handleSell), and merging (handleMergeClick/performMerge) operations.
+  7. Created src/renderer/gameRenderer.ts to encapsulate core Canvas rendering processes (renderGame, showFloat, and star backdrop initialization).
+  8. Created src/ui/uiManager.ts to manage battle HUD states, wave progress bar calculations, and tower selection button rendering.
+  9. Created src/input/inputHandler.ts to consolidate user inputs (wheel zoom, dual-touch pinch-to-zoom, dragging offset limits, click handlers, and device resize scaling).
+  10. Simplified src/main.ts into a clean entry point file that bootstraps all components, registers the game loop, and handles version displays.
+  11. Updated ROADMAP.md to reflect the completion of the main.ts modularization tasks.
+
 2026-07-01 (61st Update)
 - Resolved OpenCode background dependency and encoding issues:
   1. Fixed OpenCode plugin loading: Created package.json in both E:/WORK/novelist/.opencode and E:/WORK/Fusion/.opencode referencing "@opencode-ai/plugin": "1.14.46", resolving background bootstrap crash "No matching version found for @opencode-ai/plugin@local".

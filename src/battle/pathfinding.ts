@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { Point, Enemy } from '../types';
+import { updateTileCacheCanvas } from '../renderer/tileCache';
 
 export class AStarNode {
   x: number; y: number; parent: AStarNode | null; g: number; h: number; f: number;
@@ -100,6 +101,7 @@ export function recalculatePathTiles(
     }
     cachedFullPath.push(...fullPath);
   }
+  updateTileCacheCanvas();
 }
 
 export function validatePlacement(

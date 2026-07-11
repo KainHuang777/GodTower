@@ -32,6 +32,12 @@ export interface Enemy {
   squashY: number;
   isStuck?: boolean;
   pathBlockedHintShown?: boolean;
+  armor?: boolean;
+  regen?: boolean;
+  split?: boolean;
+  hasSplit?: boolean;
+  dotSourceTowerId?: number; // P2 tracking for DOT damage source
+  dotElement?: Element; // P3 tracking for DOT damage element
 }
 
 export interface Tower {
@@ -41,6 +47,7 @@ export interface Tower {
   def: TowerDef;
   cooldown: number;
   recoilY: number;
+  damageDealt: number; // P2 tracking for total damage dealt by this tower
 }
 
 export interface Bullet {
@@ -57,11 +64,15 @@ export interface Bullet {
   flyingBonus?: number;
   healBase?: number;
   spawnWall?: boolean;
+  sourceTowerId?: number; // P2 tracking for damage credit
+  trueDamage?: boolean; // P3 tracking for true damage bypass
 }
 
 export interface FloatingText {
   x: number; y: number; text: string; color: string; alpha: number; life: number;
   fontSize?: number;
+  isTypewriter?: boolean;
+  fullText?: string;
 }
 
 export interface TempWall {

@@ -18,6 +18,7 @@ export interface DomRefs {
   btnDiagnostics: HTMLElement;
   diagnosticPanel: HTMLElement;
   btnDiagExport: HTMLElement;
+  btnDiagBench: HTMLElement;
   diagFps: HTMLElement;
   diagLatency: HTMLElement;
   diagDrawCalls: HTMLElement;
@@ -47,6 +48,12 @@ export interface DomRefs {
   talentScreenEl: HTMLElement;
   gameOverScreenEl: HTMLElement;
   battleSceneEl: HTMLElement;
+  btnSpeed: HTMLButtonElement;
+  btnCodex: HTMLElement;
+  wuxingCompass: HTMLElement;
+  recipeCodexModal: HTMLElement;
+  btnCloseCodex: HTMLElement;
+  codexBody: HTMLElement;
 }
 
 function getEl(id: string): HTMLElement {
@@ -98,6 +105,7 @@ export function initDomRefs(): DomRefs {
     btnDiagnostics: getEl('btnDiagnostics'),
     diagnosticPanel: getEl('diagnosticPanel'),
     btnDiagExport: getEl('btnDiagExport'),
+    btnDiagBench: getEl('btnDiagBench'),
     diagFps: getEl('diagFps'),
     diagLatency: getEl('diagLatency'),
     diagDrawCalls: getEl('diagDrawCalls'),
@@ -126,6 +134,12 @@ export function initDomRefs(): DomRefs {
     talentScreenEl: getEl('talentScreen'),
     gameOverScreenEl: getEl('gameOverScreen'),
     battleSceneEl: getEl('battleScene'),
+    btnSpeed: getEl('btnSpeed') as HTMLButtonElement,
+    btnCodex: getEl('btnCodex'),
+    wuxingCompass: getEl('wuxingCompass'),
+    recipeCodexModal: getEl('recipeCodexModal'),
+    btnCloseCodex: getEl('btnCloseCodex'),
+    codexBody: getEl('codexBody'),
   };
 
   return domRefs;

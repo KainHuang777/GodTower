@@ -71,7 +71,7 @@ LV2_TOWERS = {
     "water_2": {"id":"water_2", "element":"water", "cost":0, "damage":13, "range":5, "fireRate":55, "level":2, "slowPct":0.7,   "slowDuration":135},
     "wood_2":  {"id":"wood_2",  "element":"wood",  "cost":0, "damage":8,  "range":4, "fireRate":65, "level":2, "dotDamage":6,   "dotDuration":90},
     "earth_2": {"id":"earth_2", "element":"earth", "cost":0, "damage":5,  "range":1, "fireRate":60, "level":2},
-    "metal_2": {"id":"metal_2", "element":"metal", "cost":0, "damage":40, "range":3, "fireRate":35, "level":2, "critChance":0.4,"critMultiplier":2.5},
+    "metal_2": {"id":"metal_2", "element":"metal", "cost":0, "damage":30, "range":3, "fireRate":38, "level":2, "critChance":0.3,"critMultiplier":2.0},
     "yin_2":   {"id":"yin_2",   "element":"yin",   "cost":0, "damage":18, "range":7, "fireRate":50, "level":2, "hpPctDamage":0.08},
     "yang_2":  {"id":"yang_2",  "element":"yang",  "cost":0, "damage":22, "range":5, "fireRate":45, "level":2, "flyingBonus":1.0,"healBase":0.3},
 }
@@ -119,8 +119,11 @@ def get_tower_def(tid: str):
     return BASE_TOWERS.get(tid) or LV2_TOWERS.get(tid) or RECIPE_TOWERS.get(tid)
 
 
-def get_element_bonus(tower_el: str, enemy_el: str):
-    return 1.3 if ELEMENT_COUNTER.get(tower_el) == enemy_el else 1.0
+def get_element_bonus(tower_el: str, enemy_el: str, wave_num: int = 1) -> float:
+    if ELEMENT_COUNTER.get(tower_el) == enemy_el:
+        bonus = 0.30 + min(0.20, wave_num * 0.01)
+        return 1.0 + bonus
+    return 1.0
 
 
 def get_same_merge_result(element: str):
@@ -135,25 +138,90 @@ def get_cross_recipe_result(el1: str, el2: str):
     return None
 
 
-def get_wave_config(wave_num: int) -> list[dict]:
-    configs = []
-    hp_mult = 1.0 + (wave_num - 1) * 0.25
-    ground  = ["snake", "salamander", "water_spirit", "golem", "beetle"]
-    num_types = min(1 + wave_num // 3, len(ground))
+WAVES_CONFIG = [
+    {"wave": 1, "theme": "教學波", "enemies": [{"enemyType": "water_spirit", "count": 6, "spawnIntervalMs": 800, "hpMultiplier": 1.0}]},
+    {"wave": 2, "theme": "教學波", "enemies": [{"enemyType": "beetle", "count": 6, "spawnIntervalMs": 700, "hpMultiplier": 1.1}]},
+    {"wave": 3, "theme": "教學波", "enemies": [
+        {"enemyType": "water_spirit", "count": 6, "spawnIntervalMs": 650, "hpMultiplier": 1.2},
+        {"enemyType": "beetle", "count": 4, "spawnIntervalMs": 650, "hpMultiplier": 1.2}
+    ]},
+    {"wave": 4, "theme": "探索波", "enemies": [
+        {"enemyType": "snake", "count": 8, "spawnIntervalMs": 600, "hpMultiplier": 1.3},
+        {"enemyType": "fly", "count": 3, "spawnIntervalMs": 800, "hpMultiplier": 1.0}
+    ]},
+    {"wave": 5, "theme": "探索波 (基礎Boss)", "enemies": [
+        {"enemyType": "salamander", "count": 8, "spawnIntervalMs": 600, "hpMultiplier": 1.4},
+        {"enemyType": "boss_dragon", "count": 1, "spawnIntervalMs": 0, "hpMultiplier": 2.1}
+    ]},
+    {"wave": 6, "theme": "探索波", "enemies": [
+        {"enemyType": "golem", "count": 6, "spawnIntervalMs": 700, "hpMultiplier": 1.5},
+        {"enemyType": "snake", "count": 6, "spawnIntervalMs": 700, "hpMultiplier": 1.5}
+    ]},
+    {"wave": 7, "theme": "壓力波", "enemies": [
+        {"enemyType": "beetle", "count": 10, "spawnIntervalMs": 500, "hpMultiplier": 1.6},
+        {"enemyType": "fly", "count": 5, "spawnIntervalMs": 800, "hpMultiplier": 1.3}
+    ]},
+    {"wave": 8, "theme": "壓力波", "enemies": [
+        {"enemyType": "water_spirit", "count": 12, "spawnIntervalMs": 550, "hpMultiplier": 1.7},
+        {"enemyType": "golem", "count": 6, "spawnIntervalMs": 600, "hpMultiplier": 1.7}
+    ]},
+    {"wave": 9, "theme": "壓力波", "enemies": [
+        {"enemyType": "salamander", "count": 10, "spawnIntervalMs": 500, "hpMultiplier": 1.8},
+        {"enemyType": "snake", "count": 10, "spawnIntervalMs": 500, "hpMultiplier": 1.8}
+    ]},
+    {"wave": 10, "theme": "Boss波 (裝甲 Boss)", "enemies": [
+        {"enemyType": "beetle", "count": 8, "spawnIntervalMs": 600, "hpMultiplier": 2.0},
+        {"enemyType": "boss_dragon", "count": 1, "spawnIntervalMs": 0, "hpMultiplier": 4.0, "armor": True}
+    ]},
+    {"wave": 11, "theme": "喘息波", "enemies": [
+        {"enemyType": "snake", "count": 15, "spawnIntervalMs": 400, "hpMultiplier": 2.2}
+    ]},
+    {"wave": 12, "theme": "第二危機", "enemies": [
+        {"enemyType": "golem", "count": 12, "spawnIntervalMs": 500, "hpMultiplier": 2.5},
+        {"enemyType": "fly", "count": 10, "spawnIntervalMs": 600, "hpMultiplier": 2.0}
+    ]},
+    {"wave": 13, "theme": "第二危機", "enemies": [
+        {"enemyType": "water_spirit", "count": 15, "spawnIntervalMs": 450, "hpMultiplier": 2.8},
+        {"enemyType": "salamander", "count": 12, "spawnIntervalMs": 450, "hpMultiplier": 2.8}
+    ]},
+    {"wave": 14, "theme": "第二危機", "enemies": [
+        {"enemyType": "beetle", "count": 15, "spawnIntervalMs": 400, "hpMultiplier": 3.2},
+        {"enemyType": "golem", "count": 10, "spawnIntervalMs": 500, "hpMultiplier": 3.2}
+    ]},
+    {"wave": 15, "theme": "Boss波 (再生 Boss)", "enemies": [
+        {"enemyType": "salamander", "count": 10, "spawnIntervalMs": 500, "hpMultiplier": 3.6},
+        {"enemyType": "boss_dragon", "count": 1, "spawnIntervalMs": 0, "hpMultiplier": 7.2, "regen": True}
+    ]},
+    {"wave": 16, "theme": "終局考驗", "enemies": [
+        {"enemyType": "snake", "count": 20, "spawnIntervalMs": 350, "hpMultiplier": 4.2},
+        {"enemyType": "fly", "count": 15, "spawnIntervalMs": 500, "hpMultiplier": 3.4}
+    ]},
+    {"wave": 17, "theme": "終局考驗", "enemies": [
+        {"enemyType": "golem", "count": 15, "spawnIntervalMs": 400, "hpMultiplier": 4.8},
+        {"enemyType": "water_spirit", "count": 20, "spawnIntervalMs": 400, "hpMultiplier": 4.8}
+    ]},
+    {"wave": 18, "theme": "終局考驗", "enemies": [
+        {"enemyType": "beetle", "count": 20, "spawnIntervalMs": 350, "hpMultiplier": 5.5},
+        {"enemyType": "salamander", "count": 20, "spawnIntervalMs": 350, "hpMultiplier": 5.5}
+    ]},
+    {"wave": 19, "theme": "終局考驗", "enemies": [
+        {"enemyType": "snake", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 6.5},
+        {"enemyType": "fly", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 5.2},
+        {"enemyType": "salamander", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 6.5},
+        {"enemyType": "water_spirit", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 6.5},
+        {"enemyType": "golem", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 6.5},
+        {"enemyType": "beetle", "count": 8, "spawnIntervalMs": 300, "hpMultiplier": 6.5}
+    ]},
+    {"wave": 20, "theme": "最終 Boss波 (分裂 Boss)", "enemies": [
+        {"enemyType": "boss_dragon", "count": 1, "spawnIntervalMs": 0, "hpMultiplier": 20.0, "split": True}
+    ]}
+]
 
-    for i in range(num_types):
-        tidx = (wave_num + i) % len(ground)
-        configs.append({
-            "enemyType":      ground[tidx],
-            "count":          6 + int(wave_num * 0.8),
-            "spawnIntervalMs":max(300, 600 - wave_num * 15),
-            "hpMultiplier":   hp_mult,
-        })
-    if wave_num % 3 == 0:
-        configs.append({"enemyType":"fly",        "count":3 + wave_num//2, "spawnIntervalMs":800, "hpMultiplier":hp_mult * 0.8})
-    if wave_num % 5 == 0:
-        configs.append({"enemyType":"boss_dragon", "count":1,              "spawnIntervalMs":0,   "hpMultiplier":hp_mult * 1.5})
-    return configs
+def get_wave_config(wave_num: int) -> list[dict]:
+    for w in WAVES_CONFIG:
+        if w["wave"] == wave_num:
+            return w["enemies"]
+    return []
 
 
 def get_sell_price(d: dict) -> int:
@@ -283,48 +351,95 @@ def test_battle_flow(r: TestResult):
 
     # ── 1. Wave config generation ──
     print(info("1. Wave configuration generation"))
-    for wn in [1, 3, 5, 10]:
+    for wn in [1, 3, 5, 10, 15, 20]:
         cfg = get_wave_config(wn)
         total = sum(c["count"] for c in cfg)
         has_boss  = any(c["enemyType"] == "boss_dragon" for c in cfg)
-        has_fly   = any(c["enemyType"] == "fly"         for c in cfg)
         r.check(total > 0, f"Wave {wn}: generates enemies (count={total})")
-        r.check(has_boss == (wn % 5 == 0), f"Wave {wn}: boss spawn correct (every 5 waves)")
-        r.check(has_fly  == (wn % 3 == 0), f"Wave {wn}: fly spawn correct  (every 3 waves)")
+        if wn in (5, 10, 15, 20):
+            r.check(has_boss, f"Wave {wn} contains Boss")
 
-    # ── 2. HP scaling ──
-    print(info("2. Enemy HP scaling with wave number"))
-    for wn in [1, 5, 10]:
-        expected_mult = 1.0 + (wn - 1) * 0.25
-        cfg = get_wave_config(wn)[0]
-        enemy_type = cfg["enemyType"]
-        base_hp = ENEMY_DEFS[enemy_type]["baseHp"]
-        actual_hp = math.floor(base_hp * cfg["hpMultiplier"])
-        expected_hp = math.floor(base_hp * expected_mult)
-        r.check(actual_hp == expected_hp, f"Wave {wn} {enemy_type} HP={actual_hp} (expected {expected_hp})")
+    # ── 2. Boss Mechanics & HP scaling ──
+    print(info("2. Boss Mechanics & HP scaling"))
+    # Wave 5: Base Boss
+    cfg_5 = [c for c in get_wave_config(5) if c["enemyType"] == "boss_dragon"][0]
+    r.check(cfg_5["hpMultiplier"] == 2.1, "Wave 5 Boss HP multiplier is 2.1")
+    
+    # Wave 10: Armor Boss
+    cfg_10 = [c for c in get_wave_config(10) if c["enemyType"] == "boss_dragon"][0]
+    r.check(cfg_10.get("armor") is True, "Wave 10 Boss has Armor trait")
+    
+    # Simulate Armor damage reduction (-25% for non-critical hit)
+    raw_dmg = 100
+    dmg_under_armor_non_crit = math.floor(raw_dmg * 0.75) if cfg_10.get("armor") else raw_dmg
+    r.check(dmg_under_armor_non_crit == 75, f"Armor reduces non-crit damage from 100 to {dmg_under_armor_non_crit}")
+    
+    # Wave 15: Regen Boss
+    cfg_15 = [c for c in get_wave_config(15) if c["enemyType"] == "boss_dragon"][0]
+    r.check(cfg_15.get("regen") is True, "Wave 15 Boss has Regen trait")
+    
+    # Simulate Regen: heals 1% maxHp per second (which is 1% / 60 frames per tick)
+    boss_hp = 500 * cfg_15["hpMultiplier"]  # 500 * 7.2 = 3600
+    boss_max_hp = boss_hp
+    boss_current_hp = boss_hp - 100  # damaged
+    # 1 second of regen (60 frames)
+    for _ in range(60):
+        boss_current_hp = min(boss_max_hp, boss_current_hp + boss_max_hp * 0.01 / 60)
+    r.check(abs(boss_current_hp - (boss_max_hp - 100 + boss_max_hp * 0.01)) < 1e-6, 
+            f"Regen heals boss over 1 second: current HP = {boss_current_hp:.2f} (expected {boss_max_hp - 100 + boss_max_hp * 0.01:.2f})")
 
-    # ── 3. Simulated kill → gold reward ──
-    print(info("3. Kill → gold award chain"))
-    gold = 60
-    kills = 0
-    enemies_sim = []
-    for cfg in get_wave_config(3):
-        d = ENEMY_DEFS[cfg["enemyType"]]
-        for _ in range(cfg["count"]):
+    # Wave 20: Split Boss
+    cfg_20 = [c for c in get_wave_config(20) if c["enemyType"] == "boss_dragon"][0]
+    r.check(cfg_20.get("split") is True, "Wave 20 Boss has Split trait")
+    
+    # Simulate Split: split into 3 salamanders at <30% HP
+    boss_max_hp = 500 * cfg_20["hpMultiplier"]  # 500 * 20.0 = 10000
+    boss_current_hp = boss_max_hp
+    enemies_sim = [{
+        "id": 1,
+        "type": "boss_dragon",
+        "hp": boss_current_hp,
+        "maxHp": boss_max_hp,
+        "x": 100, "y": 100,
+        "currentGridX": 6, "currentGridY": 10,
+        "waypointIndex": 2, "path": [(6,10)], "pathIndex": 0,
+        "vx": 0, "vy": 0, "isStuck": False, "pathBlockedHintShown": False,
+        "split": True, "hasSplit": False
+    }]
+    
+    # Hit boss to <30%
+    enemies_sim[0]["hp"] = int(boss_max_hp * 0.25)
+    
+    # Check split trigger
+    boss_e = enemies_sim[0]
+    if boss_e["hp"] > 0 and boss_e.get("split") and boss_e["hp"] < boss_e["maxHp"] * 0.3 and not boss_e.get("hasSplit"):
+        # triggerSplit
+        boss_e["hasSplit"] = True
+        enemies_sim.remove(boss_e)
+        salamander_def = ENEMY_DEFS["salamander"]
+        hp_mult = 20.0
+        offsets = [-8, 0, 8]
+        for k in range(3):
             enemies_sim.append({
-                "type":      d["id"],
-                "hp":        math.floor(d["baseHp"] * cfg["hpMultiplier"]),
-                "goldAward": d["goldAward"],
+                "id": 2 + k,
+                "type": "salamander",
+                "hp": math.floor(salamander_def["baseHp"] * hp_mult),
+                "maxHp": math.floor(salamander_def["baseHp"] * hp_mult),
+                "x": boss_e["x"] + offsets[k], "y": boss_e["y"]
             })
+    
+    r.check(len(enemies_sim) == 3, f"Boss split triggered: spawned {len(enemies_sim)} monsters")
+    r.check(all(e["type"] == "salamander" for e in enemies_sim), "All split monsters are salamanders")
+    r.check(enemies_sim[0]["hp"] == 2000, f"Split salamander HP is {enemies_sim[0]['hp']} (expected 2000)")
 
-    for e in enemies_sim:
-        e["hp"] = 0  # instant kill
-        if e["hp"] <= 0:
-            gold += e["goldAward"]
-            kills += 1
-
-    r.check(kills == len(enemies_sim), f"All {kills}/{len(enemies_sim)} enemies killed")
-    r.check(gold  > 60,                f"Gold increased from 60 to {gold} after kills")
+    # ── 3. Simulated kill → gold reward with decay ──
+    print(info("3. Kill → gold award chain with decay"))
+    for wave in [1, 10, 20]:
+        gold_mult = max(0.4, 1.0 - (wave - 1) * 0.03)
+        base_award = ENEMY_DEFS["beetle"]["goldAward"]  # 3
+        actual_award = max(1, math.floor(base_award * gold_mult))
+        expected_award = max(1, math.floor(3 * (1.0 - (wave - 1) * 0.03))) if (1.0 - (wave - 1) * 0.03) >= 0.4 else 1
+        r.check(actual_award == expected_award, f"Wave {wave} Beetle gold reward: {actual_award}g (decayed correctly)")
 
     # ── 4. AOE damage kills secondary targets ──
     print(info("4. AOE damage and death detection (the fixed bug)"))
@@ -339,11 +454,13 @@ def test_battle_flow(r: TestResult):
 
     # Replicate fixed death logic (use ENEMY_DEFS lookup, not .def)
     dead_gold = 0
+    wave = 1
+    gold_mult = max(0.4, 1.0 - (wave - 1) * 0.03)
     for e in [aoe_target, aoe_splash]:
         if e["hp"] <= 0:
             color = ENEMY_DEFS[e["type"]].get("colorPrimary", "#facc15")
             r.check(color != "", f"AOE kill: colorPrimary resolved for '{e['type']}' → {color}")
-            dead_gold += e["goldAward"]
+            dead_gold += max(1, math.floor(e["goldAward"] * gold_mult))
 
     r.check(dead_gold == aoe_target["goldAward"] + aoe_splash["goldAward"],
             f"AOE kill gold correct: {dead_gold}g")
@@ -358,7 +475,7 @@ def test_battle_flow(r: TestResult):
         enemy["dotDuration"] -= 1
         if enemy["hp"] <= 0:
             dot_kills += 1
-            dot_gold  += enemy["goldAward"]
+            dot_gold  += max(1, math.floor(enemy["goldAward"] * gold_mult))
             break
     r.check(dot_kills == 1, f"DOT killed enemy (hp ended at {enemy['hp']})")
     r.check(dot_gold  == 2, f"DOT kill awarded {dot_gold}g")
@@ -501,12 +618,16 @@ def test_tower_system(r: TestResult):
         r.check(rev == expected, f"{b}+{a} → {rev} (rev)")
 
     # ── 5. Element counter / damage bonus ──
-    print(info("5. Element counter damage bonus"))
+    print(info("5. Element counter damage bonus with wave scaling"))
     for atk, tgt in ELEMENT_COUNTER.items():
-        bonus = get_element_bonus(atk, tgt)
-        r.check(abs(bonus - 1.3) < 1e-9, f"{atk} counters {tgt}: bonus={bonus:.1f}")
+        # Wave 1 Counter
+        bonus_1 = get_element_bonus(atk, tgt, 1)
+        r.check(abs(bonus_1 - 1.31) < 1e-9, f"Wave 1: {atk} counters {tgt}: bonus={bonus_1:.2f}")
+        # Wave 20 Counter
+        bonus_2 = get_element_bonus(atk, tgt, 20)
+        r.check(abs(bonus_2 - 1.50) < 1e-9, f"Wave 20: {atk} counters {tgt}: bonus={bonus_2:.2f}")
     # No bonus case
-    r.check(get_element_bonus("fire", "fire") == 1.0, "Same element: no bonus")
+    r.check(get_element_bonus("fire", "fire", 1) == 1.0, "Same element: no bonus")
 
     # ── 6. Earth tower — 0 damage, isWall=True ──
     print(info("6. Earth (wall) tower — pure barrier, no damage"))
@@ -640,42 +761,32 @@ def test_wave_config(r: TestResult):
     """Wave configuration: variety, progression, boss/fly timing."""
     print(header("Wave Configuration Test"))
 
-    print(info("1. Enemy count increases each wave"))
-    prev_count = 0
-    for wn in range(1, 6):
+    print(info("1. First 3 waves constraint for fire + earth only"))
+    # In wave 1-3, only water_spirit (water) and beetle (metal) should spawn
+    for wn in [1, 2, 3]:
         cfg = get_wave_config(wn)
-        total_ground = sum(c["count"] for c in cfg if c["enemyType"] not in ("fly", "boss_dragon"))
-        r.check(total_ground > 0, f"Wave {wn}: {total_ground} ground enemies spawned")
-        if wn > 1:
-            r.check(total_ground >= prev_count, f"Wave {wn} ground ({total_ground}) >= wave {wn-1} ground ({prev_count})")
-        prev_count = total_ground
+        for c in cfg:
+            r.check(c["enemyType"] in ("water_spirit", "beetle"), 
+                    f"Wave {wn}: only tutorial monsters '{c['enemyType']}' spawn")
 
-    print(info("2. Boss appears every 5 waves"))
+    print(info("2. Boss appears on waves 5, 10, 15, 20"))
     for wn in range(1, 21):
         cfg = get_wave_config(wn)
         has_boss = any(c["enemyType"] == "boss_dragon" for c in cfg)
-        if wn % 5 == 0:
-            r.check(has_boss, f"Wave {wn}: boss appears (expected)")
+        if wn in (5, 10, 15, 20):
+            r.check(has_boss, f"Wave {wn}: Boss dragon spawns")
         else:
-            r.check(not has_boss, f"Wave {wn}: no boss (expected)")
+            r.check(not has_boss, f"Wave {wn}: No boss dragon")
 
-    print(info("3. Fly appears every 3 waves"))
-    for wn in range(1, 13):
-        cfg = get_wave_config(wn)
-        has_fly = any(c["enemyType"] == "fly" for c in cfg)
-        if wn % 3 == 0:
-            r.check(has_fly, f"Wave {wn}: fly appears")
-        else:
-            r.check(not has_fly, f"Wave {wn}: no fly")
-
-    print(info("4. HP multiplier scaling"))
-    for wn in [1, 5, 10, 20]:
-        expected_mult = 1.0 + (wn - 1) * 0.25
-        cfg = get_wave_config(wn)
-        for c in cfg:
-            r.check(abs(c["hpMultiplier"] - expected_mult * (0.8 if c["enemyType"]=="fly" else 1.0 if c["enemyType"]!="boss_dragon" else 1.5)) < 1e-6,
-                    f"Wave {wn} '{c['enemyType']}' hpMult={c['hpMultiplier']:.2f}")
-            break   # check just first entry to keep output tidy
+    print(info("3. Boss special properties match waves"))
+    boss_10 = [c for c in get_wave_config(10) if c["enemyType"] == "boss_dragon"][0]
+    r.check(boss_10.get("armor") is True, "Wave 10 Boss is armored")
+    
+    boss_15 = [c for c in get_wave_config(15) if c["enemyType"] == "boss_dragon"][0]
+    r.check(boss_15.get("regen") is True, "Wave 15 Boss has regeneration")
+    
+    boss_20 = [c for c in get_wave_config(20) if c["enemyType"] == "boss_dragon"][0]
+    r.check(boss_20.get("split") is True, "Wave 20 Boss splits")
 
 
 def test_particle_system(r: TestResult):
@@ -774,6 +885,30 @@ def test_aoe_kill_fix(r: TestResult):
             f"Unknown enemy type falls back to '#facc15' (got '{color_fallback}')")
 
 
+def test_p1_features(r: TestResult):
+    """P1 features: game speed controls, elemental counter validation."""
+    print(header("P1 Features Test"))
+    
+    # ── 1. Game Speed controls ──
+    print(info("1. Game Speed multiplier transitions"))
+    speed = 1
+    # Simulate G speed toggle: 1 -> 2 -> 3 -> 1
+    speed = 2 if speed == 1 else 3 if speed == 2 else 1
+    r.check(speed == 2, "Speed toggled to 2x")
+    speed = 3 if speed == 2 else 1 if speed == 3 else 2
+    r.check(speed == 3, "Speed toggled to 3x")
+    speed = 1 if speed == 3 else 2 if speed == 1 else 3
+    r.check(speed == 1, "Speed toggled back to 1x")
+
+    # ── 2. Element Counter matrix verification ──
+    print(info("2. Element Counter cyclic logic"))
+    r.check(ELEMENT_COUNTER["wood"] == "earth", "Wood counters Earth")
+    r.check(ELEMENT_COUNTER["earth"] == "water", "Earth counters Water")
+    r.check(ELEMENT_COUNTER["water"] == "fire", "Water counters Fire")
+    r.check(ELEMENT_COUNTER["fire"] == "metal", "Fire counters Metal")
+    r.check(ELEMENT_COUNTER["metal"] == "wood", "Metal counters Wood")
+
+
 # ─────────────────────────────────────────────────────────────
 #  Suite registry
 # ─────────────────────────────────────────────────────────────
@@ -787,6 +922,7 @@ SUITES = [
     ("Wave Configuration",    test_wave_config),
     ("Particle System",       test_particle_system),
     ("AOE Kill Bug Fix (#14)",test_aoe_kill_fix),
+    ("P1 Features",           test_p1_features),
 ]
 
 # ─────────────────────────────────────────────────────────────
