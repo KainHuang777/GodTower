@@ -5,7 +5,7 @@
 // 怪物與防禦塔均有多幀動態動畫，地圖包含 4 大主題的地板與路徑 Tile。
 // 遊戲初始化時預渲染至 OffscreenCanvas 做為貼圖快取。
 
-import { ENEMY_DEFS, type EnemyTypeId } from './enemies';
+import { ENEMY_DEFS, getEnemyVisualScale, type EnemyTypeId } from './enemies';
 import type { TowerTypeId } from './towers';
 import { ELEMENT_RING_COLORS, OUTLINE_COLOR, hexToRgba, getElementAccent } from './theme';
 
@@ -1505,8 +1505,8 @@ const TILE_SCIFI_PATH: SpriteMatrix = [
 ];
 
 // --- 中式 (chinese) 地面與路徑 ---
-const TILE_CHINESE_GROUND_PALETTE: Palette = ['', '#220b00', '#3b1805', '#4d1e03', '#1f0a00', '#0a421b']; // 5是青苔綠
-// 紅木木紋地板 (變體 A)
+const TILE_CHINESE_GROUND_PALETTE: Palette = ['', '#96BD64', '#A9CC72', '#BEDB83', '#73984D', '#D5B85F'];
+// 日間草地與田埂紋理（變體 A）
 const TILE_CHINESE_GROUND: SpriteMatrix = [
   [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -1525,7 +1525,7 @@ const TILE_CHINESE_GROUND: SpriteMatrix = [
   [2,2,3,2,2,2,2,2,3,2,2,2,2,2,3,2],
   [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
 ];
-// 帶有青苔的木紋地板 (變體 B)
+// 帶暖色落葉／野花點綴的草地（變體 B）
 const TILE_CHINESE_GROUND_B: SpriteMatrix = [
   [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -1544,8 +1544,8 @@ const TILE_CHINESE_GROUND_B: SpriteMatrix = [
   [2,2,3,2,2,2,2,2,3,2,2,2,2,2,3,2],
   [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
 ];
-const TILE_CHINESE_PATH_PALETTE: Palette = ['', '#4b5563', '#374151', '#6b7280', '#1f2937'];
-// 青石磚古道
+const TILE_CHINESE_PATH_PALETTE: Palette = ['', '#D5B77A', '#C49A62', '#E4CB91', '#9C744A'];
+// 暖色沙石古道
 const TILE_CHINESE_PATH: SpriteMatrix = [
   [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
   [4,1,1,1,1,1,1,4,1,1,1,1,1,1,1,4],
@@ -1833,6 +1833,44 @@ export function drawTile(
   cellX: number = 0,
   cellY: number = 0
 ): void {
+  // 標準中式關卡使用事件驅動的程序化日間地形，避免 16px 紋理在
+  // 80×40 地圖上形成重複條紋。這段只在 tile cache 重建時執行。
+  if (theme === 'chinese') {
+    const size = 16 * scale;
+    const hash = Math.abs((cellX * 73856093) ^ (cellY * 19349663));
+
+    if (isPath) {
+      const pathColors = ['#D8BC82', '#CFAD72', '#E2C991', '#C69B64'];
+      ctx.fillStyle = pathColors[hash % pathColors.length];
+      ctx.fillRect(x, y, size, size);
+      ctx.fillStyle = 'rgba(92, 61, 36, 0.16)';
+      if ((hash & 1) === 0) ctx.fillRect(x, y, size, Math.max(1, scale));
+      if ((hash & 2) === 0) ctx.fillRect(x, y, Math.max(1, scale), size);
+      ctx.fillStyle = 'rgba(255, 243, 196, 0.34)';
+      const pebble = Math.max(1, scale);
+      ctx.fillRect(x + ((hash % 9) + 2) * scale, y + (((hash >> 4) % 9) + 2) * scale, pebble * 2, pebble);
+    } else {
+      ctx.fillStyle = '#A7C872';
+      ctx.fillRect(x, y, size, size);
+      if (hash % 5 === 0) {
+        ctx.fillStyle = 'rgba(112, 154, 77, 0.14)';
+        ctx.fillRect(x, y, size, size);
+      } else if (hash % 7 === 0) {
+        ctx.fillStyle = 'rgba(235, 218, 135, 0.12)';
+        ctx.fillRect(x + size / 2, y, size / 2, size);
+      }
+      const px = x + ((hash % 11) + 2) * scale;
+      const py = y + (((hash >> 5) % 11) + 2) * scale;
+      ctx.fillStyle = (hash % 13 === 0) ? '#E7C65A' : 'rgba(67, 111, 54, 0.42)';
+      ctx.fillRect(px, py, Math.max(1, scale), Math.max(2, 2 * scale));
+      if (hash % 7 === 0) {
+        ctx.fillStyle = 'rgba(255, 243, 196, 0.32)';
+        ctx.fillRect(px + 2 * scale, py + scale, Math.max(1, scale), Math.max(1, scale));
+      }
+    }
+    return;
+  }
+
   let key = `tile_${theme}_`;
   if (isPath) {
     key += 'path_0';
@@ -1885,7 +1923,7 @@ export function drawEnemySprite(
   const highresKey = `enemy_${enemyType}`;
   const img = imageAssetCache.get(highresKey);
   if (style === 'highres' && img && img.complete && img.naturalWidth !== 0) {
-    const targetSize = (enemyType.startsWith('boss') ? 26 : 16) * scale;
+    const targetSize = (enemyType.startsWith('boss') ? 30 : 19) * scale;
     
     // 受擊閃白效果：利用 source-atop 疊加，零濾鏡 GPU 消耗
     const drawFlashEffect = () => {
@@ -1947,6 +1985,7 @@ export function drawEnemySprite(
 
   // 2. Fallback: 原始內建像素精靈多幀動畫
   const data = ENEMY_SPRITE_MAP[enemyType];
+  const pixelScale = scale * getEnemyVisualScale(enemyType);
   if (data) {
     const frameCount = data.matrices.length;
     const frameIdx = Math.floor(Date.now() / 180) % frameCount;
@@ -1958,7 +1997,7 @@ export function drawEnemySprite(
       ctx.save();
       ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
       ctx.beginPath();
-      ctx.ellipse(x, y + (cvs.height * scale) / 2 - 2 * scale, 7 * scale, 3.5 * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y + (cvs.height * pixelScale) / 2 - 2 * pixelScale, 7 * pixelScale, 3.5 * pixelScale, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
@@ -1973,23 +2012,18 @@ export function drawEnemySprite(
       
       const drawCvs = (hitFlashFrame > 0) ? (spriteCache.get(`${imgKey}_flash`) || cvs) : cvs;
       
-      // 應用雙層螢光發光或受擊閃紅外發光 (Mindustry 風格)
+      // 單層低成本輪廓光；明亮場景以剪影為主，避免每隻怪物重畫兩次。
       ctx.save();
       if (hitFlashFrame > 0) {
-        ctx.shadowBlur = 12 * scale;
-        ctx.shadowColor = '#ff3b30'; // 受擊亮紅外發光
-        ctx.drawImage(drawCvs, x - (drawCvs.width * scale) / 2, y - (drawCvs.height * scale) / 2, drawCvs.width * scale, drawCvs.height * scale);
+        ctx.shadowBlur = 6 * pixelScale;
+        ctx.shadowColor = '#d9473f';
+        ctx.drawImage(drawCvs, x - (drawCvs.width * pixelScale) / 2, y - (drawCvs.height * pixelScale) / 2, drawCvs.width * pixelScale, drawCvs.height * pixelScale);
       } else {
         const def = ENEMY_DEFS[enemyType];
         const elementColor = def ? getElementAccent(def.element) : '#ffffff';
-        // 外層擴散 glow
-        ctx.shadowBlur = 14 * scale;
-        ctx.shadowColor = hexToRgba(elementColor, 0.5);
-        ctx.drawImage(drawCvs, x - (drawCvs.width * scale) / 2, y - (drawCvs.height * scale) / 2, drawCvs.width * scale, drawCvs.height * scale);
-        // 內層銳利 glow
-        ctx.shadowBlur = 7 * scale;
-        ctx.shadowColor = elementColor;
-        ctx.drawImage(drawCvs, x - (drawCvs.width * scale) / 2, y - (drawCvs.height * scale) / 2, drawCvs.width * scale, drawCvs.height * scale);
+        ctx.shadowBlur = 4 * pixelScale;
+        ctx.shadowColor = hexToRgba(elementColor, 0.45);
+        ctx.drawImage(drawCvs, x - (drawCvs.width * pixelScale) / 2, y - (drawCvs.height * pixelScale) / 2, drawCvs.width * pixelScale, drawCvs.height * pixelScale);
       }
       
       ctx.restore();
@@ -2000,6 +2034,29 @@ export function drawEnemySprite(
 }
 
 /** 繪製砲台精靈 */
+function drawBaseTowerPedestal(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  scale: number,
+  elementColor: string
+): void {
+  // Sample 導向：粗黑輪廓、三階石台、元素色腰帶，讓元素圖示成為真正塔樓。
+  ctx.save();
+  ctx.fillStyle = '#3A251B';
+  ctx.fillRect(x + 1 * scale, y + 10 * scale, 14 * scale, 6 * scale);
+  ctx.fillRect(x + 3 * scale, y + 8 * scale, 10 * scale, 3 * scale);
+  ctx.fillStyle = '#6E6256';
+  ctx.fillRect(x + 2 * scale, y + 11 * scale, 12 * scale, 4 * scale);
+  ctx.fillStyle = '#A99B83';
+  ctx.fillRect(x + 3 * scale, y + 10 * scale, 10 * scale, 2 * scale);
+  ctx.fillStyle = '#D8C9A7';
+  ctx.fillRect(x + 4 * scale, y + 9 * scale, 8 * scale, 2 * scale);
+  ctx.fillStyle = elementColor;
+  ctx.fillRect(x + 3 * scale, y + 13 * scale, 10 * scale, 1.5 * scale);
+  ctx.restore();
+}
+
 export function drawTowerSprite(
   ctx: CanvasRenderingContext2D, 
   towerType: TowerTypeId, 
@@ -2019,13 +2076,13 @@ export function drawTowerSprite(
   };
   if (recipeMap[towerType]) baseType = recipeMap[towerType];
 
-  // 1. 繪製五行屬性底盤光環 (Mindustry 風格 — 擴大光環 + 呼吸動畫 + 雙層)
+  // 1. 繪製五行屬性底盤，使用實色輪廓而非大範圍霓虹光。
   const elementColor = getElementAccent(baseType);
   const ringColor = ELEMENT_RING_COLORS[baseType] ?? elementColor;
   const breathT = Date.now() / 600;
   const breath = 0.85 + Math.sin(breathT) * 0.15; // 0.7~1.0 呼吸
   ctx.save();
-  // 外層大光環（半透明擴散，alpha 隨呼吸脈動）
+  // 外層識別環（低透明度，alpha 隨呼吸脈動）
   ctx.beginPath();
   ctx.ellipse(x + 8 * scale, y + 14 * scale, 13 * scale * breath, 6 * scale * breath, 0, 0, Math.PI * 2);
   ctx.fillStyle = hexToRgba(elementColor, 0.18 * breath);
@@ -2039,6 +2096,11 @@ export function drawTowerSprite(
   ctx.lineWidth = 1.5 * scale;
   ctx.stroke();
   ctx.restore();
+
+  const isBaseTower = ['fire', 'water', 'wood', 'earth', 'metal', 'yin', 'yang'].includes(towerType);
+  if (isBaseTower) {
+    drawBaseTowerPedestal(ctx, x, y, scale, elementColor);
+  }
 
   // 2. 繪製防禦塔主體
   const highresKey = `tower_${towerType}`;
@@ -2061,7 +2123,7 @@ export function drawTowerSprite(
 
     // 只有當圖片寬度等於高度，且寬度不等於單格 S 時，一律視為單張大圖（防範 512x512 大圖被切碎）
     if (imgW === imgH && imgW !== S) {
-      ctx.drawImage(img, x, y - 6 * scale, 16 * scale, 22 * scale);
+      ctx.drawImage(img, x - 2 * scale, y - 10 * scale, 20 * scale, 28 * scale);
     } else {
       const cols = Math.floor(imgW / S);
       const rows = Math.floor(imgH / S);
@@ -2080,11 +2142,11 @@ export function drawTowerSprite(
         ctx.drawImage(
           img, 
           frameIdx * S, row * S, S, S, // 來源裁切格子
-          x, y - 6 * scale, 16 * scale, 22 * scale
+          x - 2 * scale, y - 10 * scale, 20 * scale, 28 * scale
         );
       } else {
         // 單格圖片
-        ctx.drawImage(img, x, y - 6 * scale, 16 * scale, 22 * scale);
+        ctx.drawImage(img, x - 2 * scale, y - 10 * scale, 20 * scale, 28 * scale);
       }
     }
     
@@ -2122,15 +2184,10 @@ export function drawTowerSprite(
       
       const drawY = y - (cvs.height - 16) * scale;
       
-      // 應用雙層螢光 Glow (Mindustry 風格 — 內層銳利 + 外層擴散)
+      // 單層低成本輪廓光，避免每座塔逐幀重畫兩次。
       ctx.save();
-      // 外層擴散 glow (shadowBlur=16, 低 alpha 疊加)
-      ctx.shadowBlur = 16 * scale;
+      ctx.shadowBlur = 5 * scale;
       ctx.shadowColor = hexToRgba(elementColor, 0.5);
-      ctx.drawImage(cvs, x, drawY, cvs.width * scale, cvs.height * scale);
-      // 內層銳利 glow (shadowBlur=8, 實心 accent)
-      ctx.shadowBlur = 8 * scale;
-      ctx.shadowColor = elementColor;
       ctx.drawImage(cvs, x, drawY, cvs.width * scale, cvs.height * scale);
       ctx.restore();
       

@@ -702,28 +702,102 @@
 
     /* === 戰鬥介面專屬緊湊化覆寫 === */
     .game-container .btn {
-      min-height: 38px;
-      padding: 6px 12px;
-      font-size: 0.8rem;
+      min-height: 44px;
+      padding: 8px 16px;
+      font-size: 0.95rem;
     }
     .game-container .header-panel {
-      padding-bottom: 6px;
+      padding-bottom: 8px;
     }
     .game-container .header-panel h1 {
-      font-size: 1.1rem;
+      font-size: 1.25rem;
     }
     .game-container .stats {
-      gap: 14px;
+      gap: 18px;
     }
     .game-container .instructions {
-      margin-top: 2px;
-      padding: 6px 10px;
-      font-size: 0.72rem;
-      line-height: 1.3;
+      margin-top: 4px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      line-height: 1.4;
     }
     .game-container .wave-progress-bar {
-      margin-top: 4px;
-      font-size: 0.75rem;
+      margin-top: 6px;
+      font-size: 0.85rem;
+    }
+    
+    /* === 雙排控制面板排版與放大 === */
+    .control-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+    .control-row-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      width: 100%;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+    }
+    .control-row-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    .mouse-modes {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .game-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .main-action {
+      margin-left: auto;
+    }
+    .btn-wave-large {
+      background: var(--accent) !important;
+      border-color: #047857 !important;
+      font-size: 1.05rem !important;
+      padding: 10px 24px !important;
+      min-height: 44px !important;
+    }
+    .btn-wave-large:hover {
+      background: #059669 !important;
+    }
+
+    /* 覆寫防禦塔卡片大小與文字，使其顯著放大 */
+    .tower-btn {
+      min-width: 80px !important;
+      min-height: 84px !important;
+      padding: 10px 6px !important;
+      gap: 4px !important;
+    }
+    .tower-btn-icon-container {
+      width: 36px !important;
+      height: 36px !important;
+      margin-bottom: 0px !important;
+    }
+    .tower-btn-canvas {
+      width: 28px !important;
+      height: 42px !important;
+    }
+    .tower-btn-name {
+      font-size: 0.85rem !important;
+      font-weight: 700;
+    }
+    .tower-btn-cost {
+      font-size: 0.78rem !important;
     }
     #battleScene {
       overflow: auto;
@@ -984,23 +1058,25 @@
       border-color: transparent transparent var(--gold) transparent;
     }
   </style>
+  <link rel="stylesheet" href="/src/ui/visualRefresh.css">
 </head>
 <body>
 
   <!-- ===== 浮動背景音樂開關 (Phase 4) ===== -->
-  <button id="btnToggleMusic" style="position: fixed; top: 16px; right: 16px; z-index: 9999; font-size: 1.2rem; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(30, 41, 59, 0.85); border: 2px solid #6366f1; color: #f8fafc; cursor: pointer; backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s;">🎵</button>
+  <button id="btnToggleMusic" aria-label="切換音樂" title="切換音樂">♪</button>
 
   <!-- ===== 場景 1: 主介面 ===== -->
   <div id="mainMenu" class="scene active">
+    <div class="menu-world-mark" aria-hidden="true"><span></span></div>
     <div class="menu-title">五行迷宮塔防</div>
-    <div class="menu-subtitle">Wuxing Maze Tower Defense</div>
-    <div id="gameVersion" style="color: var(--text-muted); font-size: 0.85rem; margin-top: -15px; margin-bottom: 5px; font-weight: 500;">V0.40</div>
+    <div class="menu-subtitle">佈陣・相生・破陣</div>
+    <div id="gameVersion">V0.50</div>
     <div class="menu-buttons">
-      <button id="btnStartGame" class="menu-btn primary">⚔️ 開始遊戲</button>
-      <button id="btnTalent" class="menu-btn">🌟 天賦系統</button>
-      <button id="btnStore" class="menu-btn" style="opacity: 0.5; cursor: not-allowed; color: var(--text-muted);" disabled>🛒 商店 (Web不可用)</button>
-      <button id="btnReleaseNotes" class="menu-btn">📜 更新日誌</button>
-      <div id="menuTalentInfo" class="menu-talent-info" style="text-align:center;"></div>
+      <button id="btnStartGame" class="menu-btn primary">開始遊戲</button>
+      <button id="btnTalent" class="menu-btn">五行經脈</button>
+      <button id="btnStore" class="menu-btn" disabled>商店</button>
+      <button id="btnReleaseNotes" class="menu-btn menu-btn-secondary">遊戲資訊</button>
+      <div id="menuTalentInfo" class="menu-talent-info"></div>
     </div>
   </div>
 
@@ -1045,7 +1121,7 @@
   <!-- ===== 場景 2: 天賦頁 ===== -->
   <div id="talentScreen" class="scene">
     <div class="talent-header">
-      <h2>🌟 天賦系統</h2>
+      <h2>五行經脈</h2>
       <div>
         <span class="talent-points-display">可用天賦點: <span id="talentPointsVal">0</span></span>
         <button id="btnResetTalents" class="btn" style="margin-left:12px;">🔄 重置天賦</button>
@@ -1053,14 +1129,15 @@
     </div>
     <!-- ===== Track 快速導覽列 ===== -->
     <div class="talent-nav" id="talentNav">
-      <span class="talent-nav-label">跳至分支：</span>
-      <button class="talent-nav-btn active" data-track="track-base">🛡️ 任督二脈</button>
-      <button class="talent-nav-btn" data-track="track-attack">⚔️ 氣血運行</button>
-      <button class="talent-nav-btn" data-track="track-element">🌿 五臟氣機</button>
-      <button class="talent-nav-btn" data-track="track-yinyang">☯️ 陰陽歸一</button>
+      <span class="talent-nav-label">經脈：</span>
+      <button class="talent-nav-btn active" data-track="track-base">基礎</button>
+      <button class="talent-nav-btn" data-track="track-attack">氣血</button>
+      <button class="talent-nav-btn" data-track="track-element">五行</button>
+      <button class="talent-nav-btn" data-track="track-yinyang">陰陽</button>
     </div>
-    <div class="talent-tree-wrapper">
-      <div class="talent-tree-container" style="position: relative;">
+    <div class="talent-workspace">
+      <div class="talent-tree-wrapper">
+        <div class="talent-tree-container" style="position: relative;">
         <svg id="talentSvg" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></svg>
         
         <!-- P3: 人體經脈五臟背景 SVG -->
@@ -1086,8 +1163,10 @@
              <circle cx="400" cy="340" r="22" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4,4"/>
              <text x="400" y="344" fill="#38bdf8" font-size="12" text-anchor="middle" font-family="'DotGothic16', sans-serif" font-weight="bold">腎 (水)</text>
              
-             <!-- 任督二脈 -->
+             <!-- 任督二脈與太極核心 -->
              <path d="M 400 40 L 400 600" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="6,6"/>
+             <circle cx="400" cy="305" r="54" fill="#f2dfa7" stroke="#5a3826" stroke-width="5"/>
+             <text x="400" y="320" fill="#3a251b" font-size="44" text-anchor="middle" font-family="sans-serif" font-weight="bold">☯</text>
           </svg>
         </div>
         
@@ -1166,7 +1245,16 @@
           </div>
         </div>
 
+        </div>
       </div>
+      <aside id="talentDetailPanel" class="talent-detail-panel" aria-live="polite">
+        <div id="talentDetailIcon" class="talent-detail-icon">☯</div>
+        <h3 id="talentDetailName">選擇穴位</h3>
+        <div id="talentDetailLevel" class="talent-detail-level">經脈尚未選取</div>
+        <p id="talentDetailDesc">選擇左側穴位查看效果與升級需求。</p>
+        <div id="talentDetailPrereq" class="talent-detail-prereq"></div>
+        <button id="btnUpgradeTalent" class="menu-btn primary" disabled>升級</button>
+      </aside>
     </div>
     <button id="btnBackFromTalent" class="menu-btn" style="margin-top:15px; margin-bottom:10px;">← 返回主介面</button>
   </div>
@@ -1193,18 +1281,18 @@
           <h1>五行迷宮塔防</h1>
           <div style="display:flex; gap:8px;">
             <select id="selectStyle" class="btn">
-              <option value="pixel">👾 懷舊像素 (推薦)</option>
-              <option value="highres">🎨 AI 高清</option>
+              <option value="pixel" selected>原生像素</option>
+              <option value="highres">實驗圖像</option>
             </select>
           </div>
         </div>
         <div class="stats" style="display: flex; align-items: center; gap: 20px;">
           <div class="stat-item" style="display: flex; flex-direction: column; align-items: center;">
-            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">HP</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">生命</span>
             <span id="hpVal" class="stat-val-hp" style="font-size: 1.6rem; font-weight: 800; line-height: 1.2;">20</span>
           </div>
           <div class="stat-item" style="display: flex; flex-direction: column; align-items: center;">
-            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">GOLD</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">金幣</span>
             <span id="goldVal" class="stat-val-gold" style="font-size: 1.6rem; font-weight: 800; line-height: 1.2;">60</span>
           </div>
           <!-- 波次進度環 -->
@@ -1215,30 +1303,44 @@
             </svg>
             <div style="position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; top: 50%; left: 50%; transform: translate(-50%, -50%);">
               <span id="waveVal" style="font-size: 1.2rem; font-weight: 800; color: #10b981;">0</span>
-              <span style="font-size: 0.5rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em;">WAVE</span>
+              <span style="font-size: 0.5rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em;">波次</span>
             </div>
           </div>
           <div class="stat-item" style="display: flex; flex-direction: column; align-items: center;">
-            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">KILL</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">擊殺</span>
             <span id="killVal" class="stat-val-wave" style="font-size: 1.4rem; font-weight: 800; line-height: 1.2; color: #a5b4fc;">0</span>
           </div>
         </div>
       </div>
       <canvas id="gameCanvas" width="1280" height="640"></canvas>
+      <!-- Roguelike Buff 顯示欄 -->
+      <div id="rogueBuffBar" style="display:none; gap:6px; align-items:center; flex-wrap:wrap; padding:6px 12px; background:rgba(15,23,42,0.85); border:1px solid #334155; margin-bottom:6px; min-height:36px; width: 100%;">
+        <span style="color:#a78bfa; font-size:0.85rem; font-weight:bold; white-space:nowrap;">✨ 當前增益：</span>
+        <span id="rogueBuffList" style="display:flex; gap:6px; flex-wrap:wrap;"></span>
+      </div>
+
       <div class="control-panel">
-        <div class="tools" id="towerButtons">
-          <!-- 動態生成砲台按鈕 -->
+        <!-- 第一排：工具面板（防禦塔建造與操作模式切換） -->
+        <div class="control-row-top">
+          <!-- 防禦塔按鈕 -->
+          <div class="tools" id="towerButtons">
+            <!-- 動態生成砲台按鈕 -->
+          </div>
+          
+          <!-- 滑鼠操作模式切換組 -->
+          <div class="mouse-modes">
+            <button id="btnInspect" class="btn active" title="空閒、檢視防禦塔或拖曳地圖">檢視</button>
+            <button id="btnMerge" class="btn btn-merge" data-tool="merge" title="選取兩座防禦塔合成">合成</button>
+            <button id="btnSell" class="btn" data-tool="sell" title="拆除防禦塔並退還金幣">拆除</button>
+          </div>
         </div>
-        <!-- Roguelike Buff 顯示欄 -->
-        <div id="rogueBuffBar" style="display:none; gap:4px; align-items:center; flex-wrap:wrap; padding:2px 6px; background:rgba(15,23,42,0.85); border:1px solid #334155; border-radius:6px; margin-bottom:2px; min-height:26px;">
-          <span style="color:#a78bfa; font-size:0.7rem; font-weight:bold; white-space:nowrap;">✨ 增益：</span>
-          <span id="rogueBuffList" style="display:flex; gap:4px; flex-wrap:wrap;"></span>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+
+        <!-- 第二排：輔助工具與戰鬥控制 -->
+        <div class="control-row-bottom">
           <!-- 測試關卡專用調試工具 -->
-          <div id="testControls" style="display:none; align-items:center; gap:6px; background:rgba(30, 41, 59, 0.85); border:1px solid #475569; border-radius:6px; padding:2px 8px; margin-right:8px; height:32px;">
-            <span style="color:#94a3b8; font-size:0.75rem; font-weight:bold; white-space:nowrap;">🧪 測試調試：</span>
-            <select id="testMonsterSelect" class="btn" style="padding: 2px 6px; font-size: 0.8rem; background:#334155; border-color:#475569; height:26px; line-height:1; color:#fff; cursor:pointer;">
+          <div id="testControls" style="display:none; align-items:center; gap:8px; background:rgba(30, 41, 59, 0.85); border:1px solid #475569; padding:4px 12px; height:40px; border-radius: 0px !important;">
+            <span style="color:#94a3b8; font-size:0.85rem; font-weight:bold; white-space:nowrap;">🧪 測試調試：</span>
+            <select id="testMonsterSelect" class="btn" style="padding: 2px 6px; font-size: 0.85rem; background:#334155; border-color:#475569; height:30px; line-height:1; color:#fff; cursor:pointer;">
               <option value="snake">🐍 木蛇</option>
               <option value="fly">🦟 金蠅 (飛行)</option>
               <option value="salamander">🦎 火蜥蜴</option>
@@ -1247,20 +1349,31 @@
               <option value="beetle">🪲 陰甲蟲</option>
               <option value="boss_dragon">🐲 陽龍 (Boss)</option>
             </select>
-            <button id="btnSpawnTestMonster" class="btn" style="background:#8b5cf6; border-color:#7c3aed; height:26px; padding:2px 10px; font-size: 0.8rem; font-weight: bold; line-height:1; color:#fff; display:flex; align-items:center; justify-content:center;">放怪</button>
+            <button id="btnSpawnTestMonster" class="btn" style="background:#8b5cf6; border-color:#7c3aed; height:30px; padding:2px 10px; font-size: 0.85rem; font-weight: bold; line-height:1; color:#fff; display:flex; align-items:center; justify-content:center;">放怪</button>
+            <button id="btnTestCardPicker" class="btn" style="background:#059669; border-color:#047857; height:30px; padding:2px 10px; font-size: 0.85rem; font-weight: bold; line-height:1; color:#fff; display:flex; align-items:center; justify-content:center;">測試卡牌</button>
           </div>
 
-          <button id="btnSpeed" class="btn" style="background:#ea580c; border-color:#c2410c; min-width:64px;">⚡ 1x</button>
-          <button id="btnCodex" class="btn" style="background:#0891b2; border-color:#0e7490;">📖 配方</button>
-          <button id="btnMystery" class="btn" style="background:#7c3aed; border-color:#6d28d9; position:relative;" title="神秘召喚">🎲 神秘召喚 <span id="mysteryPrice" style="font-size:0.7rem;color:#fde047;"></span></button>
-          <button id="btnMerge" class="btn btn-merge" data-tool="merge">🔮 合成</button>
-          <button id="btnSell" class="btn" data-tool="sell">💰 拆除</button>
-          <button id="btnShowRoute" class="btn" style="background:#0284c7; border-color:#0369a1;">🗺️ 路線預覽</button>
-          <button id="btnStartWave" class="btn btn-action">⚔️ 下一波</button>
-          <button id="btnDiagnostics" class="btn" style="background:#475569; border-color:#64748b;">⚙️ 診斷</button>
-          <button id="btnQuitBattle" class="btn btn-quit">✕ 放棄</button>
+          <!-- 常用遊戲控制 -->
+          <div class="game-actions-primary">
+            <button id="btnSpeed" class="btn" style="min-width:80px;">1×</button>
+            <button id="btnCodex" class="btn">圖鑑</button>
+            <button id="btnUtilityMenu" class="btn" aria-expanded="false" aria-controls="utilityDrawer">更多</button>
+          </div>
+
+          <!-- 低頻功能抽屜 -->
+          <div id="utilityDrawer" class="game-actions utility-drawer">
+            <button id="btnMystery" class="btn" title="神秘召喚">召喚 <span id="mysteryPrice"></span></button>
+            <button id="btnShowRoute" class="btn">路線</button>
+            <button id="btnDiagnostics" class="btn">診斷</button>
+          </div>
+
+          <!-- 開始下一波主操作按鈕 -->
+          <div class="main-action">
+            <button id="btnStartWave" class="btn btn-action btn-wave-large">下一波</button>
+          </div>
         </div>
       </div>
+      <button id="btnQuitBattle" class="battle-exit" aria-label="離開戰鬥" title="離開戰鬥">EXIT</button>
       <div id="instructionText" class="instructions">
         選擇砲台後點擊地圖擺放。怪物必須依序碰觸 <span style="color:#f59e0b">❶❷❸❹❺</span> 檢查點，再抵達基地。用砲台築迷宮讓怪物繞最遠的路！<span style="color:#94a3b8;margin-left:8px;">右鍵點擊砲台可快速拆除</span>
       </div>
@@ -1412,7 +1525,7 @@
   </div>
 
   <!-- ===== 卡牌選擇 Modal (Roguelike) ===== -->
-  <div id="cardPickerModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:20000; justify-content:center; align-items:center; padding:20px; backdrop-filter:blur(6px); transition:opacity 0.3s; opacity:0;">
+  <div id="cardPickerModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:20000; justify-content:center; align-items:center; padding:20px; backdrop-filter:blur(6px);">
     <div style="text-align:center; max-width:860px; width:100%;">
       <div style="margin-bottom:18px;">
         <div style="font-size:1.8rem; font-weight:800; color:#fde047; letter-spacing:2px; text-shadow:0 0 18px #fde04788;">⚔️ 波次結束 — 選擇增益</div>
@@ -1423,7 +1536,15 @@
   </div>
 
   <style>
-    #cardPickerModal.visible { opacity: 1; }
+    #cardPickerModal {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    #cardPickerModal.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
     .rogue-card {
       background: rgba(15, 23, 42, 0.96);
       border: 2px solid #4f46e5;
@@ -1458,6 +1579,29 @@
       transform: scale(0.92);
       pointer-events: none;
       transition: all 0.3s;
+    }
+    .rogue-card.rarity-common {
+      border-color: #64748b;
+      box-shadow: 0 0 8px rgba(100, 116, 139, 0.15);
+    }
+    .rogue-card.rarity-rare {
+      border-color: #3b82f6;
+      box-shadow: 0 0 16px rgba(59, 130, 246, 0.35);
+      animation: rarePulse 2s infinite ease-in-out;
+    }
+    .rogue-card.rarity-legendary {
+      border-color: #f59e0b;
+      box-shadow: 0 0 24px rgba(245, 158, 11, 0.55);
+      animation: legendaryPulse 1.8s infinite ease-in-out;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(35, 25, 10, 0.96) 100%);
+    }
+    @keyframes rarePulse {
+      0%, 100% { box-shadow: 0 0 12px rgba(59, 130, 246, 0.3); }
+      50% { box-shadow: 0 0 24px rgba(59, 130, 246, 0.65); }
+    }
+    @keyframes legendaryPulse {
+      0%, 100% { box-shadow: 0 0 18px rgba(245, 158, 11, 0.5); }
+      50% { box-shadow: 0 0 36px rgba(245, 158, 11, 0.85); }
     }
     @keyframes cardSelect {
       0% { transform: scale(1.04); }

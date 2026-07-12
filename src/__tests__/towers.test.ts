@@ -279,25 +279,25 @@ describe('Sell Price (getSellPrice)', () => {
     // floor(12 * 2 * 0.5) = 12
     expect(getSellPrice(woodFire)).toBe(12);
 
-    // fire_earth.element === 'earth', matches BASE_TOWERS.earth.cost = 2
+    // fire_earth.element === 'earth', matches BASE_TOWERS.earth.cost = 3 (原2→3)
     const fireEarth = getTowerDef('fire_earth')!;
-    expect(getSellPrice(fireEarth)).toBe(2);
+    expect(getSellPrice(fireEarth)).toBe(3);
 
-    // earth_metal.element === 'metal', matches BASE_TOWERS.metal.cost = 15
+    // earth_metal.element === 'metal', matches BASE_TOWERS.metal.cost = 18 (原15→18)
     const earthMetal = getTowerDef('earth_metal')!;
-    expect(getSellPrice(earthMetal)).toBe(15);
+    expect(getSellPrice(earthMetal)).toBe(18);
 
-    // metal_water.element === 'water', matches BASE_TOWERS.water.cost = 10
+    // metal_water.element === 'water', matches BASE_TOWERS.water.cost = 12 (原10→12)
     const metalWater = getTowerDef('metal_water')!;
-    expect(getSellPrice(metalWater)).toBe(10);
+    expect(getSellPrice(metalWater)).toBe(12);
 
-    // water_wood.element === 'wood', matches BASE_TOWERS.wood.cost = 10
+    // water_wood.element === 'wood', matches BASE_TOWERS.wood.cost = 12 (原10→12)
     const waterWood = getTowerDef('water_wood')!;
-    expect(getSellPrice(waterWood)).toBe(10);
+    expect(getSellPrice(waterWood)).toBe(12);
 
-    // yin_yang.element === 'yin', matches BASE_TOWERS.yin.cost = 18
+    // yin_yang.element === 'yin', matches BASE_TOWERS.yin.cost = 22 (原18→22)
     const yinYang = getTowerDef('yin_yang')!;
-    expect(getSellPrice(yinYang)).toBe(18);
+    expect(getSellPrice(yinYang)).toBe(22);
   });
 
   it('wood_fire uses fire base cost (12) not fallback (5)', () => {
@@ -378,7 +378,7 @@ describe('DPS/Cost Ratio — Metal_2 post-nerf', () => {
     const critMult = 1 + m2.critChance! * ((m2.critMultiplier ?? 1) - 1);
     const effDps = baseDps * critMult;
     // LV2 towers have cost=0 (merged from materials), use effective investment: 2 × base cost
-    const effectiveCost = 2 * BASE_TOWERS.metal.cost; // 2 × 15 = 30
+    const effectiveCost = 2 * BASE_TOWERS.metal.cost; // 2 × 18 = 36 (原15)
     const ratio = effDps / effectiveCost;
     expect(ratio).toBeGreaterThanOrEqual(1.5);
     expect(ratio).toBeLessThanOrEqual(2.5);

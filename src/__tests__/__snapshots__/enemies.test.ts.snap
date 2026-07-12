@@ -49,6 +49,15 @@ exports[`Snapshot Tests > Wave 10 snapshot 1`] = `
     "split": undefined,
   },
   {
+    "armor": undefined,
+    "count": 1,
+    "enemyType": "salamander",
+    "hpMultiplier": 0.5,
+    "regen": undefined,
+    "spawnIntervalMs": 600,
+    "split": true,
+  },
+  {
     "armor": true,
     "count": 1,
     "enemyType": "boss_dragon",

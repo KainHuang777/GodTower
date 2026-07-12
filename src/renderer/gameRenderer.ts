@@ -3,11 +3,11 @@
 import { gameState } from '../state';
 import { getDomRefs } from '../domRefs';
 import { drawTowerSprite, drawEnemySprite, preloadImage, spriteCache } from '../sprites';
-import { drawObstacle } from './drawObstacle';
 import { drawRoutePreview } from './drawRoutePreview';
 import { getTileCacheCanvas } from './tileCache';
 import { BASE_TOWERS, getTowerDef, getSameMergeResult, getCrossRecipeResult, ELEMENT_COUNTER, RECIPE_TOWERS, LV2_TOWERS, TowerTypeId } from '../towers';
 import { hexToRgba, getElementAccent } from '../theme';
+import { getEnemyVisualScale } from '../enemies';
 
 function getBulletSprite(element: string, type: 'core' | 'trail', r: number, scale: number): HTMLCanvasElement {
   const key = `bullet_${type}_${element}_${r.toFixed(2)}_${scale.toFixed(2)}`;
@@ -99,10 +99,10 @@ export function renderGame() {
   const ctx = getDomRefs().ctx;
   const renderStart = performance.now();
   gameState.drawCallCount = 0;
-  let bgFillStyle = '#0E1117';
+  let bgFillStyle = '#A9C978';
   
   if (gameState.currentTheme === 'chinese') {
-    bgFillStyle = '#1a0a0a';
+    bgFillStyle = '#A9C978';
   } else if (gameState.currentTheme === 'ink') {
     bgFillStyle = '#f8fafc';
   } else if (gameState.currentTheme === 'starry') {
@@ -209,14 +209,7 @@ export function renderGame() {
     ctx.restore();
   }
 
-  // 繪製地圖預設地形障礙物
-  for (let x = 0; x < gameState.COLS; x++) {
-    for (let y = 0; y < gameState.ROWS; y++) {
-      if (gameState.grid[x][y] === 2) {
-        drawObstacle(ctx, x * gameState.TILE_SIZE, y * gameState.TILE_SIZE, gameState.currentTheme, gameState.TILE_SIZE);
-      }
-    }
-  }
+  // 地圖預設障礙物已與地磚一起預渲染至 tile cache，避免逐幀掃描整張網格。
 
   // 在教學關卡繪製推薦建造位置的高亮提示
   if (gameState.currentMap && gameState.currentMap.id === 'tutorial') {
@@ -467,7 +460,7 @@ export function renderGame() {
     // 如果被克制，繪製紅色發光脈衝圈
     if (counteredElement && e.element === counteredElement) {
       ctx.save();
-      const radius = 10 * (gameState.TILE_SIZE / 16) + Math.sin(Date.now() / 100) * 3;
+      const radius = Math.max(e.hitRadius ?? gameState.TILE_SIZE * 0.35, 10 * (gameState.TILE_SIZE / 16)) + Math.sin(Date.now() / 100) * 3;
       ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
       ctx.lineWidth = 2 * (gameState.TILE_SIZE / 16);
       ctx.shadowBlur = 8;
@@ -490,7 +483,8 @@ export function renderGame() {
     ctx.fillStyle = '#1e293b';
     ctx.beginPath();
     for (const e of gameState.enemies) {
-      ctx.rect(e.x - 8 * hpScale, e.y - 12 * hpScale, 16 * hpScale, 3 * hpScale);
+      const visualScale = getEnemyVisualScale(e.type);
+      ctx.rect(e.x - 8 * hpScale * visualScale, e.y - 12 * hpScale * visualScale, 16 * hpScale * visualScale, 3 * hpScale);
     }
     ctx.fill();
     gameState.drawCallCount++;
@@ -501,7 +495,8 @@ export function renderGame() {
     for (const e of gameState.enemies) {
       if (e.slowDuration <= 0) {
         const hpPct = Math.max(0, e.hp / e.maxHp);
-        ctx.rect(e.x - 8 * hpScale, e.y - 12 * hpScale, 16 * hpScale * hpPct, 3 * hpScale);
+        const visualScale = getEnemyVisualScale(e.type);
+        ctx.rect(e.x - 8 * hpScale * visualScale, e.y - 12 * hpScale * visualScale, 16 * hpScale * visualScale * hpPct, 3 * hpScale);
       }
     }
     ctx.fill();
@@ -513,7 +508,8 @@ export function renderGame() {
     for (const e of gameState.enemies) {
       if (e.slowDuration > 0) {
         const hpPct = Math.max(0, e.hp / e.maxHp);
-        ctx.rect(e.x - 8 * hpScale, e.y - 12 * hpScale, 16 * hpScale * hpPct, 3 * hpScale);
+        const visualScale = getEnemyVisualScale(e.type);
+        ctx.rect(e.x - 8 * hpScale * visualScale, e.y - 12 * hpScale * visualScale, 16 * hpScale * visualScale * hpPct, 3 * hpScale);
       }
     }
     ctx.fill();
@@ -634,7 +630,7 @@ export function renderGame() {
         const hasObstacle = gameState.grid[hx][hy] !== 0;
         const hasTower = gameState.towers.some(t => t.x === hx && t.y === hy);
         if (!hasObstacle && !hasTower) {
-          const def = BASE_TOWERS[gameState.selectedTool];
+          const def = getTowerDef(gameState.selectedTool as TowerTypeId);
           if (def) {
             const tx = hx * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
             const ty = hy * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
@@ -988,4 +984,3 @@ export function drawMergeAnimation(ctx: CanvasRenderingContext2D) {
 
   ctx.restore();
 }
-

@@ -8,36 +8,36 @@
     },
     "water": {
       "id": "water", "name": "冰凍塔", "emoji": "💧", "element": "water",
-      "cost": 10, "damage": 8, "range": 5, "fireRate": 60, "isWall": true, "level": 1,
+      "cost": 12, "damage": 8, "range": 5, "fireRate": 60, "isWall": true, "level": 1,
       "slowPct": 0.5, "slowDuration": 90,
       "colorBase": "#1e3a5f", "colorAccent": "#38bdf8"
     },
     "wood": {
       "id": "wood", "name": "纏繞塔", "emoji": "🌿", "element": "wood",
-      "cost": 10, "damage": 5, "range": 4, "fireRate": 70, "isWall": true, "level": 1,
+      "cost": 12, "damage": 5, "range": 4, "fireRate": 70, "isWall": true, "level": 1,
       "dotDamage": 3, "dotDuration": 60,
       "colorBase": "#14532d", "colorAccent": "#4ade80"
     },
     "earth": {
       "id": "earth", "name": "岩壁塔", "emoji": "⛰️", "element": "earth",
-      "cost": 2, "damage": 0, "range": 0, "fireRate": 0, "isWall": true, "level": 1,
+      "cost": 3, "damage": 0, "range": 0, "fireRate": 0, "isWall": true, "level": 1,
       "colorBase": "#78350f", "colorAccent": "#d97706"
     },
     "metal": {
       "id": "metal", "name": "鏡刃塔", "emoji": "⚔️", "element": "metal",
-      "cost": 15, "damage": 25, "range": 3, "fireRate": 40, "isWall": true, "level": 1,
+      "cost": 18, "damage": 25, "range": 3, "fireRate": 40, "isWall": true, "level": 1,
       "critChance": 0.2, "critMultiplier": 2.0,
       "colorBase": "#374151", "colorAccent": "#e5e7eb"
     },
     "yin": {
       "id": "yin", "name": "暗影塔", "emoji": "🌑", "element": "yin",
-      "cost": 18, "damage": 12, "range": 6, "fireRate": 55, "isWall": true, "level": 1,
+      "cost": 22, "damage": 12, "range": 6, "fireRate": 55, "isWall": true, "level": 1,
       "hpPctDamage": 0.05,
       "colorBase": "#2e1065", "colorAccent": "#a855f7"
     },
     "yang": {
       "id": "yang", "name": "聖光塔", "emoji": "☀️", "element": "yang",
-      "cost": 18, "damage": 15, "range": 5, "fireRate": 50, "isWall": true, "level": 1,
+      "cost": 22, "damage": 15, "range": 5, "fireRate": 50, "isWall": true, "level": 1,
       "flyingBonus": 0.5, "healBase": 0.1,
       "colorBase": "#713f12", "colorAccent": "#fbbf24"
     }

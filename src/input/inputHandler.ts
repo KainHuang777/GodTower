@@ -15,6 +15,7 @@ import { updateTileCacheCanvas } from '../renderer/tileCache';
 import { updateUI, showTooltip, hideTooltip } from '../ui/uiManager';
 import { initWuxingCompass, updateCompassHighlight } from '../ui/wuxingCompass';
 import { initRecipeCodex } from '../ui/recipeCodex';
+import { showCardPicker } from '../system/roguelikeSystem';
 
 const dragThreshold = 5;
 
@@ -345,6 +346,16 @@ export function initInputEvents() {
   });
 
   // 戰鬥控制按鈕
+  const btnUtilityMenu = document.getElementById('btnUtilityMenu');
+  const utilityDrawer = document.getElementById('utilityDrawer');
+  btnUtilityMenu?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    playSFX('click');
+    const isOpen = utilityDrawer?.classList.toggle('open') ?? false;
+    btnUtilityMenu.setAttribute('aria-expanded', String(isOpen));
+    btnUtilityMenu.classList.toggle('active', isOpen);
+  });
+
   getDomRefs().btnStartWave.addEventListener('click', (e) => {
     e.stopPropagation();
     if (gameState.isWaveActive) return;
@@ -390,8 +401,8 @@ export function initInputEvents() {
   getDomRefs().btnQuitBattle.addEventListener('click', () => {
     playSFX('click');
     if (confirm('確定放棄本局嗎？將進行天賦結算。')) {
-      if ((gameState as any).endBattle) {
-        (gameState as any).endBattle(false);
+      if (gameState.endBattle) {
+        gameState.endBattle(false);
       }
     }
   });
@@ -510,9 +521,10 @@ export function initInputEvents() {
     playSFX('click');
   });
 
-  // 測試調試放怪按鈕
+  // 測試調試放怪與卡牌按鈕
   const btnSpawnTestMonster = document.getElementById('btnSpawnTestMonster')! as HTMLButtonElement;
   const testMonsterSelect = document.getElementById('testMonsterSelect')! as HTMLSelectElement;
+  const btnTestCardPicker = document.getElementById('btnTestCardPicker') as HTMLButtonElement;
 
   if (btnSpawnTestMonster && testMonsterSelect) {
     btnSpawnTestMonster.addEventListener('click', (e) => {
@@ -524,12 +536,35 @@ export function initInputEvents() {
     });
   }
 
+  if (btnTestCardPicker) {
+    btnTestCardPicker.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (gameState.currentScene !== 'BATTLE') return;
+      playSFX('click');
+      showCardPicker();
+    });
+  }
+
+  getDomRefs().btnInspect.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (gameState.currentScene !== 'BATTLE') return;
+    playSFX('click');
+    gameState.selectedTool = '';
+    gameState.mergeMode = false;
+    gameState.mergeFirstTower = null;
+    gameState.selectedTower = null;
+    if (gameState.refreshToolSelection) {
+      gameState.refreshToolSelection();
+    }
+    updateCompassHighlight();
+  });
+
   // 速度切換與配方書點擊事件
   getDomRefs().btnSpeed.addEventListener('click', (e) => {
     e.stopPropagation();
     playSFX('click');
     gameState.gameSpeed = gameState.gameSpeed === 1 ? 2 : gameState.gameSpeed === 2 ? 3 : 1;
-    getDomRefs().btnSpeed.textContent = `⚡ ${gameState.gameSpeed}x`;
+    getDomRefs().btnSpeed.textContent = `${gameState.gameSpeed}×`;
 
     if (gameState.currentMap.id === 'tutorial' && gameState.levelTutorialStep === 'speed_guide') {
       gameState.levelTutorialStep = 'idle';
@@ -652,7 +687,7 @@ export function initInputEvents() {
     if (gameState.currentScene === 'BATTLE' && (e.key === 'g' || e.key === 'G')) {
       playSFX('click');
       gameState.gameSpeed = gameState.gameSpeed === 1 ? 2 : gameState.gameSpeed === 2 ? 3 : 1;
-      getDomRefs().btnSpeed.textContent = `⚡ ${gameState.gameSpeed}x`;
+      getDomRefs().btnSpeed.textContent = `${gameState.gameSpeed}×`;
     }
   });
 

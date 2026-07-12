@@ -7,6 +7,65 @@ import { getAvailablePoints, TALENT_TREE, canUnlockTalent, unlockTalent, saveTal
 import { MAPS, loadCustomMaps, deleteCustomMap } from '../maps';
 import { playSFX } from '../audio/audioSystem';
 
+let selectedTalentId: TalentId | null = null;
+
+const talentIconMap: Record<TalentId, string> = {
+  fortress_1: '盾', fortress_2: '城',
+  gold_1: '金', gold_2: '財',
+  precise_1: '準', precise_2: '刃', rapid_fire: '速',
+  wood_awakening: '木', water_awakening: '水', fire_awakening: '火',
+  earth_awakening: '土', metal_awakening: '金',
+  yin_law: '陰', yang_law: '陽', taiji_dao: '☯',
+  wall_discount: '壁'
+};
+
+function renderTalentDetail() {
+  const nameEl = document.getElementById('talentDetailName');
+  const iconEl = document.getElementById('talentDetailIcon');
+  const levelEl = document.getElementById('talentDetailLevel');
+  const descEl = document.getElementById('talentDetailDesc');
+  const prereqEl = document.getElementById('talentDetailPrereq');
+  const upgradeBtn = document.getElementById('btnUpgradeTalent') as HTMLButtonElement | null;
+  if (!nameEl || !iconEl || !levelEl || !descEl || !prereqEl || !upgradeBtn) return;
+
+  const node = selectedTalentId ? TALENT_TREE.find(t => t.id === selectedTalentId) : null;
+  if (!node || !selectedTalentId) {
+    nameEl.textContent = '選擇穴位';
+    iconEl.textContent = '☯';
+    levelEl.textContent = '經脈尚未選取';
+    descEl.textContent = '選擇穴位查看效果與升級需求。';
+    prereqEl.textContent = '';
+    upgradeBtn.disabled = true;
+    upgradeBtn.textContent = '升級';
+    upgradeBtn.onclick = null;
+    return;
+  }
+
+  const level = gameState.talentData.talentLevels[selectedTalentId] || 0;
+  const isMax = level >= node.maxLevel;
+  const canUpgrade = canUnlockTalent(gameState.talentData, selectedTalentId);
+  const unmet = node.prerequisites
+    .filter(pid => (gameState.talentData.talentLevels[pid] || 0) < 1)
+    .map(pid => TALENT_TREE.find(t => t.id === pid)?.name ?? pid);
+
+  iconEl.textContent = talentIconMap[selectedTalentId] || '氣';
+  iconEl.dataset.element = selectedTalentId.split('_')[0];
+  nameEl.textContent = node.name;
+  levelEl.textContent = `等級 ${level}/${node.maxLevel}`;
+  descEl.textContent = node.description;
+  prereqEl.textContent = unmet.length ? `需先開通：${unmet.join('、')}` : `升級消耗 ${node.cost} 點`;
+  upgradeBtn.disabled = !canUpgrade || isMax;
+  upgradeBtn.textContent = isMax ? '已圓滿' : `升級 ${node.cost} 點`;
+  upgradeBtn.onclick = null;
+  if (canUpgrade && !isMax) {
+    upgradeBtn.onclick = () => {
+      playSFX('click');
+      unlockTalent(gameState.talentData, selectedTalentId!);
+      renderTalentScreen();
+    };
+  }
+}
+
 export function switchScene(scene: GameScene) {
   gameState.currentScene = scene;
   getDomRefs().mainMenuEl.classList.remove('active');
@@ -168,10 +227,10 @@ export function renderTalentScreen() {
     });
 
     let originalTitle = '';
-    if (trackId === 'track-base') originalTitle = '🛡️ 任督二脈';
-    else if (trackId === 'track-attack') originalTitle = '⚔️ 氣血運行';
-    else if (trackId === 'track-element') originalTitle = '🌿 五臟氣機';
-    else if (trackId === 'track-yinyang') originalTitle = '☯️ 陰陽歸一';
+    if (trackId === 'track-base') originalTitle = '基礎';
+    else if (trackId === 'track-attack') originalTitle = '氣血';
+    else if (trackId === 'track-element') originalTitle = '五行';
+    else if (trackId === 'track-yinyang') originalTitle = '陰陽';
 
     btn.textContent = `${originalTitle} (${currentLevelSum}/${maxLevelSum})`;
     btn.classList.toggle('active', trackId === gameState.activeTalentTrack);
@@ -208,17 +267,7 @@ export function renderTalentScreen() {
       if (canUpgrade && !isMax) cardEl.classList.add('available');
     }
 
-    // 根據天賦 ID 取得大圖示 emoji
-    const emojiMap: Record<TalentId, string> = {
-      fortress_1: '🛡️', fortress_2: '🏰',
-      gold_1: '💰', gold_2: '🪙',
-      precise_1: '🎯', precise_2: '⚔️', rapid_fire: '⚡',
-      wood_awakening: '🌿', water_awakening: '💧', fire_awakening: '🔥',
-      earth_awakening: '⛰️', metal_awakening: '⚔️',
-      yin_law: '🌑', yang_law: '☀️', taiji_dao: '☯️',
-      wall_discount: '🧱'
-    };
-    const emoji = emojiMap[tid] || '✨';
+    const icon = talentIconMap[tid] || '氣';
 
     // 計算未滿足的前置條件文字
     let prereqHtml = '';
@@ -236,7 +285,7 @@ export function renderTalentScreen() {
     }
 
     cardEl.innerHTML = `
-      <div class="talent-icon">${emoji}</div>
+      <div class="talent-icon">${icon}</div>
       <div class="talent-card-info">
         <div class="talent-card-title">
           <span>${node.name}</span>
@@ -251,20 +300,20 @@ export function renderTalentScreen() {
     // 重設並重新綁定點擊事件
     const htmlEl = cardEl as HTMLElement;
     htmlEl.onclick = null;
-    if (canUpgrade && !isMax) {
-      htmlEl.onclick = () => {
-        playSFX('click');
+    htmlEl.classList.toggle('selected', selectedTalentId === tid);
+    htmlEl.onclick = () => {
+      playSFX('click');
+      selectedTalentId = tid;
+      if (gameState.talentTutorialActive && canUpgrade && !isMax) {
         unlockTalent(gameState.talentData, tid);
-        if (gameState.talentTutorialActive) {
-          gameState.talentTutorialActive = false;
-          gameState.talentData.hasPlayedBefore = true;
-          saveTalentData(gameState.talentData);
-          const bubble = document.getElementById('talentGuideBubble');
-          if (bubble) bubble.remove();
-        }
-        renderTalentScreen();
-      };
-    }
+        gameState.talentTutorialActive = false;
+        gameState.talentData.hasPlayedBefore = true;
+        saveTalentData(gameState.talentData);
+        const bubble = document.getElementById('talentGuideBubble');
+        if (bubble) bubble.remove();
+      }
+      renderTalentScreen();
+    };
   });
 
   // 渲染引導氣泡
@@ -285,6 +334,13 @@ export function renderTalentScreen() {
       targetEl.appendChild(bubble);
     }
   }
+
+  const activeTrack = document.getElementById(gameState.activeTalentTrack);
+  if (!selectedTalentId || !activeTrack?.querySelector(`[data-id="${selectedTalentId}"]`)) {
+    const visibleCard = activeTrack?.querySelector('.talent-card') as HTMLElement | null;
+    selectedTalentId = visibleCard?.dataset.id as TalentId | null;
+  }
+  renderTalentDetail();
 
   // 延遲呼叫以保證佈局已完成
   setTimeout(drawTalentLines, 50);

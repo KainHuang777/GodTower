@@ -19,7 +19,8 @@
       "theme": "教學波",
       "enemies": [
         { "enemyType": "water_spirit", "count": 6, "spawnIntervalMs": 650, "hpMultiplier": 1.2 },
-        { "enemyType": "beetle", "count": 4, "spawnIntervalMs": 650, "hpMultiplier": 1.2 }
+        { "enemyType": "beetle", "count": 4, "spawnIntervalMs": 650, "hpMultiplier": 1.2 },
+        { "enemyType": "beetle", "count": 1, "spawnIntervalMs": 650, "hpMultiplier": 0.5, "armor": true }
       ]
     },
     {
@@ -43,7 +44,8 @@
       "theme": "探索波",
       "enemies": [
         { "enemyType": "golem", "count": 6, "spawnIntervalMs": 700, "hpMultiplier": 1.5 },
-        { "enemyType": "snake", "count": 6, "spawnIntervalMs": 700, "hpMultiplier": 1.5 }
+        { "enemyType": "snake", "count": 6, "spawnIntervalMs": 700, "hpMultiplier": 1.5 },
+        { "enemyType": "water_spirit", "count": 1, "spawnIntervalMs": 700, "hpMultiplier": 0.5, "regen": true }
       ]
     },
     {
@@ -75,6 +77,7 @@
       "theme": "Boss波 (裝甲 Boss)",
       "enemies": [
         { "enemyType": "beetle", "count": 8, "spawnIntervalMs": 600, "hpMultiplier": 2.0 },
+        { "enemyType": "salamander", "count": 1, "spawnIntervalMs": 600, "hpMultiplier": 0.5, "split": true },
         { "enemyType": "boss_dragon", "count": 1, "spawnIntervalMs": 0, "hpMultiplier": 4.0, "armor": true }
       ]
     },

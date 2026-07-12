@@ -8,7 +8,7 @@ import { astarFind, validatePlacement, updateAllEnemyPaths } from './pathfinding
 import { createSplatterParticles, createDeathParticles, updateParticles, createElementalHitParticles } from '../renderer/particles';
 import { playSFX } from '../audio/audioSystem';
 import { checkWaveEnd, endBattle } from './battleManager';
-import { ENEMY_DEFS, EnemyTypeId, getWaveConfig } from '../enemies';
+import { ENEMY_DEFS, EnemyTypeId, getEnemyCollisionRadius, getWaveConfig } from '../enemies';
 import { Point, Enemy } from '../types';
 
 // 引入 UI 與渲染更新
@@ -53,7 +53,8 @@ export function updatePhysics() {
           vx: 0,
           vy: 0,
           squashX: 1,
-          squashY: 1
+          squashY: 1,
+          hitRadius: getEnemyCollisionRadius(randType, gameState.TILE_SIZE)
         });
       }
     }
@@ -78,9 +79,20 @@ export function updatePhysics() {
   for (let i = gameState.enemies.length - 1; i >= 0; i--) {
     const e = gameState.enemies[i];
 
-    // 怪物每秒恢復 1% 生命 (Regen)
+    // 怪物每秒恢復 1% 生命 (Regen) — Work B Roguelike 卡牌效果
     if (e.hp > 0 && e.regen && e.hp < e.maxHp) {
-      e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.01 / 60);
+      if (gameState.roguelikeState.regenLockActive) {
+        // 封印再生：永久停止回血
+      } else if (gameState.roguelikeState.regenReverseActive) {
+        e.hp = Math.max(1, e.hp - e.maxHp * 0.02 / 60);
+        if (Math.random() < 0.01) showFloat(e.x, e.y - 10, '毒纏!', '#a855f7');
+      } else if ((gameState.roguelikeState.regenBlockDuration ?? 0) > 0) {
+        // 灼燒標記：3 秒內仍不觸發
+        gameState.roguelikeState.regenBlockDuration =
+          (gameState.roguelikeState.regenBlockDuration ?? 0) - 1;
+      } else {
+        e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.01 / 60);
+      }
     }
 
     // DOT 傷害
@@ -122,9 +134,18 @@ export function updatePhysics() {
         checkWaveEnd();
         continue;
       } else if (e.split && e.hp < e.maxHp * 0.3 && !e.hasSplit) {
-        triggerSplit(e);
-        continue;
+        if (!gameState.roguelikeState.splitBlockActive) {
+          triggerSplit(e);
+          continue;
+        } else {
+          showFloat(e.x, e.y - 10, '🔒 分裂封', '#c084fc', 12);
+        }
       }
+    }
+
+    // 舊測試資料／熱更新中的敵人可能尚無半徑，依定義自動補齊。
+    if (e.hitRadius === undefined) {
+      e.hitRadius = getEnemyCollisionRadius(e.type, gameState.TILE_SIZE);
     }
 
     // 遞減受擊高亮與形變恢復
@@ -259,6 +280,10 @@ export function updatePhysics() {
 
       // 冷卻計算：天賦倍率 × Roguelike 攻速加成減少
       let fireCooldown = Math.floor(tower.def.fireRate * frMult);
+      const permBonus = (gameState.roguelikeState as any).permanentAttackSpeedBonus ?? 0;
+      if (permBonus > 0) {
+        fireCooldown = Math.max(1, fireCooldown - permBonus);
+      }
       if (gameState.roguelikeState.attackSpeedBonus > 0 && gameState.roguelikeState.attackSpeedWavesLeft > 0) {
         fireCooldown = Math.max(1, fireCooldown - gameState.roguelikeState.attackSpeedBonus);
       }
@@ -280,7 +305,8 @@ export function updatePhysics() {
     const dx = targetX - b.x, dy = targetY - b.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist <= b.speed) {
+    const targetHitRadius = target.hitRadius ?? getEnemyCollisionRadius(target.type, gameState.TILE_SIZE);
+    if (dist <= b.speed + targetHitRadius) {
       // 擊中處理
       let dmg = b.damage;
 
@@ -294,17 +320,37 @@ export function updatePhysics() {
         triggerCounterGlow(b.element, b.targetEnemy.element);
       }
 
-      // 暴擊
+      // 暴擊 + Work B Roguelike 破甲卡牌效果
       let isCrit = false;
-      if (b.critChance && Math.random() < b.critChance) {
+
+      // 破甲一擊：對裝甲怪首次命中必暴
+      if (gameState.roguelikeState.armorBreakNext && b.targetEnemy.armor) {
+        dmg = Math.floor(dmg * (b.critMultiplier ?? 2));
+        showFloat(b.targetEnemy.x, b.targetEnemy.y - 14, '破甲暴擊!', '#fde047');
+        isCrit = true;
+        gameState.roguelikeState.armorBreakNext = false;
+      }
+
+      if (!isCrit && b.critChance && Math.random() < b.critChance) {
         dmg = Math.floor(dmg * (b.critMultiplier ?? 2));
         showFloat(b.targetEnemy.x, b.targetEnemy.y - 14, '暴擊!', '#fde047');
         isCrit = true;
       }
 
-      // 裝甲效果 (Boss -25% 非暴擊傷害)
+      // 五行破甲：對裝甲怪相剋加成
+      if (b.targetEnemy.armor && gameState.roguelikeState.counterBonusVsArmor && bonus > 1.0) {
+        const extra = Math.floor(dmg * gameState.roguelikeState.counterBonusVsArmor);
+        dmg += extra;
+        showFloat(b.targetEnemy.x, b.targetEnemy.y - 20, `五行破甲 +${Math.round(gameState.roguelikeState.counterBonusVsArmor * 100)}%`, '#a855f7');
+      }
+
+      // 裝甲效果 (Boss -25% 非暴擊傷害) + Work B 無視護甲
       if (b.targetEnemy.armor && !isCrit) {
-        dmg = Math.floor(dmg * 0.75);
+        if (!gameState.roguelikeState.trueDamageVsArmor) {
+          dmg = Math.floor(dmg * 0.75);
+        } else {
+          showFloat(b.targetEnemy.x, b.targetEnemy.y - 16, '無視護甲!', '#fbbf24');
+        }
       }
 
       // 飛行加成
@@ -323,6 +369,12 @@ export function updatePhysics() {
         else if (gameState.wave <= 15) resistPct = 0.15;
         else resistPct = 0.20;
         dmg = Math.floor(dmg * (1 - resistPct));
+      }
+
+      // Work B 速攻指令：分裂怪分裂前 +30% 傷害
+      if (gameState.roguelikeState.splitBurstActive && b.targetEnemy.split && b.targetEnemy.hp < b.targetEnemy.maxHp * 0.35 && !b.targetEnemy.hasSplit) {
+        dmg = Math.floor(dmg * 1.3);
+        showFloat(b.targetEnemy.x, b.targetEnemy.y - 8, '速攻!', '#f97316');
       }
 
       // % 血量傷害
@@ -360,7 +412,11 @@ export function updatePhysics() {
 
       // 觸發分裂檢查
       if (b.targetEnemy.hp > 0 && b.targetEnemy.split && b.targetEnemy.hp < b.targetEnemy.maxHp * 0.3 && !b.targetEnemy.hasSplit) {
-        triggerSplit(b.targetEnemy);
+        if (!gameState.roguelikeState.splitBlockActive) {
+          triggerSplit(b.targetEnemy);
+        } else {
+          showFloat(b.targetEnemy.x, b.targetEnemy.y - 12, '🔒 制止分裂!', '#c084fc', 12);
+        }
       }
 
       // P3: 產生屬性特定的粒子特效
@@ -413,7 +469,11 @@ export function updatePhysics() {
 
             // AOE 分裂檢查
             if (e.hp > 0 && e.split && e.hp < e.maxHp * 0.3 && !e.hasSplit) {
-              triggerSplit(e);
+              if (!gameState.roguelikeState.splitBlockActive) {
+                triggerSplit(e);
+              } else {
+                showFloat(e.x, e.y - 12, '🔒 制止分裂!', '#c084fc', 12);
+              }
             }
           }
         }
@@ -622,6 +682,13 @@ export function generateLightningPaths() {
 
 function triggerSplit(e: Enemy) {
   e.hasSplit = true;
+
+  // Work B 反向分裂：分裂時獲得金幣
+  if (gameState.roguelikeState.splitRewardActive) {
+    gameState.gold += 10;
+    showFloat(e.x, e.y - 10, '💰 反向分裂 +10g', '#f59e0b');
+  }
+
   // 移除 e
   const idx = gameState.enemies.findIndex(enemy => enemy.id === e.id);
   if (idx !== -1) {
@@ -661,6 +728,7 @@ function triggerSplit(e: Enemy) {
       vy: e.vy,
       squashX: 1.0,
       squashY: 1.0,
+      hitRadius: getEnemyCollisionRadius('salamander', gameState.TILE_SIZE),
       isStuck: e.isStuck,
       pathBlockedHintShown: e.pathBlockedHintShown
     });

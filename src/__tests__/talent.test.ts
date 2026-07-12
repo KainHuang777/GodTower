@@ -12,6 +12,7 @@ import {
   canUnlockTalent,
   unlockTalent,
   isTowerUnlocked,
+  getTalentDifficultyMod,
 } from '../talent';
 import type { TalentSaveData } from '../talent';
 
@@ -41,36 +42,46 @@ beforeEach(() => {
 });
 
 describe('calcTalentPointsEarned', () => {
+  // Track A base: max(1, floor(wave/4))
   it('0 waves -> 1 (minimum)', () => {
     expect(calcTalentPointsEarned(0)).toBe(1);
   });
 
-  it('1 wave -> 1', () => {
+  it('1-3 waves -> 1', () => {
     expect(calcTalentPointsEarned(1)).toBe(1);
-  });
-
-  it('2 waves -> 1', () => {
     expect(calcTalentPointsEarned(2)).toBe(1);
-  });
-
-  it('3 waves -> 1', () => {
     expect(calcTalentPointsEarned(3)).toBe(1);
   });
 
-  it('6 waves -> 2', () => {
-    expect(calcTalentPointsEarned(6)).toBe(2);
+  it('8 waves -> 2', () => {
+    expect(calcTalentPointsEarned(8)).toBe(2);
   });
 
-  it('9 waves -> 3', () => {
-    expect(calcTalentPointsEarned(9)).toBe(3);
+  it('12 waves -> 3', () => {
+    expect(calcTalentPointsEarned(12)).toBe(3);
   });
 
-  it('20 waves -> 6', () => {
-    expect(calcTalentPointsEarned(20)).toBe(6);
+  it('20 waves -> 5', () => {
+    expect(calcTalentPointsEarned(20)).toBe(5);
   });
 
   it('negative input -> 1 (minimum clamp)', () => {
     expect(calcTalentPointsEarned(-5)).toBe(1);
+  });
+
+  // Track B challenge run with PB bonus
+  it('Track B: PB bonus on challenge run', () => {
+    // PB=4, survived=6, base=1, PB bonus=floor((6-4)/2)=1, milestone5 first-time=+3, total=5
+    expect(calcTalentPointsEarned(6, 4, [], true)).toBe(5);
+  });
+
+  it('Track B: milestone first-time bonus', () => {
+    // survived=5, PB=4, base=1, PB bonus=0, milestone 5=+3, total=4
+    const result = calcTalentPointsEarned(5, 4, [], true);
+    expect(result).toBe(4);
+    // same player second time: milestone already in list → no bonus
+    const result2 = calcTalentPointsEarned(5, 5, [5], true);
+    expect(result2).toBe(1); // base=1, PB=0, no milestone
   });
 });
 
@@ -107,14 +118,14 @@ describe('getStartGold', () => {
     expect(getStartGold(data)).toBe(160);
   });
 
-  it('gold_2 lv5 -> 210', () => {
+  it('gold_2 lv5 only (60+150=210) -> capped at 200', () => {
     const data = mockSaveData({ talentLevels: { gold_2: 5 } });
-    expect(getStartGold(data)).toBe(210);
+    expect(getStartGold(data)).toBe(200); // soft cap at 200g
   });
 
-  it('both maxed -> 310', () => {
+  it('both maxed (310) -> capped at 200g (P2 soft cap)', () => {
     const data = mockSaveData({ talentLevels: { gold_1: 5, gold_2: 5 } });
-    expect(getStartGold(data)).toBe(310);
+    expect(getStartGold(data)).toBe(200); // soft cap protects early-game tension
   });
 });
 
@@ -207,8 +218,8 @@ describe('getTowerElementDamageMultiplier', () => {
 });
 
 describe('canUnlockTalent', () => {
-  it('fortress_1 with 1 point, no prereqs -> true', () => {
-    const data = mockSaveData({ totalTalentPoints: 1, talentLevels: {} });
+  it('fortress_1 with 2 points, no prereqs -> true', () => {
+    const data = mockSaveData({ totalTalentPoints: 2, talentLevels: {} });
     expect(canUnlockTalent(data, 'fortress_1')).toBe(true);
   });
 
@@ -279,7 +290,7 @@ describe('unlockTalent', () => {
     const result = unlockTalent(data, 'fortress_1');
     expect(result).toBe(true);
     expect(data.talentLevels['fortress_1']).toBe(1);
-    expect(data.spentTalentPoints).toBe(1);
+    expect(data.spentTalentPoints).toBe(2);
   });
 
   it('failed unlock (canUnlock=false): state unchanged, returns false', () => {
@@ -444,5 +455,82 @@ describe('hasPlayedBefore save/load', () => {
     saveTalentData(data);
     const loaded = loadTalentData();
     expect(loaded.hasPlayedBefore).toBe(true);
+  });
+});
+// ============================================================
+// B3 P2 耦合調整測試：getStartGold 軟上限
+// ============================================================
+describe('getStartGold soft cap (P2 coupling)', () => {
+  it('base gold is 60 with no talents', () => {
+    const data = mockSaveData();
+    expect(getStartGold(data)).toBe(60);
+  });
+
+  it('gold_1 lv5 adds 100g, total 160g (no cap)', () => {
+    const data = mockSaveData({ talentLevels: { gold_1: 5 } });
+    expect(getStartGold(data)).toBe(160);
+  });
+
+  it('gold_1 lv5 + gold_2 lv1 = 60+100+30=190g (no cap)', () => {
+    const data = mockSaveData({ talentLevels: { gold_1: 5, gold_2: 1 } });
+    expect(getStartGold(data)).toBe(190);
+  });
+
+  it('gold_1 lv5 + gold_2 lv3 = 60+100+90=250g → capped at 200g', () => {
+    const data = mockSaveData({ talentLevels: { gold_1: 5, gold_2: 3 } });
+    expect(getStartGold(data)).toBe(200);
+  });
+
+  it('gold_1 lv5 + gold_2 lv5 = 310g → capped at 200g', () => {
+    const data = mockSaveData({ talentLevels: { gold_1: 5, gold_2: 5 } });
+    expect(getStartGold(data)).toBe(200);
+  });
+});
+
+// ============================================================
+// B3 P1 耦合調整測試：getTalentDifficultyMod 天賦難度因子
+// ============================================================
+describe('getTalentDifficultyMod (P1 coupling)', () => {
+  it('0 spent points -> 0.0 mod (no boost)', () => {
+    const data = mockSaveData({ spentTalentPoints: 0 });
+    expect(getTalentDifficultyMod(data)).toBeCloseTo(0.0);
+  });
+
+  it('85 spent points -> 0.50 mod (max boost)', () => {
+    const data = mockSaveData({ spentTalentPoints: 85 });
+    expect(getTalentDifficultyMod(data)).toBeCloseTo(0.5);
+  });
+
+  it('excess spent points capped at SPENT_MAX=85', () => {
+    const data = mockSaveData({ spentTalentPoints: 200 });
+    expect(getTalentDifficultyMod(data)).toBeCloseTo(0.5);
+  });
+
+  it('42 spent points -> ~0.247 mod (midrange)', () => {
+    const data = mockSaveData({ spentTalentPoints: 42 });
+    const mod = getTalentDifficultyMod(data);
+    expect(mod).toBeGreaterThan(0.2);
+    expect(mod).toBeLessThan(0.3);
+  });
+
+  it('mod is always non-negative', () => {
+    for (const pts of [0, 10, 30, 50, 85, 100]) {
+      const data = mockSaveData({ spentTalentPoints: pts });
+      expect(getTalentDifficultyMod(data)).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('enemy effective HP increases with talent investment (sanity check)', () => {
+    const noTalent = mockSaveData({ spentTalentPoints: 0 });
+    const fullTalent = mockSaveData({ spentTalentPoints: 85 });
+    const baseHp = 100;
+    const hpMult = 4.0; // Wave 10 Boss
+
+    const hpNoTalent = Math.floor(baseHp * hpMult * (1 + getTalentDifficultyMod(noTalent)));
+    const hpFullTalent = Math.floor(baseHp * hpMult * (1 + getTalentDifficultyMod(fullTalent)));
+
+    expect(hpFullTalent).toBeGreaterThan(hpNoTalent);
+    // 最多 +50%
+    expect(hpFullTalent).toBeLessThanOrEqual(hpNoTalent * 1.51);
   });
 });

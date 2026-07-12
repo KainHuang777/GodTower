@@ -107,13 +107,13 @@ export const MAPS: MapConfig[] = [
   // 2. 簡單關卡 (經典平原，原版配置)
   {
     id: 'easy',
-    name: '【簡單】經典開闊平原',
+    name: '【簡單】九曲河谷',
     difficulty: '簡單',
-    description: '經典平坦地圖：擁有 5 個分佈均勻的檢查點，沒有任何預設障礙物。給予你百分之百的建造自由，適合自由規劃大範圍的長迷宮。',
-    spawnPoint: { x: 0, y: 20 },
-    basePoint: { x: 79, y: 20 },
+    description: '明亮河谷中的五段彎曲古道。道路以圓角連續方式呈現，保留開闊建造空間，適合熟悉五行塔與迷宮改道。',
+    spawnPoint: { x: 0, y: 26 },
+    basePoint: { x: 79, y: 15 },
     waypoints: [
-      { x: 13, y: 8 }, { x: 26, y: 32 }, { x: 40, y: 8 }, { x: 53, y: 32 }, { x: 66, y: 15 }
+      { x: 12, y: 17 }, { x: 26, y: 29 }, { x: 40, y: 11 }, { x: 54, y: 26 }, { x: 68, y: 9 }
     ],
     obstacles: []
   },

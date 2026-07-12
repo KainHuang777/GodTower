@@ -30,6 +30,8 @@ export interface Enemy {
   vy: number;
   squashX: number;
   squashY: number;
+  /** 世界座標中的圓形受擊半徑，與放大後精靈一致。 */
+  hitRadius?: number;
   isStuck?: boolean;
   pathBlockedHintShown?: boolean;
   armor?: boolean;
@@ -117,5 +119,5 @@ export interface WeatherParticle {
   length?: number;
 }
 
-export const GAME_VERSION = 'V0.40';
+export const GAME_VERSION = 'V0.50';
 export const MAX_WAVES = 20;

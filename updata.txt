@@ -1,3 +1,48 @@
+2026-07-12 Fix Merge Mode Conflict with Roguelike Summons
+- [roguelikeSystem.ts] Reset gameState.mergeMode to false and gameState.mergeFirstTower to null in rollMysteryBox(), grantRandomTower(), grantRandomLv2Tower(), and grantStartBonus(). This prevents active merge mode from intercepting pointer click events and showing "沒有砲台" (No Tower) errors when attempting to build towers acquired through roguelike systems.
+- [roguelike.test.ts] Added new unit tests verifying that mergeMode and mergeFirstTower are correctly cleared upon starter bonuses and mystery box rolls.
+- Build verified: npm run test (172 tests passed, 6 files) and npm run build successful (Vite production bundle, 38 modules, 214KB JS).
+
+2026-07-12 B3 Blind Spot P1/P2 Talent x Economy x Numerical Coupling Adjustment
+- [talent.ts] P2 coupling: Modified getStartGold() to add a 200g soft cap (previously uncapped, could reach 310g with max talents), preventing high-talent players from breaking early-game tension with excessive starting gold.
+- [talent.ts] P1 coupling: Added getTalentDifficultyMod(data) function. Computes a 0.0~0.50 HP boost factor based on spent talent points (SPENT_MAX=85, MAX_BOOST=0.50). Players who invest heavily in talents now face enemies with proportionally higher HP (up to +50%), creating a natural difficulty compensation.
+- [battleManager.ts] P1 coupling: Applied getTalentDifficultyMod in spawnWave() — enemy HP is now multiplied by (1 + talentMod) on spawn, making high-talent runs more challenging without changing base wave data.
+- [battleManager.ts] P2 coupling: Modified checkWaveEnd() wave bonus gold formula from `15 + wave*3` to `max(10, 15 + wave*3 - floor(wave/3)*4)`. Wave 20 bonus drops from 75g to 51g (-32%), reducing late-game gold surplus.
+- [difficulty.ts] Added getAscensionHintForTalentLevel(spentPoints) utility function. Returns localized hint strings suggesting higher Ascension levels when talent investment is high (20/40/60+ points thresholds), forming informational coupling between talent progression and difficulty selection.
+- [talent.test.ts] Updated 2 existing getStartGold tests to reflect new 200g soft cap behavior. Added 12 new unit tests covering getStartGold soft cap and getTalentDifficultyMod correctness.
+- Build verified: npm run test (170 tests passed, 6 files) and npm run build successful (Vite production bundle, 38 modules, 214KB JS).
+
+2026-07-11 Document Sync: README and ROADMAP Updated
+- [README.md] Documentation: Added "🎲 Roguelike 系統 (卡牌與召喚)" section detailing the card rarity system, wave weightings, start bonuses, and mystery summon box.
+- [ROADMAP.md] Roadmap: Updated "Roguelike 機制導入與稀有度重構" entries in Phase P2 to mark them as completed and explain the new card rarity and weight scaling mechanics.
+
+2026-07-11 Introduce Roguelike Card Rarity (Common/Rare/Legendary) System & Re-balancing
+- [index.html] CSS: Added CSS classes (.rarity-common, .rarity-rare, .rarity-legendary) and keyframe animations (rarePulse, legendaryPulse) to style wave-completion bonus cards.
+- [system/roguelikeSystem.ts] Roguelike: Refactored `RogueCard` structure to include `rarity`. Expanded card pool with 3 distinct rarity levels, adding powerful Legendary cards like "Taiji Great Resonance", "Fate Summon" (grants a random Lv2 merged tower), "Turn Stone into Gold" (double free builds + 100g), and "Base Overhaul" (+6 HP). Refactored card selection weighting in `drawCards` to dynamically scale probabilities based on `gameState.wave`. Refactored `showCardPicker` to render custom rarity tags and colors. Added `grantRandomLv2Tower` logic.
+- [battle/towerActions.ts] towerActions: Updated `handleBuild` to look up defense towers using `getTowerDef` rather than strictly `BASE_TOWERS`, enabling placement of gifted Lv2 merged towers. Added support for `freeBuildCharges` to decrement multiple free build credits.
+- [renderer/gameRenderer.ts] Renderer: Replaced strict `BASE_TOWERS` lookup with `getTowerDef` when drawing range preview rings, allowing visual previews for Lv2 merged placement tools.
+- [battle/physics.ts] Physics: Integrated `permanentAttackSpeedBonus` subtraction from fire rate calculations.
+- Build verified: npm run build completed successfully (Vite production bundle generated with zero errors). All 159 tests passed.
+
+2026-07-11 Battle Scene Quit Button Functionality Fix
+- [state.ts] GameState: Declared `endBattle?: (isVictory: boolean) => void` optional callback property to unify battle lifecycle management.
+- [battle/battleManager.ts] Wireframe: Registered local `endBattle` function to `gameState.endBattle` callback container.
+- [input/inputHandler.ts] Wireframe: Refactored `#btnQuitBattle` click listener to invoke `gameState.endBattle` using typed lookup. This resolves the bug where clicking Quit resulted in no action due to undefined callback reference.
+- Build verified: npm run build completed successfully (Vite production bundle generated with zero errors).
+
+2026-07-11 Battle Scene HUD Restructuring & Font Size Scaling
+- [index.html] CSS & Layout: Scaled up battlefield action buttons (min-height to 44px, font-size to 0.95rem, larger padding) and tower build cards (enlarged base dimensions to 80px by 84px, canvas scaled to 28x42, names to 0.85rem, cost tags to 0.78rem). Restructured the control panel into a double-row CSS grid containing `.control-row-top` (tower cards and mouse mode buttons) and `.control-row-bottom` (game acceleration, summon, recipes, routes, diagnostics, quit and large next-wave action). Added `#btnInspect` HTML markup.
+- [domRefs.ts] DomRefs: Added reference node `btnInspect` to track mouse drag/inspect mode switch.
+- [ui/uiManager.ts] refreshToolSelection(): Wired class toggle logic for `btnInspect` state; active style is triggered when no other build tools are active (`gameState.selectedTool === '' && !gameState.mergeMode`).
+- [input/inputHandler.ts] initInputEvents(): Bound click handlers to `#btnInspect`, resetting `selectedTool`, `mergeMode`, `mergeFirstTower`, and `selectedTower` to empty idle inspect state.
+- Build verified: npm run build completed successfully (Vite production bundle generated with zero errors).
+
+2026-07-11 Card Picker Modal UI Visibility & Test Tooling Fix
+- [index.html] CSS: Removed inline `opacity` and `transition` styles from `#cardPickerModal` to resolve CSS specificity conflict with `.visible`. Added opacity and pointer-events rules in general CSS to toggle interaction safety. Added `#btnTestCardPicker` green button in testing control panel for manual triggers.
+- [system/roguelikeSystem.ts] showCardPicker(): Forced a browser reflow via `void modal.offsetWidth` after changing display to 'flex' and before adding `.visible` class, ensuring transition fade-in animates reliably.
+- [input/inputHandler.ts] Wireframe: Imported `showCardPicker` and bound its invocation to `#btnTestCardPicker` click events for sandbox level validation.
+- Build verified: npm run build completed successfully (Vite production bundle generated with zero errors).
+
 2026-07-11 Talent UI Tabbed Overhaul & Layout Optimization
 - [state.ts] GameState: Added `activeTalentTrack` to manage tab switches for talent trees, defaulting to 'track-base'.
 - [input/inputHandler.ts] Refactored nav buttons event: Handled tab switches by changing activeTalentTrack and rendering screen. Disabled switches during onboarding guidance to secure target focus. Removed IntersectionObserver code.

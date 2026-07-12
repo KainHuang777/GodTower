@@ -2,10 +2,11 @@
 
 import { gameState } from '../state';
 import { getDomRefs } from '../domRefs';
-import { getBaseHP, getStartGold, calcTalentPointsEarned, addTalentPoints, saveTalentData } from '../talent';
-import { ENEMY_DEFS, getWaveConfig, EnemyTypeId } from '../enemies';
+import { getBaseHP, getStartGold, calcTalentPointsEarned, addTalentPoints, saveTalentData, markTraitSeen, getTalentDifficultyMod } from '../talent';
+import { ENEMY_DEFS, getEnemyCollisionRadius, getWaveConfig, EnemyTypeId } from '../enemies';
 import { astarFind, recalculatePathTiles, updateAllEnemyPaths } from './pathfinding';
 import { ThemeId, WeatherId, MAX_WAVES } from '../types';
+import { applyAscensionModifiers } from './difficulty';
 import { BASE_TOWERS, LV2_TOWERS, RECIPE_TOWERS, TowerDef } from '../towers';
 import { grantStartBonus, calcMysteryBoxPrice, showCardPicker, tickWaveBuffs } from '../system/roguelikeSystem';
 
@@ -96,9 +97,12 @@ export function startBattle() {
   if (gameState.animFrameId) cancelAnimationFrame(gameState.animFrameId);
   recalculatePathTiles(gameState.grid, gameState.COLS, gameState.ROWS, gameState.SPAWN_POINT, gameState.BASE_POINT, gameState.WAYPOINTS, gameState.cachedPathTiles, gameState.cachedFullPath);
   
-  // 強制教學關糕與測試關糕將不觸發開局補給
+  // 註冊關閉遊戲暫停
   grantStartBonus();
-  
+
+  // 套用 Ascension 難度修正
+  applyAscensionModifiers(gameState.ascensionLevel);
+
   // 呼叫註冊的 gameLoop
   if ((gameState as any).gameLoop) {
     (gameState as any).gameLoop();
@@ -108,6 +112,21 @@ export function startBattle() {
 export function spawnWave(waveNum: number) {
   gameState.waveTicks = 0; // P2 reset wave tick timer
   const configs = getWaveConfig(waveNum);
+
+  // P2: 機制學習 — 首次遭遇詞條時記錄
+  if (gameState.currentMap.id !== 'test_level') {
+    for (const cfg of configs) {
+      if (cfg.armor && markTraitSeen(gameState.talentData, 'armor')) {
+        showFloat(640, 200, '🛡️ 首次遭遇【裝甲】怪！卡牌池解鎖對抗卡', '#94a3b8', 14);
+      }
+      if (cfg.regen && markTraitSeen(gameState.talentData, 'regen')) {
+        showFloat(640, 220, '🩹 首次遭遇【再生】怪！卡牌池解鎖對抗卡', '#94a3b8', 14);
+      }
+      if (cfg.split && markTraitSeen(gameState.talentData, 'split')) {
+        showFloat(640, 240, '🌀 首次遭遇【分裂】怪！卡牌池解鎖對抗卡', '#94a3b8', 14);
+      }
+    }
+  }
   gameState.waveTotal = 0;
   gameState.waveSpawned = 0;
 
@@ -121,6 +140,10 @@ export function spawnWave(waveNum: number) {
       const startPos = { ...gameState.SPAWN_POINT };
       const path = astarFind(startPos, gameState.WAYPOINTS[0], gameState.grid, gameState.COLS, gameState.ROWS, def.isFlying);
       const isStuck = !path;
+      const ahp = gameState.ascensionHpMult;
+      const aspd = gameState.ascensionSpeedMult;
+      // P1 耦合調整：天賦感知 HP 修正因子（花費天賦點越多，怪物 HP 越高，最多 +50%）
+      const talentMod = 1.0 + getTalentDifficultyMod(gameState.talentData);
       gameState.enemies.push({
         id: gameState.nextEnemyId++,
         type: cfg.enemyType,
@@ -128,10 +151,10 @@ export function spawnWave(waveNum: number) {
         x: startPos.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2,
         y: startPos.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2,
         currentGridX: startPos.x, currentGridY: startPos.y,
-        hp: Math.floor(def.baseHp * cfg.hpMultiplier),
-        maxHp: Math.floor(def.baseHp * cfg.hpMultiplier),
-        speed: def.speed,
-        baseSpeed: def.speed,
+        hp: Math.floor(def.baseHp * cfg.hpMultiplier * ahp * talentMod),
+        maxHp: Math.floor(def.baseHp * cfg.hpMultiplier * ahp * talentMod),
+        speed: def.speed * aspd,
+        baseSpeed: def.speed * aspd,
         goldAward: def.goldAward,
         isFlying: def.isFlying,
         waypointIndex: 0,
@@ -143,6 +166,7 @@ export function spawnWave(waveNum: number) {
         vy: 0,
         squashX: 1,
         squashY: 1,
+        hitRadius: getEnemyCollisionRadius(cfg.enemyType, gameState.TILE_SIZE),
         isStuck,
         pathBlockedHintShown: isStuck,
         armor: cfg.armor,
@@ -196,7 +220,8 @@ export function spawnTestEnemy(enemyType: EnemyTypeId) {
     vx: 0,
     vy: 0,
     squashX: 1,
-    squashY: 1
+    squashY: 1,
+    hitRadius: getEnemyCollisionRadius(enemyType, gameState.TILE_SIZE)
   });
 
   updateUI();
@@ -274,7 +299,10 @@ export function checkWaveEnd() {
       showFloat(640, 280, '低血量補償 +5g！', '#fbbf24');
     }
     
-    gameState.gold += 15 + gameState.wave * 3;
+    // P2 耦合調整：波次獎勵金動態衰減——抵消後期金幣過剩
+    // 公式：15 + wave*3 - floor(wave/3)*4，確保 Wave 20 從 75g 降至 51g
+    const waveBonus = Math.max(10, 15 + gameState.wave * 3 - Math.floor(gameState.wave / 3) * 4);
+    gameState.gold += waveBonus;
     updateUI();
     // 達到最大波次則勝利 (測試關坅除外)
     const maxWaves = gameState.currentMap.id === 'tutorial' ? 5 : MAX_WAVES;
@@ -530,3 +558,4 @@ gameState.spawnWave = spawnWave;
 gameState.spawnTestEnemy = spawnTestEnemy;
 gameState.startPerformanceBenchmark = startPerformanceBenchmark;
 gameState.endPerformanceBenchmark = endPerformanceBenchmark;
+gameState.endBattle = endBattle;

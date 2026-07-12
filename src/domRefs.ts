@@ -12,6 +12,7 @@ export interface DomRefs {
   waveVal: HTMLElement;
   killVal: HTMLElement;
   btnStartWave: HTMLButtonElement;
+  btnInspect: HTMLElement;
   btnMerge: HTMLElement;
   btnSell: HTMLElement;
   btnQuitBattle: HTMLElement;
@@ -99,6 +100,7 @@ export function initDomRefs(): DomRefs {
     waveVal: getEl('waveVal'),
     killVal: getEl('killVal'),
     btnStartWave: getEl('btnStartWave') as HTMLButtonElement,
+    btnInspect: getEl('btnInspect'),
     btnMerge: getEl('btnMerge'),
     btnSell: getEl('btnSell'),
     btnQuitBattle: getEl('btnQuitBattle'),

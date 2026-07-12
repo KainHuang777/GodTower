@@ -2,6 +2,7 @@
 
 import { gameState } from '../state';
 import { drawTile } from '../sprites';
+import { drawObstacle } from './drawObstacle';
 
 let tileCacheCanvas: HTMLCanvasElement | null = null;
 
@@ -11,8 +12,8 @@ function getThemeColors(theme: string) {
   let gridStrokeStyle = '#1e293b';
 
   if (theme === 'chinese') {
-    bgFillStyle = '#2b0909';
-    gridStrokeStyle = '#6b1d1d';
+    bgFillStyle = '#A9C978';
+    gridStrokeStyle = 'rgba(58, 78, 42, 0.22)';
   } else if (theme === 'ink') {
     bgFillStyle = '#f8fafc';
     gridStrokeStyle = '#e2e8f0';
@@ -52,24 +53,65 @@ export function updateTileCacheCanvas() {
   for (let x = 0; x < gameState.COLS; x++) {
     for (let y = 0; y < gameState.ROWS; y++) {
       const isPath = gameState.cachedPathTiles.has(`${x},${y}`);
-      drawTile(ctx, gameState.currentTheme, isPath, x * gameState.TILE_SIZE, y * gameState.TILE_SIZE, gameState.TILE_SIZE / 16, x, y);
+      drawTile(ctx, gameState.currentTheme, gameState.currentTheme === 'chinese' ? false : isPath, x * gameState.TILE_SIZE, y * gameState.TILE_SIZE, gameState.TILE_SIZE / 16, x, y);
+      if (gameState.currentTheme !== 'chinese' && gameState.grid[x][y] === 2) {
+        drawObstacle(ctx, x * gameState.TILE_SIZE, y * gameState.TILE_SIZE, gameState.currentTheme, gameState.TILE_SIZE);
+      }
     }
   }
 
-  // 3. 繪製靜態網格線
-  ctx.strokeStyle = gridStrokeStyle;
-  ctx.lineWidth = 0.5;
-  for (let x = 0; x <= gameState.COLS; x++) {
+  // 中式標準關卡使用連續圓角道路。尋路仍是整數網格，只有視覺跨格平滑。
+  if (gameState.currentTheme === 'chinese' && gameState.cachedFullPath.length > 1) {
+    const points = gameState.cachedFullPath;
+    const T = gameState.TILE_SIZE;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(x * gameState.TILE_SIZE, 0);
-    ctx.lineTo(x * gameState.TILE_SIZE, gameState.ROWS * gameState.TILE_SIZE);
+    ctx.moveTo(points[0].x * T + T / 2, points[0].y * T + T / 2);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x * T + T / 2, points[i].y * T + T / 2);
+    }
+    ctx.strokeStyle = '#9E7448';
+    ctx.lineWidth = T * 0.96;
     ctx.stroke();
+    ctx.strokeStyle = '#D8BC82';
+    ctx.lineWidth = T * 0.74;
+    ctx.stroke();
+    ctx.setLineDash([T * 0.2, T * 0.55]);
+    ctx.strokeStyle = 'rgba(255, 243, 196, 0.42)';
+    ctx.lineWidth = Math.max(1, T * 0.08);
+    ctx.stroke();
+    ctx.restore();
   }
-  for (let y = 0; y <= gameState.ROWS; y++) {
-    ctx.beginPath();
-    ctx.moveTo(0, y * gameState.TILE_SIZE);
-    ctx.lineTo(gameState.COLS * gameState.TILE_SIZE, y * gameState.TILE_SIZE);
-    ctx.stroke();
+
+  // 道路完成後再放置天然地形，確保灌木與山石有完整輪廓。
+  if (gameState.currentTheme === 'chinese') {
+    for (let x = 0; x < gameState.COLS; x++) {
+      for (let y = 0; y < gameState.ROWS; y++) {
+        if (gameState.grid[x][y] === 2) {
+          drawObstacle(ctx, x * gameState.TILE_SIZE, y * gameState.TILE_SIZE, gameState.currentTheme, gameState.TILE_SIZE);
+        }
+      }
+    }
+  }
+
+  // 3. 非標準日間主題保留網格；中式關卡以連續地景呈現，建造時另有游標格提示。
+  if (gameState.currentTheme !== 'chinese') {
+    ctx.strokeStyle = gridStrokeStyle;
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x <= gameState.COLS; x++) {
+      ctx.beginPath();
+      ctx.moveTo(x * gameState.TILE_SIZE, 0);
+      ctx.lineTo(x * gameState.TILE_SIZE, gameState.ROWS * gameState.TILE_SIZE);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= gameState.ROWS; y++) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * gameState.TILE_SIZE);
+      ctx.lineTo(gameState.COLS * gameState.TILE_SIZE, y * gameState.TILE_SIZE);
+      ctx.stroke();
+    }
   }
 }
 

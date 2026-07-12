@@ -96,6 +96,16 @@ export function getCrossRecipeResult(el1: Element, el2: Element): TowerTypeId | 
   return null;
 }
 
+/** 計算同系合成費用 */
+export function getSameMergeCost(cost: number): number {
+  return Math.floor(cost * 0.5);
+}
+
+/** 計算異系合成費用 */
+export function getCrossMergeCost(costA: number, costB: number): number {
+  return Math.floor((costA + costB) * 0.3);
+}
+
 /** 計算相剋加成倍率 */
 export function getElementBonus(towerElement: Element, enemyElement: Element, waveNum: number = 1): number {
   if (ELEMENT_COUNTER[towerElement] === enemyElement) {

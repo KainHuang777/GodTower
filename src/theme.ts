@@ -1,20 +1,20 @@
 // ============================================================
-// src/theme.ts — 五行美術主題集中配置 (Mindustry 風格)
+// src/theme.ts — 五行美術主題集中配置（明亮東方像素風）
 // ============================================================
 // 單一真相來源 (Single Source of Truth)：
 //   所有元素顏色、描邊、背景色統一從此檔匯出。
 //   sprites.ts、gameRenderer.ts、particles.ts、uiManager.ts、wuxingCompass.ts
 //   皆應 import 本檔，禁止再硬編碼元素色 HEX。
 //
-// 設計原則（Mindustry 風格）：
-//   - 暗背景 + 高飽和螢光 accent + 2px 深色描邊 = 三層分離
-//   - accent 用於 halo/glow/outline；base 用於 sprite 暗部
-//   - 永遠不用純黑 (#000)，改用 #0E1117 讓 glow 有漸層落點
+// 設計原則：
+//   - 中高明度自然色 + 2px 暖深色描邊，優先確保輪廓辨識
+//   - accent 用於狀態與元素識別；base 用於暗面，不以大量 glow 補足對比
+//   - 夜色、星空與雷雨只作特殊關卡，不再作全遊戲視覺基準
 
 /** 背景與 UI 面板色（取代純黑，讓 glow 有落點） */
-export const CANVAS_BG = '#0E1117';        // 畫布/遊戲背景（深空藍黑）
-export const PANEL_BG = '#1A1F2A';         // UI 面板（比背景亮一階）
-export const OUTLINE_COLOR = '#0E1117';    // 統一描邊色（與背景同色，切割形狀）
+export const CANVAS_BG = '#A9C978';        // 標準日間戰場草地底色
+export const PANEL_BG = '#F2DFA7';         // 明亮資訊面板
+export const OUTLINE_COLOR = '#3A251B';    // 暖深棕描邊，避免純黑割裂畫面
 
 /** 五行 + 陰陽 的主題色定義 */
 export interface ElementTheme {
@@ -26,15 +26,15 @@ export interface ElementTheme {
   ring?: string;
 }
 
-/** 五行 + 陰陽 主題色表（Mindustry 高飽和螢光風格） */
+/** 五行 + 陰陽主題色表（明亮、自然、非霓虹） */
 export const ELEMENT_THEME: Record<string, ElementTheme> = {
-  fire:  { accent: '#FF5E3A', base: '#3D0F12', ring: '#FFD23A' },  // 螢光橘紅 + 火心金黃
-  water: { accent: '#3FE0FF', base: '#0B2540' },                   // 青藍螢光（偏青拉開與 metal 距離）
-  wood:  { accent: '#7FFF66', base: '#1B3A2F' },                   // 螢光綠
-  earth: { accent: '#E8B855', base: '#3E2A1A' },                   // 赭金（與火拉開色相）
-  metal: { accent: '#9FE4FF', base: '#2A3340' },                   // 冷光冰藍銀（加 8% 藍避免過曝糊邊）
-  yin:   { accent: '#C060FF', base: '#1F0F3A', ring: '#7B1FB0' },  // 品紅紫（偏紅不沉悶）
-  yang:  { accent: '#FFE45E', base: '#3A2A08', ring: '#FFA940' },  // 聖光金 + 外環橙
+  fire:  { accent: '#EE6638', base: '#873A2A', ring: '#F2C14E' },
+  water: { accent: '#4CA7D8', base: '#285E78', ring: '#8DD5E7' },
+  wood:  { accent: '#69B84A', base: '#356B35', ring: '#A8D66D' },
+  earth: { accent: '#B77A45', base: '#765033', ring: '#D9AE68' },
+  metal: { accent: '#F2C14E', base: '#8C6D32', ring: '#FFF0A6' },
+  yin:   { accent: '#6656A8', base: '#40366B', ring: '#9A8BC7' },
+  yang:  { accent: '#F5D85A', base: '#9A712B', ring: '#FFF3B0' },
 };
 
 /** 快捷：元素 accent 色（取代舊 ELEMENT_COLORS） */

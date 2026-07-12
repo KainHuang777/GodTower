@@ -30,28 +30,28 @@ export interface TalentNode {
 /** 天賦樹完整定義 */
 export const TALENT_TREE: TalentNode[] = [
   // 基礎強化路線
-  { id: 'fortress_1', name: '堅固堡壘 I', description: '每級基地生命 +5', cost: 1, prerequisites: [], category: 'base', maxLevel: 5 },
+  { id: 'fortress_1', name: '堅固堡壘 I', description: '每級基地生命 +5', cost: 2, prerequisites: [], category: 'base', maxLevel: 5 },
   { id: 'fortress_2', name: '堅固堡壘 II', description: '每級基地生命 +10', cost: 2, prerequisites: ['fortress_1'], category: 'base', maxLevel: 5 },
-  { id: 'gold_1', name: '初始資金 I', description: '每級開局金幣 +20', cost: 1, prerequisites: [], category: 'base', maxLevel: 5 },
+  { id: 'gold_1', name: '初始資金 I', description: '每級開局金幣 +20', cost: 2, prerequisites: [], category: 'base', maxLevel: 5 },
   { id: 'gold_2', name: '初始資金 II', description: '每級開局金幣 +30', cost: 2, prerequisites: ['gold_1'], category: 'base', maxLevel: 5 },
 
   // 攻擊強化路線
-  { id: 'precise_1', name: '精準射擊 I', description: '每級所有砲台傷害 +10%', cost: 1, prerequisites: [], category: 'attack', maxLevel: 5 },
+  { id: 'precise_1', name: '精準射擊 I', description: '每級所有砲台傷害 +10%', cost: 2, prerequisites: [], category: 'attack', maxLevel: 5 },
   { id: 'precise_2', name: '精準射擊 II', description: '每級所有砲台傷害 +15%', cost: 2, prerequisites: ['precise_1'], category: 'attack', maxLevel: 5 },
-  { id: 'rapid_fire', name: '急速射擊', description: '每級所有砲台冷卻時間 -5%', cost: 2, prerequisites: ['precise_1'], category: 'attack', maxLevel: 5 },
+  { id: 'rapid_fire', name: '急速射擊', description: '每級所有砲台冷卻時間 -5%', cost: 3, prerequisites: ['precise_1'], category: 'attack', maxLevel: 5 },
 
   // 五行解鎖路線
-  { id: 'wood_awakening',  name: '木行覺醒', description: '解鎖纏繞塔 🌿，每級木系塔傷害 +10%', cost: 1, prerequisites: [], category: 'element', maxLevel: 5 },
-  { id: 'water_awakening', name: '水行覺醒', description: '解鎖冰凍塔 💧，每級水系塔傷害 +10%', cost: 1, prerequisites: [], category: 'element', maxLevel: 5 },
-  { id: 'fire_awakening',  name: '火行覺醒', description: '強化烈焰塔 🔥，每級火系塔傷害 +10% (火系預設解鎖)', cost: 1, prerequisites: [], category: 'element', maxLevel: 5 },
-  { id: 'earth_awakening', name: '土行覺醒', description: '強化岩壁塔 ⛰️，每級土系塔效果/傷害 +10% (土系預設解鎖)', cost: 1, prerequisites: [], category: 'element', maxLevel: 5 },
+  { id: 'wood_awakening',  name: '木行覺醒', description: '解鎖纏繞塔 🌿，每級木系塔傷害 +10%', cost: 2, prerequisites: [], category: 'element', maxLevel: 5 },
+  { id: 'water_awakening', name: '水行覺醒', description: '解鎖冰凍塔 💧，每級水系塔傷害 +10%', cost: 2, prerequisites: [], category: 'element', maxLevel: 5 },
+  { id: 'fire_awakening',  name: '火行覺醒', description: '強化烈焰塔 🔥，每級火系塔傷害 +10% (火系預設解鎖)', cost: 2, prerequisites: [], category: 'element', maxLevel: 5 },
+  { id: 'earth_awakening', name: '土行覺醒', description: '強化岩壁塔 ⛰️，每級土系塔效果/傷害 +10% (土系預設解鎖)', cost: 2, prerequisites: [], category: 'element', maxLevel: 5 },
   { id: 'wall_discount',   name: '築牆工法', description: '使岩壁塔（牆壁）的造價降低至 1g (預設為 2g)', cost: 2, prerequisites: ['earth_awakening'], category: 'element', maxLevel: 1 },
-  { id: 'metal_awakening', name: '金行覺醒', description: '解鎖鏡刃塔 ⚔️，每級金系塔傷害 +10%', cost: 1, prerequisites: [], category: 'element', maxLevel: 5 },
+  { id: 'metal_awakening', name: '金行覺醒', description: '解鎖鏡刃塔 ⚔️，每級金系塔傷害 +10%', cost: 2, prerequisites: [], category: 'element', maxLevel: 5 },
 
   // 陰陽解鎖路線
-  { id: 'yin_law',   name: '陰之法則', description: '解鎖暗影塔 🌑，每級陰系塔傷害 +10%', cost: 2, prerequisites: [], category: 'yinyang', maxLevel: 5 },
-  { id: 'yang_law',  name: '陽之法則', description: '解鎖聖光塔 ☀️，每級陽系塔傷害 +10%', cost: 2, prerequisites: [], category: 'yinyang', maxLevel: 5 },
-  { id: 'taiji_dao', name: '太極之道', description: '解鎖陰陽合成配方 ☯️，每級太極塔傷害 +10%', cost: 3, prerequisites: ['yin_law', 'yang_law'], category: 'yinyang', maxLevel: 3 },
+  { id: 'yin_law',   name: '陰之法則', description: '解鎖暗影塔 🌑，每級陰系塔傷害 +10%', cost: 3, prerequisites: [], category: 'yinyang', maxLevel: 5 },
+  { id: 'yang_law',  name: '陽之法則', description: '解鎖聖光塔 ☀️，每級陽系塔傷害 +10%', cost: 3, prerequisites: [], category: 'yinyang', maxLevel: 5 },
+  { id: 'taiji_dao', name: '太極之道', description: '解鎖陰陽合成配方 ☯️，每級太極塔傷害 +10%', cost: 5, prerequisites: ['yin_law', 'yang_law'], category: 'yinyang', maxLevel: 5 },
 ];
 
 /** 儲存的玩家天賦資料 */
@@ -61,6 +61,15 @@ export interface TalentSaveData {
   talentLevels: Partial<Record<TalentId, number>>;
   unlockedTalents?: TalentId[]; // 舊資料相容用
   hasPlayedBefore?: boolean;    // P3: 新手引導標誌
+
+  // P1: 72hr 曲線 — 雙軌成就系統
+  personalBest?: number;          // 最高存活波次
+  milestones?: number[];          // 已達成里程碑（5/10/15/20）
+  completedAchievements?: string[]; // 已完成的成就 ID
+  achievementCount?: number;      // 成就完成次數（雙軌用）
+  totalDamageDealt?: number;      // 累計總傷害
+  resetCount?: number;            // 天賦重置次數
+  seenTraits?: { armor?: boolean; regen?: boolean; split?: boolean }; // P2: 已見過的怪物詞條
 }
 
 /** 從 platform 載入天賦資料 */
@@ -78,8 +87,15 @@ export function loadTalentData(): TalentSaveData {
           }
         }
       }
-      // 確保結構完整性
+      // 確保 P1 新欄位預設值
       if (parsed && typeof parsed.talentLevels === 'object') {
+        if (parsed.personalBest === undefined) parsed.personalBest = 0;
+        if (!Array.isArray(parsed.milestones)) parsed.milestones = [];
+        if (!Array.isArray(parsed.completedAchievements)) parsed.completedAchievements = [];
+        if (typeof parsed.achievementCount !== 'number') parsed.achievementCount = 0;
+        if (typeof parsed.totalDamageDealt !== 'number') parsed.totalDamageDealt = 0;
+        if (typeof parsed.resetCount !== 'number') parsed.resetCount = 0;
+        if (!parsed.seenTraits || typeof parsed.seenTraits !== 'object') parsed.seenTraits = {};
         return parsed as TalentSaveData;
       }
     }
@@ -88,7 +104,13 @@ export function loadTalentData(): TalentSaveData {
     totalTalentPoints: 0,
     spentTalentPoints: 0,
     talentLevels: {} as Record<TalentId, number>,
-    hasPlayedBefore: false
+    hasPlayedBefore: false,
+    personalBest: 0,
+    milestones: [],
+    completedAchievements: [],
+    achievementCount: 0,
+    totalDamageDealt: 0,
+    resetCount: 0,
   };
 }
 
@@ -135,9 +157,33 @@ export function unlockTalent(data: TalentSaveData, talentId: TalentId): boolean 
   return true;
 }
 
-/** 計算波次結算天賦點（失敗或通關都獲得） */
-export function calcTalentPointsEarned(survivedWaves: number): number {
-  return Math.max(1, Math.floor(survivedWaves / 3));
+/** 計算波次結算天賦點（雙軌制）
+ *  Track A（一般關卡/低 Ascension）：僅基數，無額外獎勵
+ *  Track B（挑戰關卡/高 Ascension）：基數 + PB 突破 + 里程碑首次獎勵
+ */
+export function calcTalentPointsEarned(
+  survivedWaves: number,
+  personalBest: number = 0,
+  milestones: number[] = [],
+  isChallengeRun: boolean = false
+): number {
+  // 基數：wave/4，保底 1
+  let points = Math.max(1, Math.floor(survivedWaves / 4));
+
+  if (isChallengeRun) {
+    // PB 突破獎勵：每超越 2 波多 1 點
+    if (survivedWaves > personalBest) {
+      points += Math.floor((survivedWaves - personalBest) / 2);
+    }
+    // 里程碑首次獎勵（各一次）
+    for (const m of [5, 10, 15, 20]) {
+      if (survivedWaves >= m && !milestones.includes(m)) {
+        points += 3;
+      }
+    }
+  }
+
+  return points;
 }
 
 /** 加入天賦點 */
@@ -156,12 +202,14 @@ export function getBaseHP(data: TalentSaveData): number {
   return hp;
 }
 
-/** 取得開局金幣（受天賦影響） */
+/** 取得開局金幣（受天賦影響）
+ *  P2 耦合調整：加入 200g 軟上限，避免高天賦玩家開局資源過剩破壞早期建設張力
+ */
 export function getStartGold(data: TalentSaveData): number {
   let gold = 60;
   gold += (data.talentLevels['gold_1'] || 0) * 20;
   gold += (data.talentLevels['gold_2'] || 0) * 30;
-  return gold;
+  return Math.min(200, gold); // soft cap：防止全滿天賦開局 310g 破壞早期張力
 }
 
 /** 取得砲台基礎傷害倍率（受天賦影響） */
@@ -221,7 +269,25 @@ export function isTowerUnlocked(data: TalentSaveData, towerId: string): boolean 
 export function resetTalents(data: TalentSaveData): void {
   data.spentTalentPoints = 0;
   data.talentLevels = {} as Record<TalentId, number>;
+  data.resetCount = (data.resetCount || 0) + 1;
   saveTalentData(data);
+}
+
+/**
+ * P1 耦合調整：根據已花費天賦點數計算怪物 HP 修正因子。
+ * 天賦越強的玩家，面對的怪物 HP 越高（最高 +50%），形成自然難度補償。
+ *
+ * 公式：mod = spentPoints / SPENT_MAX * MAX_BOOST
+ * - SPENT_MAX = 85 （估算滿樹所需天賦點）
+ * - MAX_BOOST = 0.50 （最多 +50%）
+ *
+ * 例：已花費 40 點 → mod ≈ 0.235 → 怪物 HP ×1.235
+ */
+export function getTalentDifficultyMod(data: TalentSaveData): number {
+  const SPENT_MAX = 85;  // 所有天賦節點滿等的估算總點數
+  const MAX_BOOST = 0.50; // 最高額外 HP 加成
+  const spent = data.spentTalentPoints || 0;
+  return (Math.min(spent, SPENT_MAX) / SPENT_MAX) * MAX_BOOST;
 }
 
 /** 取得岩壁塔（牆壁）造價（受天賦影響） */
@@ -229,4 +295,18 @@ export function getWallCost(data: TalentSaveData): number {
   const level = data.talentLevels['wall_discount'] || 0;
   if (level >= 1) return 1;
   return 2;
+}
+
+/** P2: 標記已見過怪物詞條（僅首次有效），回傳 true 表示首次記錄 */
+export function markTraitSeen(data: TalentSaveData, trait: 'armor' | 'regen' | 'split'): boolean {
+  if (!data.seenTraits) data.seenTraits = {};
+  if (data.seenTraits[trait]) return false;
+  data.seenTraits[trait] = true;
+  saveTalentData(data);
+  return true;
+}
+
+/** P2: 查詢是否已見過指定怪物詞條 */
+export function isTraitSeen(data: TalentSaveData, trait: 'armor' | 'regen' | 'split'): boolean {
+  return !!(data.seenTraits && data.seenTraits[trait]);
 }

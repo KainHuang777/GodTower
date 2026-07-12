@@ -33,6 +33,7 @@
     "boss_dragon": {
       "id": "boss_dragon", "name": "龍影", "element": "fire",
       "baseHp": 500, "speed": 0.5, "goldAward": 15, "isFlying": true,
+      "visualScale": 1.55, "collisionRadiusTiles": 0.75,
       "colorPrimary": "#dc2626", "colorSecondary": "#7c2d12"
     }
   }

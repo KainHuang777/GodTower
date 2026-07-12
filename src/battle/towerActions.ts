@@ -1,7 +1,7 @@
 // src/battle/towerActions.ts — 建塔、售塔與合成控制
 
 import { gameState } from '../state';
-import { BASE_TOWERS, getTowerDef, getSameMergeResult, getCrossRecipeResult, getSellPrice, TowerTypeId } from '../towers';
+import { getTowerDef, getSameMergeResult, getCrossRecipeResult, getSellPrice, getSameMergeCost, getCrossMergeCost, TowerTypeId } from '../towers';
 import { getWallCost } from '../talent';
 import { validatePlacement, updateAllEnemyPaths } from './pathfinding';
 import { playSFX } from '../audio/audioSystem';
@@ -17,7 +17,7 @@ export function handleBuild(x: number, y: number) {
     showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '已有建物', '#ef4444', 15); 
     return; 
   }
-  const def = BASE_TOWERS[gameState.selectedTool];
+  const def = getTowerDef(gameState.selectedTool as TowerTypeId);
   if (!def) return;
 
   const isFree = gameState.roguelikeState.freeNextBuild;
@@ -34,20 +34,29 @@ export function handleBuild(x: number, y: number) {
 
   gameState.grid[x][y] = def.isWall ? 1 : 0;
   
-  // 免費建塔旗標檢查（Roguelike 全能工匠卡牌效果 / 起始補給 / 神秘召喚）
+  // 免費建塔旗標檢查
   if (isFree) {
-    gameState.roguelikeState.freeNextBuild = false;
+    const rl = gameState.roguelikeState as any;
+    if (rl.freeBuildCharges && rl.freeBuildCharges > 0) {
+      rl.freeBuildCharges--;
+      if (rl.freeBuildCharges > 0) {
+        rl.freeNextBuild = true;
+      } else {
+        rl.freeNextBuild = false;
+      }
+    } else {
+      rl.freeNextBuild = false;
+    }
     showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '免費建塔！', '#fde047', 15);
     
     // 處理開局隨機補給 (Start Bonus) 的連續免費贈予
-    const rl = gameState.roguelikeState as any;
     if (rl.startBonusTowers && Array.isArray(rl.startBonusTowers)) {
       const idx = rl.startBonusIndex ?? 0;
       if (idx < rl.startBonusTowers.length - 1) {
         const nextIdx = idx + 1;
         rl.startBonusIndex = nextIdx;
         const nextId = rl.startBonusTowers[nextIdx];
-        const nextDef = BASE_TOWERS[nextId];
+        const nextDef = getTowerDef(nextId);
         if (nextDef) {
           gameState.selectedTool = nextId;
           gameState.roguelikeState.freeNextBuild = true;
@@ -58,7 +67,6 @@ export function handleBuild(x: number, y: number) {
           }, 300);
         }
       } else {
-        // 放完，清理狀態
         rl.startBonusTowers = null;
         rl.startBonusIndex = 0;
       }
@@ -175,6 +183,21 @@ export function handleMergeClick(x: number, y: number) {
 export function performMerge(tower1: Tower, tower2: Tower, resultId: TowerTypeId) {
   const resultDef = getTowerDef(resultId);
   if (!resultDef) return;
+
+  // 扣取合成費用
+  const cost1 = tower1.def.cost;
+  const cost2 = tower2.def.cost;
+  let mergeCost: number;
+  if (tower1.def.level === tower2.def.level && tower1.def.element === tower2.def.element) {
+    mergeCost = getSameMergeCost(cost1);
+  } else {
+    mergeCost = getCrossMergeCost(cost1, cost2);
+  }
+  // 五行共鳴折扣
+  const discount = gameState.roguelikeState.nextMergeCostPct;
+  mergeCost = Math.floor(mergeCost * discount);
+  if (mergeCost > 0 && gameState.gold < mergeCost) return; // 錢不夠不能合成
+  gameState.gold -= mergeCost;
 
   // 設置合成動畫狀態 ( duration: 45 幀，約 0.75 秒 )
   gameState.mergeAnimation = {

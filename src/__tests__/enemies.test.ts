@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ENEMY_DEFS, getWaveConfig } from '../enemies';
+import { ENEMY_DEFS, getEnemyCollisionRadius, getEnemyVisualScale, getWaveConfig } from '../enemies';
 import type { EnemyTypeId } from '../enemies';
 
 // ============================================================
@@ -50,6 +50,15 @@ describe('Enemy Registry', () => {
         expect(ENEMY_DEFS[type].baseHp).toBeLessThan(500);
       }
     }
+  });
+
+  it('1.7 boss visual size and collision radius scale together', () => {
+    const tileSize = 16;
+    expect(getEnemyVisualScale('boss_dragon')).toBeGreaterThan(1);
+    expect(getEnemyCollisionRadius('boss_dragon', tileSize)).toBeCloseTo(12);
+    expect(getEnemyCollisionRadius('boss_dragon', tileSize)).toBeGreaterThan(
+      getEnemyCollisionRadius('snake', tileSize)
+    );
   });
 });
 

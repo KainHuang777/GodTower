@@ -91,6 +91,25 @@ describe('Roguelike System', () => {
       expect(gameState.roguelikeState.freeNextBuild).toBe(true);
     });
 
+    it('resets mergeMode and mergeFirstTower when mystery box is rolled', () => {
+      gameState.talentData = {
+        totalTalentPoints: 5,
+        spentTalentPoints: 2,
+        talentLevels: {
+          fire_awakening: 1,
+        },
+      };
+      gameState.mergeMode = true;
+      gameState.mergeFirstTower = { id: 999, x: 1, y: 1 } as any;
+      gameState.gold = 100;
+      gameState.roguelikeState.mysteryBoxPrice = 10;
+      
+      rollMysteryBox();
+      
+      expect(gameState.mergeMode).toBe(false);
+      expect(gameState.mergeFirstTower).toBeNull();
+    });
+
     it('calculates expected pricing dynamically based on unlocked towers', () => {
       // 情境 A：只解鎖火塔 (cost: 12)
       gameState.talentData = {
@@ -172,6 +191,24 @@ describe('Roguelike System', () => {
       expect(rlState.startBonusTowers).toBeNull();
       expect(gameState.roguelikeState.freeNextBuild).toBe(false);
     });
+
+    it('resets mergeMode and mergeFirstTower when start bonus is granted', () => {
+      gameState.talentData = {
+        totalTalentPoints: 10,
+        spentTalentPoints: 3,
+        talentLevels: {
+          fire_awakening: 1,
+        },
+      };
+      
+      gameState.mergeMode = true;
+      gameState.mergeFirstTower = { id: 999, x: 1, y: 1 } as any;
+      
+      grantStartBonus();
+      
+      expect(gameState.mergeMode).toBe(false);
+      expect(gameState.mergeFirstTower).toBeNull();
+    });
   });
 
   // ===================================================================
@@ -184,7 +221,7 @@ describe('Roguelike System', () => {
       gameState.gold = 50;
 
       // 模擬兩座材料塔的合成動畫結束
-      // 材料塔：烈焰塔 (cost: 12)、鏡刃塔 (cost: 15)，總造價 = 27
+      // 材料塔：烈焰塔 (cost: 12)、鏡刃塔 (cost: 18，原15→18)，總造價 = 30
       gameState.mergeAnimation = {
         active: true,
         timer: 44, // 倒數最後一幀
@@ -199,9 +236,9 @@ describe('Roguelike System', () => {
       // 觸發合成動畫更新（完成合成）
       updateMergeAnimation();
 
-      // 預期共鳴返還金額 = 27 * 50% = 13g
-      // 玩家金幣應從 50 變為 63
-      expect(gameState.gold).toBe(50 + 13);
+      // 預期共鳴返還金額 = 30 * 50% = 15g
+      // 玩家金幣應從 50 變為 65
+      expect(gameState.gold).toBe(50 + 15);
       // 驗證共鳴 Buff 被正確消耗並重置為 1.0
       expect(gameState.roguelikeState.nextMergeCostPct).toBe(1.0);
     });

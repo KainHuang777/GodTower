@@ -16,6 +16,10 @@ export interface EnemyDef {
   speed: number;       // 像素/幀
   goldAward: number;
   isFlying: boolean;
+  /** 相對一般 16px 單位的視覺縮放；可跨越多格繪製，不改尋路網格。 */
+  visualScale?: number;
+  /** 圓形受擊半徑，以格為單位；子彈碰撞需與視覺大小一致。 */
+  collisionRadiusTiles?: number;
   // 像素精靈引用色
   colorPrimary: string;
   colorSecondary: string;
@@ -26,6 +30,14 @@ import wavesConfig from './config/waves.json';
 
 /** 所有怪物類型定義 */
 export const ENEMY_DEFS: Record<EnemyTypeId, EnemyDef> = enemiesConfig.enemyDefs as Record<EnemyTypeId, EnemyDef>;
+
+export function getEnemyVisualScale(type: EnemyTypeId): number {
+  return ENEMY_DEFS[type]?.visualScale ?? 1;
+}
+
+export function getEnemyCollisionRadius(type: EnemyTypeId, tileSize: number): number {
+  return (ENEMY_DEFS[type]?.collisionRadiusTiles ?? 0.35) * tileSize;
+}
 
 /** 波次怪物配置 */
 export interface WaveConfig {

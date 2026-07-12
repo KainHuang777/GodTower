@@ -366,6 +366,7 @@ export function refreshToolSelection() {
   const activeBtn = getDomRefs().towerButtonsContainer.querySelector(`[data-tool="${gameState.selectedTool}"]`);
   if (activeBtn) activeBtn.classList.add('active');
 
+  getDomRefs().btnInspect.classList.toggle('active', gameState.selectedTool === '' && !gameState.mergeMode);
   getDomRefs().btnMerge.classList.toggle('active', gameState.mergeMode);
   getDomRefs().btnSell.classList.toggle('active', gameState.selectedTool === 'sell');
 

@@ -30,6 +30,17 @@ export interface RoguelikeState {
   freeNextBuild: boolean;
   /** 神秘召喚當前定價（每局開始時計算一次） */
   mysteryBoxPrice: number;
+
+  // P2: 詞條對策卡效果
+  armorBreakNext?: boolean;         // 破甲一擊：對裝甲怪首次命中必暴
+  regenBlockDuration?: number;      // 灼燒標記：阻止再生 frame 數
+  splitBurstActive?: boolean;       // 速攻指令：分裂前 +30% 傷害
+  counterBonusVsArmor?: number;     // 五行破甲：相剋對裝甲 +25%
+  regenReverseActive?: boolean;     // 毒纏：再生反轉為流血
+  splitBlockActive?: boolean;       // 制止分裂：分裂怪不分裂
+  trueDamageVsArmor?: boolean;      // 無視護甲：全攻擊為真實傷害
+  regenLockActive?: boolean;        // 封印再生：永久停止回血
+  splitRewardActive?: boolean;      // 反向分裂：分裂得金幣
 }
 
 export interface GameState {
@@ -128,6 +139,7 @@ export interface GameState {
 
   // 跨模組回呼函式
   switchScene?: (scene: GameScene) => void;
+  endBattle?: (isVictory: boolean) => void;
   startBattle?: () => void;
   renderTalentScreen?: () => void;
   renderLevelSelectScreen?: () => void;
@@ -178,6 +190,13 @@ export interface GameState {
 
     // Roguelike 系統狀態
     roguelikeState: RoguelikeState;
+
+    // Ascension 難度系統（P1）
+    ascensionLevel: number;
+    ascensionHpMult: number;
+    ascensionSpeedMult: number;
+    ascensionCountAdd: number;
+    displayedAscension: string;
 }
 
 function createInitialGrid(cols: number, rows: number): number[][] {
@@ -218,6 +237,7 @@ export function createGameState(): GameState {
     currentKillStreak: 0,
     maxKillStreak: 0,
     grid: createInitialGrid(80, 40),
+    // 原生矩陣像素優先：輪廓與動畫辨識度高於實驗性外置圖像。
     currentStyle: 'pixel',
 
     enemies: [],
@@ -301,6 +321,13 @@ export function createGameState(): GameState {
       freeNextBuild: false,
       mysteryBoxPrice: 0,
     },
+
+    // Ascension 難度系統
+    ascensionLevel: 0,
+    ascensionHpMult: 1.0,
+    ascensionSpeedMult: 1.0,
+    ascensionCountAdd: 0,
+    displayedAscension: '',
   };
 }
 
