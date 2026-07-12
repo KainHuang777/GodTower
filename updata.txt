@@ -1,3 +1,9 @@
+2026-07-12 Fix Talent Guide Click Block Due to Insufficient Points
+- [battleManager.ts] Modified endBattle() to ensure first-time players receive at least 2 talent points (保底) upon their first run, enabling them to unlock their first talent "Gold I" (cost 2) in the talent screen.
+- [scenesManager.ts] Modified renderTalentScreen() to defensively add points up to 2 if the talent guide is active (talentTutorialActive = true) and available points is less than 2, preventing any potential UI softlock.
+- [tutorial.test.ts] Added 2 unit tests covering first-time point reward logic and defensive top-up in the talent scene.
+- Build verified: npm run test (177 tests passed, 6 files) and npm run build successful (Vite production bundle, 39 modules).
+
 2026-07-12 Fix Merge Card Failure in Tutorial and Add Cost Tooltips
 - [towerActions.ts] Modified performMerge() to bypass merge costs (setting cost to 0) when the current map is 'tutorial' or 'test_level'. This prevents the tutorial merge step from freezing if players exhaust their gold during the first wave.
 - [towerActions.ts] Added showFloat() warning text "金幣不足 (需 Xg)" when players attempt to merge towers with insufficient gold in regular maps.

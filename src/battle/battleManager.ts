@@ -233,16 +233,18 @@ export function endBattle(isVictory: boolean) {
   gameState.spawnTimers.forEach(t => clearInterval(t));
   gameState.spawnTimers = [];
 
-  const earned = gameState.currentMap.id === 'test_level' ? 0 : calcTalentPointsEarned(gameState.wave);
+  let earned = gameState.currentMap.id === 'test_level' ? 0 : calcTalentPointsEarned(gameState.wave);
   if (gameState.currentMap.id !== 'test_level') {
-    addTalentPoints(gameState.talentData, earned); // 內含 saveTalentData
     if (!gameState.talentData.hasPlayedBefore) {
+      // 確保首次遊玩獲得的天賦點數至少為 2 點，以解鎖第一個天賦「初始資金 I」(cost 2)
+      earned = Math.max(2, earned);
       // 提前標記為已遊玩過，避免玩家透過结算頁直接再玩一次死循環觸發天賦引導
       gameState.talentData.hasPlayedBefore = true;
       saveTalentData(gameState.talentData); // 確保 hasPlayedBefore 持久化
       // talentTutorialActive 保持 true 引導玩家到天賦頁
       gameState.talentTutorialActive = true;
     }
+    addTalentPoints(gameState.talentData, earned); // 內含 saveTalentData
   }
 
   const titleEl = document.getElementById('gameoverTitle')!;

@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { gameState } from '../state';
-import { checkWaveEnd } from '../battle/battleManager';
+import { checkWaveEnd, endBattle } from '../battle/battleManager';
 import { updateMergeAnimation } from '../battle/towerActions';
 
 // Mock DOM
@@ -141,5 +141,101 @@ describe('Tutorial Onboarding Logic Tests', () => {
 
     // 狀態轉移
     expect(gameState.levelTutorialStep).toBe('wave_5_guide');
+  });
+});
+
+import { renderTalentScreen } from '../scenes/scenesManager';
+import { getAvailablePoints } from '../talent';
+import * as domRefs from '../domRefs';
+
+describe('Talent Onboarding Tutorial Fixes', () => {
+  let originalDocument: any;
+  let storage: Record<string, string>;
+
+  beforeEach(() => {
+    storage = {};
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => storage[key] ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        storage[key] = value;
+      }),
+      removeItem: vi.fn((key: string) => {
+        delete storage[key];
+      }),
+      clear: vi.fn(() => {
+        storage = {};
+      })
+    });
+
+    originalDocument = (globalThis as any).document;
+
+    const mockEl = { 
+      textContent: '', 
+      className: '', 
+      remove: vi.fn(), 
+      appendChild: vi.fn(), 
+      classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
+      dataset: {},
+      querySelector: vi.fn().mockImplementation(() => mockEl)
+    };
+
+    (globalThis as any).document = {
+      getElementById: vi.fn().mockImplementation((id) => {
+        if (id === 'talentPointsVal') return { textContent: '' } as any;
+        if (id === 'talentSvg') return {} as any;
+        return mockEl as any;
+      }),
+      querySelectorAll: vi.fn().mockReturnValue([]),
+      querySelector: vi.fn().mockReturnValue(mockEl),
+      createElement: vi.fn().mockReturnValue(mockEl)
+    };
+
+    // Mock getDomRefs to return all scene elements
+    vi.spyOn(domRefs, 'getDomRefs').mockReturnValue({
+      mainMenuEl: mockEl,
+      levelSelectScreenEl: mockEl,
+      mapEditorSceneEl: mockEl,
+      gameUiEl: mockEl,
+      gameOverScreenEl: mockEl,
+      talentScreenEl: mockEl,
+      battleSceneEl: mockEl,
+      btnStartWave: mockEl,
+      btnMerge: mockEl,
+      btnSpeed: mockEl,
+      towerButtonsContainer: {
+        querySelector: () => mockEl,
+        querySelectorAll: () => []
+      },
+      instructionText: mockEl
+    } as any);
+  });
+
+  afterEach(() => {
+    (globalThis as any).document = originalDocument;
+    vi.unstubAllGlobals();
+  });
+
+  it('should grant at least 2 talent points on first endBattle to allow purchasing gold_1', () => {
+    gameState.talentData.hasPlayedBefore = false;
+    gameState.talentData.totalTalentPoints = 0;
+    gameState.talentData.spentTalentPoints = 0;
+    gameState.wave = 1; // 1 波生存理論上只有 1 點
+
+    endBattle(false);
+
+    // 應該獲得 2 點（保底），並且 talentTutorialActive 為 true
+    expect(gameState.talentData.totalTalentPoints).toBe(2);
+    expect(gameState.talentTutorialActive).toBe(true);
+  });
+
+  it('should defensively top up talent points to 2 in renderTalentScreen if tutorial is active and points < 2', () => {
+    gameState.talentTutorialActive = true;
+    gameState.talentData.totalTalentPoints = 1;
+    gameState.talentData.spentTalentPoints = 0;
+
+    renderTalentScreen();
+
+    // 應該防禦性地把可用點數補到 2
+    expect(getAvailablePoints(gameState.talentData)).toBe(2);
   });
 });

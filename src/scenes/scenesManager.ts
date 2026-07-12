@@ -195,6 +195,15 @@ export function renderLevelSelectScreen() {
 }
 
 export function renderTalentScreen() {
+  // 若天賦教學引導活躍，且可用點數小於引導解鎖所需的 2 點，則防禦性補齊，防止卡死
+  if (gameState.talentTutorialActive) {
+    const available = getAvailablePoints(gameState.talentData);
+    if (available < 2) {
+      gameState.talentData.totalTalentPoints += (2 - available);
+      saveTalentData(gameState.talentData);
+    }
+  }
+
   document.getElementById('talentPointsVal')!.textContent = getAvailablePoints(gameState.talentData).toString();
 
   // 如果天賦引導活躍，強制鎖定基礎分支，防止切換中斷引導
