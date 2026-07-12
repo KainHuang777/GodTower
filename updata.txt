@@ -1,3 +1,7 @@
+2026-07-12 Fix Deployment EBADPLATFORM Error
+- [.github/workflows/deploy.yml] Changed dependency installation step from "npm ci" to "npm install" to prevent EBADPLATFORM errors with optional platform-specific dependencies (such as esbuild and rollup) when building on GitHub Actions runners.
+- [package-lock.json] Ran npm prune to remove extraneous package entries.
+
 2026-07-12 Sync Package Lock for CI Deployment
 - [package-lock.json] Re-generated package-lock.json to include esbuild@0.28.1 required by Vitest 4.1.9. This resolves the GitHub Actions deployment error during "npm ci".
 
