@@ -196,7 +196,16 @@ export function performMerge(tower1: Tower, tower2: Tower, resultId: TowerTypeId
   // 五行共鳴折扣
   const discount = gameState.roguelikeState.nextMergeCostPct;
   mergeCost = Math.floor(mergeCost * discount);
-  if (mergeCost > 0 && gameState.gold < mergeCost) return; // 錢不夠不能合成
+
+  // 新手教學與測試關卡免合成費
+  if (gameState.currentMap.id === 'tutorial' || gameState.currentMap.id === 'test_level') {
+    mergeCost = 0;
+  }
+
+  if (mergeCost > 0 && gameState.gold < mergeCost) {
+    showFloat(tower2.x * gameState.TILE_SIZE + 8, tower2.y * gameState.TILE_SIZE, `金幣不足 (需 ${mergeCost}g)`, '#ef4444', 15);
+    return;
+  }
   gameState.gold -= mergeCost;
 
   // 設置合成動畫狀態 ( duration: 45 幀，約 0.75 秒 )

@@ -1,3 +1,9 @@
+2026-07-12 Fix Merge Card Failure in Tutorial and Add Cost Tooltips
+- [towerActions.ts] Modified performMerge() to bypass merge costs (setting cost to 0) when the current map is 'tutorial' or 'test_level'. This prevents the tutorial merge step from freezing if players exhaust their gold during the first wave.
+- [towerActions.ts] Added showFloat() warning text "金幣不足 (需 Xg)" when players attempt to merge towers with insufficient gold in regular maps.
+- [roguelike.test.ts] Added 2 new unit tests covering tutorial/test map cost bypassing and insufficient gold warning popups.
+- Build verified: npm run test (175 tests passed, 6 files) and npm run build successful (Vite production bundle, 39 modules).
+
 2026-07-12 Fix Deployment EBADPLATFORM Error
 - [.github/workflows/deploy.yml] Changed dependency installation step from "npm ci" to "npm install" to prevent EBADPLATFORM errors with optional platform-specific dependencies (such as esbuild and rollup) when building on GitHub Actions runners.
 - [package-lock.json] Ran npm prune to remove extraneous package entries.

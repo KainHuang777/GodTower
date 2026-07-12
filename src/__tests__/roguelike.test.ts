@@ -9,7 +9,8 @@ import {
   rollMysteryBox,
   grantStartBonus,
 } from '../system/roguelikeSystem.js';
-import { handleBuild, updateMergeAnimation } from '../battle/towerActions.js';
+import { handleBuild, updateMergeAnimation, performMerge } from '../battle/towerActions.js';
+import { showFloat } from '../renderer/gameRenderer.js';
 
 // Mock UI & Audio & Renderer & Pathfinding modules to avoid DOM dependency errors
 vi.mock('../renderer/gameRenderer.js', () => ({
@@ -263,6 +264,56 @@ describe('Roguelike System', () => {
       // 常規合成不退金幣
       expect(gameState.gold).toBe(50);
       expect(gameState.roguelikeState.nextMergeCostPct).toBe(1.0);
+    });
+  });
+
+  // ===================================================================
+  // 4. Merge Cost & Tutorial Bypassing
+  // ===================================================================
+  describe('Merge Cost & Tutorial Bypassing', () => {
+    it('bypasses merge cost on tutorial and test_level maps', () => {
+      // 設置為教學地圖
+      gameState.currentMap.id = 'tutorial';
+      gameState.gold = 2; // 金幣低於合成費
+
+      const t1 = { id: 1, x: 10, y: 10, typeId: 'fire', def: { cost: 12, level: 1, element: 'fire' } } as any;
+      const t2 = { id: 2, x: 11, y: 11, typeId: 'fire', def: { cost: 12, level: 1, element: 'fire' } } as any;
+      gameState.towers = [t1, t2];
+
+      performMerge(t1, t2, 'fire_2');
+
+      // 檢查是否成功開始合成動畫（即 mergeAnimation.active 為 true）
+      expect(gameState.mergeAnimation?.active).toBe(true);
+      // 檢查沒有扣除金幣
+      expect(gameState.gold).toBe(2);
+    });
+
+    it('requires cost and shows float text on regular maps when gold is insufficient', () => {
+      // 設置為一般地圖
+      gameState.currentMap.id = 'level_1';
+      gameState.gold = 2; // 金幣低於合成費（同系合成費用為 12 * 0.5 = 6g）
+
+      const t1 = { id: 1, x: 10, y: 10, typeId: 'fire', def: { cost: 12, level: 1, element: 'fire' } } as any;
+      const t2 = { id: 2, x: 11, y: 11, typeId: 'fire', def: { cost: 12, level: 1, element: 'fire' } } as any;
+      gameState.towers = [t1, t2];
+
+      // 取得 showFloat Mock 並清除歷史
+      (showFloat as any).mockClear();
+
+      performMerge(t1, t2, 'fire_2');
+
+      // 應該沒有啟動合成動畫
+      expect(gameState.mergeAnimation).toBeNull();
+      // 金幣應保持原樣
+      expect(gameState.gold).toBe(2);
+      // 應呼叫 showFloat 提示金幣不足
+      expect(showFloat).toHaveBeenCalledWith(
+        11 * gameState.TILE_SIZE + 8,
+        11 * gameState.TILE_SIZE,
+        '金幣不足 (需 6g)',
+        '#ef4444',
+        15
+      );
     });
   });
 });
