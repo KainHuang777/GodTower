@@ -1,6 +1,10 @@
+2026-07-12 Sync Package Lock for CI Deployment
+- [package-lock.json] Re-generated package-lock.json to include esbuild@0.28.1 required by Vitest 4.1.9. This resolves the GitHub Actions deployment error during "npm ci".
+
 2026-07-12 Fix Merge Mode Conflict with Roguelike Summons
 - [roguelikeSystem.ts] Reset gameState.mergeMode to false and gameState.mergeFirstTower to null in rollMysteryBox(), grantRandomTower(), grantRandomLv2Tower(), and grantStartBonus(). This prevents active merge mode from intercepting pointer click events and showing "沒有砲台" (No Tower) errors when attempting to build towers acquired through roguelike systems.
 - [roguelike.test.ts] Added new unit tests verifying that mergeMode and mergeFirstTower are correctly cleared upon starter bonuses and mystery box rolls.
+- [package-lock.json] Synced lockfile.
 - Build verified: npm run test (172 tests passed, 6 files) and npm run build successful (Vite production bundle, 38 modules, 214KB JS).
 
 2026-07-12 B3 Blind Spot P1/P2 Talent x Economy x Numerical Coupling Adjustment
