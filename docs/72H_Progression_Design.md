@@ -2,7 +2,8 @@
 
 > 作者：Fusion 分析小組（Kimi + Qwen + GLM）+ Judge 綜合  
 > 日期：2026-07-12  
-> **狀態：設計提案，尚未實作**
+> **狀態：部分實作 (Partially Implemented) — 截止至 2026-07-12**
+
 
 ---
 
@@ -393,3 +394,32 @@ function getEndGameTalentPoints(survivedWaves, personalBest, milestones, ascensi
 | 合成費用（同系） | `floor(min(a,b) × 0.5)` | |
 | 合成費用（異系） | `floor((a+b) × 0.3)` | |
 | 天賦重置成本 | 0/5/10（依累計次數） | |
+
+---
+
+## 10. 當前實作狀態與開發進度落差分析 (Gap Analysis)
+
+截至 2026-07-12，經過對實際程式代碼（`src/talent.ts`、`src/battle/difficulty.ts` 與 `src/battle/battleManager.ts` 等）的全面審計，實際進度與本提案之落差如下：
+
+### 10.1 天賦系統 (Talent Tree)
+*   **已實作**：
+    *   天賦樹各節點的 Cost 與最大等級已調整（如 `precise_1` cost 提升至 2，`taiji_dao` 最大等級改為 5 且每次 cost 為 5），總計點數需求增加。
+    *   天賦感知 HP 難度補償機制 `getTalentDifficultyMod` 已實作，怪物 HP 會隨玩家花費的天賦點數同比例成長（最高 +50%）。
+*   **落差與未實作**：
+    *   提案中規劃的「**配方解鎖節點**（例如 `recipe_wood_fire`、`recipe_yin_yang`）」、「**機制解鎖節點**（例如 `anti_armor`、`anti_regen`）」以及「**高等級擴展節點**（例如 `precise_3`、`rapid_fire_2`）」在代碼的 `TALENT_TREE` 中**完全沒有定義與實作**。目前天賦樹僅包含原本的基礎數值加成與五行陰陽塔的解鎖。
+
+### 10.2 Ascension 分級難度系統
+*   **已實作**：
+    *   代碼中實作了 0~10 的 Ascension 難度配置，且怪物生成時的 HP 和 Speed 已正確乘上難度加成。
+*   **落差與未實作**：
+    *   提案中規劃為 0~20 級，而代碼 `difficulty.ts` 中限制為 0~10 級。
+    *   除了怪物 HP 和 Speed 加成外，目前代碼中**完全沒有**讀取並套用其餘難度特殊規則（例如：起始金幣扣減、怪物數量增加 `ascensionCountAdd`、飛行怪提前波次、Boss 額外技能、每波結算金幣扣除、隨機負面事件與怪物元素抗性等）。這些機制在代碼中為空實現，未耦合到實際的遊戲邏輯。
+
+### 10.3 成就與雙軌點數系統
+*   **已實作**：
+    *   `TalentSaveData` 中已預留成就列表與里程碑等存檔欄位。
+    *   `calcTalentPointsEarned` 函數內部支持 Challenge 模式（Track B）的雙軌點數結算公式（包括個人紀錄突破與里程碑首次通關加點）。
+*   **落差與未實作**：
+    *   **成就觸發機制為零**：專案代碼中**無任何地方**在判定、觸發或記錄成就的完成。
+    *   **雙軌點數並未啟用**：在戰鬥結束（`battleManager.ts:236`）的實際天賦點結算中，調用 `calcTalentPointsEarned` 時並未傳入個人最佳、已達成里程碑或是否為挑戰模式的參數。因此，`isChallengeRun` 始終為預設的 `false`，遊戲中始終只按 Track A 基數進行結算，雙軌加點完全處於未啟用狀態。
+

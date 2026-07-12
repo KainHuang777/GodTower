@@ -1,3 +1,7 @@
+2026-07-12 Synchronize Game Progress and Design Documents
+- [GDD.md] Updated the multi-level talent tree costs and maximum levels to align with the actual src/talent.ts implementation. Added progress notes regarding unimplemented advanced systems (dual-track talent points, achievements, and advanced difficulty rules).
+- [72H_Progression_Design.md] Updated status from "proposed" to "partially implemented". Added a detailed Gap Analysis section identifying discrepancies between actual game code and design proposals for talent trees, Ascension difficulty systems, and achievements.
+
 2026-07-12 Fix Talent Guide Click Block Due to Insufficient Points
 - [battleManager.ts] Modified endBattle() to ensure first-time players receive at least 2 talent points (保底) upon their first run, enabling them to unlock their first talent "Gold I" (cost 2) in the talent screen.
 - [scenesManager.ts] Modified renderTalentScreen() to defensively add points up to 2 if the talent guide is active (talentTutorialActive = true) and available points is less than 2, preventing any potential UI softlock.
