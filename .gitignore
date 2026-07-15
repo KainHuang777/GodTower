@@ -53,3 +53,6 @@ env/
 # Test outputs
 test_sd_monster*.png
 
+# Local samples; do not publish these files to the repository.
+Sample/
+

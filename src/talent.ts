@@ -5,7 +5,8 @@
 import { currentSaveStorage } from './system/platform';
 import type { Element } from './towers';
 
-const STORAGE_KEY = 'checkpoint_maze_td_talent';
+const STORAGE_KEY = 'td_talent_data';
+const LEGACY_STORAGE_KEYS = ['checkpoint_maze_td_talent'] as const;
 
 /** 天賦節點 ID */
 export type TalentId =
@@ -16,42 +17,83 @@ export type TalentId =
   | 'yin_law' | 'yang_law' | 'taiji_dao'
   | 'wall_discount';
 
+export type TalentTrackId = 'track-base' | 'track-attack' | 'track-element' | 'track-yinyang';
+export type TalentOrgan = '肝' | '心' | '脾' | '肺' | '腎';
+export type TalentVisualTheme = 'du' | 'ren' | 'qi' | 'wood' | 'fire' | 'earth' | 'metal' | 'water' | 'yin' | 'yang' | 'taiji';
+
+export const TALENT_TRACK_TALENTS: Record<TalentTrackId, TalentId[]> = {
+  'track-base': ['fortress_1', 'fortress_2', 'gold_1', 'gold_2'],
+  'track-attack': ['precise_1', 'precise_2', 'rapid_fire'],
+  'track-element': ['wood_awakening', 'water_awakening', 'fire_awakening', 'earth_awakening', 'wall_discount', 'metal_awakening'],
+  'track-yinyang': ['yin_law', 'yang_law', 'taiji_dao']
+};
+
+export const TALENT_TRACK_UNLOCK_POINTS: Record<TalentTrackId, number> = {
+  'track-base': 0,
+  'track-attack': 2,
+  'track-element': 6,
+  'track-yinyang': 12
+};
+
+/**
+ * 顯示主題以 TalentId 明確對應，不從 ID 字串猜測。
+ * 這是 DOM、CSS 與後續 SVG 連線共用的單一來源。
+ */
+export const TALENT_THEME_BY_ID: Record<TalentId, TalentVisualTheme> = {
+  fortress_1: 'du', fortress_2: 'du',
+  gold_1: 'ren', gold_2: 'ren',
+  precise_1: 'qi', precise_2: 'qi', rapid_fire: 'qi',
+  wood_awakening: 'wood', water_awakening: 'water', fire_awakening: 'fire',
+  earth_awakening: 'earth', wall_discount: 'earth', metal_awakening: 'metal',
+  yin_law: 'yin', yang_law: 'yang', taiji_dao: 'taiji'
+};
+
 /** 天賦節點定義 */
 export interface TalentNode {
   id: TalentId;
   name: string;
   description: string;
+  displayName: string;    // 古典主名，只用於顯示層
+  mechanicLabel: string;  // 白話機制副標
+  classicAllusion: string;// 典故取意，不作醫療陳述
+  sourceRef: string;      // 原典或「遊戲化創作」來源標示
+  visualTheme: TalentVisualTheme;
   cost: number;           // 每次升級需要的天賦點
   prerequisites: TalentId[]; // 前置天賦
   category: 'base' | 'attack' | 'element' | 'yinyang';
   maxLevel: number;       // 最大等級
+  organ?: TalentOrgan;
+}
+
+function defineTalent(node: Omit<TalentNode, 'visualTheme'>): TalentNode {
+  return { ...node, visualTheme: TALENT_THEME_BY_ID[node.id] };
 }
 
 /** 天賦樹完整定義 */
 export const TALENT_TREE: TalentNode[] = [
   // 基礎強化路線
-  { id: 'fortress_1', name: '堅固堡壘 I', description: '每級基地生命 +5', cost: 2, prerequisites: [], category: 'base', maxLevel: 5 },
-  { id: 'fortress_2', name: '堅固堡壘 II', description: '每級基地生命 +10', cost: 2, prerequisites: ['fortress_1'], category: 'base', maxLevel: 5 },
-  { id: 'gold_1', name: '初始資金 I', description: '每級開局金幣 +20', cost: 2, prerequisites: [], category: 'base', maxLevel: 5 },
-  { id: 'gold_2', name: '初始資金 II', description: '每級開局金幣 +30', cost: 2, prerequisites: ['gold_1'], category: 'base', maxLevel: 5 },
+  defineTalent({ id: 'fortress_1', name: '堅固堡壘 I', description: '每級基地生命 +5', displayName: '督脈固關', mechanicLabel: '基地生命 +5／級', classicAllusion: '取意督脈總督諸陽，以固關轉譯基地防護。', sourceRef: '後世奇經八脈學說（遊戲化取意）', cost: 2, prerequisites: [], category: 'base', maxLevel: 5 }),
+  defineTalent({ id: 'fortress_2', name: '堅固堡壘 II', description: '每級基地生命 +10', displayName: '督脈周天', mechanicLabel: '基地生命 +10／級', classicAllusion: '取意督脈循背而行，以周天轉譯防線持續強化。', sourceRef: '後世奇經八脈學說（遊戲化取意）', cost: 2, prerequisites: ['fortress_1'], category: 'base', maxLevel: 5 }),
+  defineTalent({ id: 'gold_1', name: '初始資金 I', description: '每級開局金幣 +20', displayName: '任脈養元', mechanicLabel: '開局金幣 +20／級', classicAllusion: '取意任脈總任諸陰，以養元轉譯開局資源。', sourceRef: '後世奇經八脈學說（遊戲化取意）', cost: 2, prerequisites: [], category: 'base', maxLevel: 5 }),
+  defineTalent({ id: 'gold_2', name: '初始資金 II', description: '每級開局金幣 +30', displayName: '任脈歸海', mechanicLabel: '開局金幣 +30／級', classicAllusion: '取意任脈歸海的修行意象，轉譯為更充足的開局積蓄。', sourceRef: '後世奇經八脈學說（遊戲化取意）', cost: 2, prerequisites: ['gold_1'], category: 'base', maxLevel: 5 }),
 
   // 攻擊強化路線
-  { id: 'precise_1', name: '精準射擊 I', description: '每級所有砲台傷害 +10%', cost: 2, prerequisites: [], category: 'attack', maxLevel: 5 },
-  { id: 'precise_2', name: '精準射擊 II', description: '每級所有砲台傷害 +15%', cost: 2, prerequisites: ['precise_1'], category: 'attack', maxLevel: 5 },
-  { id: 'rapid_fire', name: '急速射擊', description: '每級所有砲台冷卻時間 -5%', cost: 3, prerequisites: ['precise_1'], category: 'attack', maxLevel: 5 },
+  defineTalent({ id: 'precise_1', name: '精準射擊 I', description: '每級所有砲台傷害 +10%', displayName: '凝神入微', mechanicLabel: '所有砲台傷害 +10%／級', classicAllusion: '凝神入微為遊戲化修行語彙，轉譯砲台命中要害的傷害增幅。', sourceRef: '遊戲化創作（東方修行意象）', cost: 2, prerequisites: [], category: 'attack', maxLevel: 5 }),
+  defineTalent({ id: 'precise_2', name: '精準射擊 II', description: '每級所有砲台傷害 +15%', displayName: '神會於刃', mechanicLabel: '所有砲台傷害 +15%／級', classicAllusion: '以心神與鋒刃相會的意象，轉譯更高階的全局傷害強化。', sourceRef: '遊戲化創作（東方修行意象）', cost: 2, prerequisites: ['precise_1'], category: 'attack', maxLevel: 5 }),
+  defineTalent({ id: 'rapid_fire', name: '急速射擊', description: '每級所有砲台冷卻時間 -5%', displayName: '氣行如流', mechanicLabel: '所有砲台冷卻 -5%／級', classicAllusion: '取意營衛周流的意象，轉譯砲台更緊密的攻擊節奏。', sourceRef: '《靈樞・營衛生會》（取意）', cost: 3, prerequisites: ['precise_1'], category: 'attack', maxLevel: 5 }),
 
   // 五行解鎖路線
-  { id: 'wood_awakening',  name: '木行覺醒', description: '解鎖纏繞塔 🌿，每級木系塔傷害 +10%', cost: 2, prerequisites: [], category: 'element', maxLevel: 5 },
-  { id: 'water_awakening', name: '水行覺醒', description: '解鎖冰凍塔 💧，每級水系塔傷害 +10%', cost: 2, prerequisites: [], category: 'element', maxLevel: 5 },
-  { id: 'fire_awakening',  name: '火行覺醒', description: '強化烈焰塔 🔥，每級火系塔傷害 +10% (火系預設解鎖)', cost: 2, prerequisites: [], category: 'element', maxLevel: 5 },
-  { id: 'earth_awakening', name: '土行覺醒', description: '強化岩壁塔 ⛰️，每級土系塔效果/傷害 +10% (土系預設解鎖)', cost: 2, prerequisites: [], category: 'element', maxLevel: 5 },
-  { id: 'wall_discount',   name: '築牆工法', description: '使岩壁塔（牆壁）的造價降低至 1g (預設為 2g)', cost: 2, prerequisites: ['earth_awakening'], category: 'element', maxLevel: 1 },
-  { id: 'metal_awakening', name: '金行覺醒', description: '解鎖鏡刃塔 ⚔️，每級金系塔傷害 +10%', cost: 2, prerequisites: [], category: 'element', maxLevel: 5 },
+  defineTalent({ id: 'wood_awakening', name: '木行覺醒', description: '解鎖纏繞塔 🌿，每級木系塔傷害 +10%', displayName: '肝木疏達', mechanicLabel: '解鎖纏繞塔；木系傷害 +10%／級', classicAllusion: '肝為將軍之官，謀慮出焉；此處取意為佈局、控場與持續傷害。', sourceRef: '《素問・靈蘭秘典論》（取意）', cost: 2, prerequisites: [], category: 'element', maxLevel: 5, organ: '肝' }),
+  defineTalent({ id: 'water_awakening', name: '水行覺醒', description: '解鎖冰凍塔 💧，每級水系塔傷害 +10%', displayName: '腎水藏精', mechanicLabel: '解鎖冰凍塔；水系傷害 +10%／級', classicAllusion: '腎為作強之官，技巧出焉；此處取意為減速、蓄勢與持久。', sourceRef: '《素問・靈蘭秘典論》（取意）', cost: 2, prerequisites: [], category: 'element', maxLevel: 5, organ: '腎' }),
+  defineTalent({ id: 'fire_awakening', name: '火行覺醒', description: '強化烈焰塔 🔥，每級火系塔傷害 +10% (火系預設解鎖)', displayName: '心火昭明', mechanicLabel: '強化烈焰塔；火系傷害 +10%／級', classicAllusion: '心為君主之官，神明出焉；此處取意為爆發、節奏與主動強化。', sourceRef: '《素問・靈蘭秘典論》（取意）', cost: 2, prerequisites: [], category: 'element', maxLevel: 5, organ: '心' }),
+  defineTalent({ id: 'earth_awakening', name: '土行覺醒', description: '強化岩壁塔 ⛰️，每級土系塔效果/傷害 +10% (土系預設解鎖)', displayName: '脾土運化', mechanicLabel: '強化岩壁塔；土系效果／傷害 +10%／級', classicAllusion: '脾胃為倉廩之官，五味出焉；此處取意為築防、資源與穩定。', sourceRef: '《素問・靈蘭秘典論》（取意）', cost: 2, prerequisites: [], category: 'element', maxLevel: 5, organ: '脾' }),
+  defineTalent({ id: 'wall_discount', name: '築牆工法', description: '使岩壁塔（牆壁）的造價降低至 1g (預設為 2g)', displayName: '脾土築垣', mechanicLabel: '岩壁塔造價 2g → 1g', classicAllusion: '延伸脾土運化的遊戲轉譯，以更少資源延展岩壁迷宮。', sourceRef: '《素問・靈蘭秘典論》（取意）', cost: 2, prerequisites: ['earth_awakening'], category: 'element', maxLevel: 1, organ: '脾' }),
+  defineTalent({ id: 'metal_awakening', name: '金行覺醒', description: '解鎖鏡刃塔 ⚔️，每級金系塔傷害 +10%', displayName: '肺金肅降', mechanicLabel: '解鎖鏡刃塔；金系傷害 +10%／級', classicAllusion: '肺為相傅之官，治節出焉；此處取意為精準、穿透與規律。', sourceRef: '《素問・靈蘭秘典論》（取意）', cost: 2, prerequisites: [], category: 'element', maxLevel: 5, organ: '肺' }),
 
   // 陰陽解鎖路線
-  { id: 'yin_law',   name: '陰之法則', description: '解鎖暗影塔 🌑，每級陰系塔傷害 +10%', cost: 3, prerequisites: [], category: 'yinyang', maxLevel: 5 },
-  { id: 'yang_law',  name: '陽之法則', description: '解鎖聖光塔 ☀️，每級陽系塔傷害 +10%', cost: 3, prerequisites: [], category: 'yinyang', maxLevel: 5 },
-  { id: 'taiji_dao', name: '太極之道', description: '解鎖陰陽合成配方 ☯️，每級太極塔傷害 +10%', cost: 5, prerequisites: ['yin_law', 'yang_law'], category: 'yinyang', maxLevel: 5 },
+  defineTalent({ id: 'yin_law', name: '陰之法則', description: '解鎖暗影塔 🌑，每級陰系塔傷害 +10%', displayName: '陰儀藏影', mechanicLabel: '解鎖暗影塔；陰系傷害 +10%／級', classicAllusion: '取意陰平陽秘的平衡意象，將陰儀轉譯為暗影塔路線。', sourceRef: '《素問・生氣通天論》（取意）', cost: 3, prerequisites: [], category: 'yinyang', maxLevel: 5 }),
+  defineTalent({ id: 'yang_law', name: '陽之法則', description: '解鎖聖光塔 ☀️，每級陽系塔傷害 +10%', displayName: '陽儀昭明', mechanicLabel: '解鎖聖光塔；陽系傷害 +10%／級', classicAllusion: '取意陰平陽秘的平衡意象，將陽儀轉譯為聖光塔路線。', sourceRef: '《素問・生氣通天論》（取意）', cost: 3, prerequisites: [], category: 'yinyang', maxLevel: 5 }),
+  defineTalent({ id: 'taiji_dao', name: '太極之道', description: '解鎖陰陽合成配方 ☯️，每級太極塔傷害 +10%', displayName: '兩儀歸太極', mechanicLabel: '解鎖陰陽合成；太極塔傷害 +10%／級', classicAllusion: '取意《周易・繫辭上》的太極與兩儀意象，轉譯為陰陽合成。', sourceRef: '《周易・繫辭上》（易象取意）', cost: 5, prerequisites: ['yin_law', 'yang_law'], category: 'yinyang', maxLevel: 5 }),
 ];
 
 /** 儲存的玩家天賦資料 */
@@ -72,11 +114,25 @@ export interface TalentSaveData {
   seenTraits?: { armor?: boolean; regen?: boolean; split?: boolean }; // P2: 已見過的怪物詞條
 }
 
+/**
+ * 分支依玩家歷史累積點數逐步開放；已在分支投資的舊存檔永遠保持開放。
+ * 使用 totalTalentPoints 而非 spentTalentPoints，確保重置天賦不會倒退敘事進度。
+ */
+export function isTalentTrackUnlocked(data: TalentSaveData, trackId: TalentTrackId): boolean {
+  const alreadyInvested = TALENT_TRACK_TALENTS[trackId].some(
+    talentId => (data.talentLevels[talentId] || 0) > 0
+  );
+  return alreadyInvested || data.totalTalentPoints >= TALENT_TRACK_UNLOCK_POINTS[trackId];
+}
+
 /** 從 platform 載入天賦資料 */
 export function loadTalentData(): TalentSaveData {
-  try {
-    const raw = currentSaveStorage.getItem(STORAGE_KEY);
-    if (raw) {
+  const storageKeys = [STORAGE_KEY, ...LEGACY_STORAGE_KEYS];
+  for (const storageKey of storageKeys) {
+    try {
+      const raw = currentSaveStorage.getItem(storageKey);
+      if (!raw) continue;
+
       const parsed = JSON.parse(raw);
       // 舊存檔相容性轉換
       if (parsed && !parsed.talentLevels) {
@@ -98,8 +154,9 @@ export function loadTalentData(): TalentSaveData {
         if (!parsed.seenTraits || typeof parsed.seenTraits !== 'object') parsed.seenTraits = {};
         return parsed as TalentSaveData;
       }
-    }
-  } catch { /* ignore */ }
+    } catch { /* 單一 key 損毀時繼續嘗試舊 key */ }
+  }
+
   return {
     totalTalentPoints: 0,
     spentTalentPoints: 0,

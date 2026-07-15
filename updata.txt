@@ -1,3 +1,13 @@
+2026-07-15 UI visual refresh and talent meridian system (Phase 2)
+- [index.html] CSS & Layout: Added the new '.talent-atlas-v2' ancient Chinese book layout framework, including dynamic title jade seals, gold plate style talent points, scroll tags for tab navigation, scroll boxes, and fallback logic if local assets load fails.
+- [talent.ts] Core Logic: Refactored talent configurations with new metadata properties (displayName, mechanicLabel, classicAllusion, sourceRef, organ). Introduced 'isTalentTrackUnlocked' based on 'totalTalentPoints' to prevent reset rollback. Implemented compatibility migration for legacy save storage keys.
+- [scenes/scenesManager.ts] Renderer: Overhauled talent page rendering with coordinate-adaptive inline SVG lines for energy flow pathways. Placed interactive meridian node seals onto custom hand-drawn canvas/SVG anatomical body outlines.
+- [ui/uiManager.ts] UI Update: Standardized side details card with element icons, names, and description fields matching the meridian lore.
+- [ui/visualRefresh.css] Theme CSS: Added comprehensive decorative classes (.talent-atlas-v2, .meridian-node, .ink-line, .fade-in, etc.) styling ancient parchment textured container, pulse indicators, and flow animations.
+- [sprites.ts] Sprite Rendering: Refactored tower elements to draw pixelated previews using procedurally rendered canvas grids.
+- [battle/battleManager.ts] [battle/towerActions.ts] HUD & Map adjustments: Fine-tuned tower build cards details, range pre-renders, and tool selection sync.
+- Build verified: npm run build completed successfully. Unit tests passed.
+
 2026-07-12 Synchronize Game Progress and Design Documents
 - [GDD.md] Updated the multi-level talent tree costs and maximum levels to align with the actual src/talent.ts implementation. Added progress notes regarding unimplemented advanced systems (dual-track talent points, achievements, and advanced difficulty rules).
 - [72H_Progression_Design.md] Updated status from "proposed" to "partially implemented". Added a detailed Gap Analysis section identifying discrepancies between actual game code and design proposals for talent trees, Ascension difficulty systems, and achievements.

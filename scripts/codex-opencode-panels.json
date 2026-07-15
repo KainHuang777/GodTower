@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "panels": [
+    {
+      "id": "glm",
+      "agent": "fusion-codex-glm",
+      "model": "opencode-go/glm-5.2",
+      "role": "alternative assumptions and counterarguments"
+    },
+    {
+      "id": "kimi",
+      "agent": "fusion-codex-kimi",
+      "model": "opencode-go/kimi-k2.7-code",
+      "role": "implementation feasibility and architecture"
+    },
+    {
+      "id": "qwen",
+      "agent": "fusion-codex-qwen",
+      "model": "opencode-go/qwen3.7-plus",
+      "role": "broad trade-offs and strategy"
+    }
+  ]
+}

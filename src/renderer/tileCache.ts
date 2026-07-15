@@ -72,15 +72,22 @@ export function updateTileCacheCanvas() {
     for (let i = 1; i < points.length; i++) {
       ctx.lineTo(points[i].x * T + T / 2, points[i].y * T + T / 2);
     }
-    ctx.strokeStyle = '#9E7448';
-    ctx.lineWidth = T * 0.96;
+    // 寬闊暖土路：草邊 → 深土邊緣 → 明亮中央，視覺密度與塔身同步提升。
+    ctx.strokeStyle = '#70934F';
+    ctx.lineWidth = T * 1.20;
     ctx.stroke();
-    ctx.strokeStyle = '#D8BC82';
-    ctx.lineWidth = T * 0.74;
+    ctx.strokeStyle = '#8A603D';
+    ctx.lineWidth = T * 1.08;
     ctx.stroke();
-    ctx.setLineDash([T * 0.2, T * 0.55]);
-    ctx.strokeStyle = 'rgba(255, 243, 196, 0.42)';
-    ctx.lineWidth = Math.max(1, T * 0.08);
+    ctx.strokeStyle = '#C99B61';
+    ctx.lineWidth = T * 0.92;
+    ctx.stroke();
+    ctx.strokeStyle = '#E4C487';
+    ctx.lineWidth = T * 0.70;
+    ctx.stroke();
+    ctx.setLineDash([T * 0.14, T * 0.42]);
+    ctx.strokeStyle = 'rgba(104, 70, 40, 0.28)';
+    ctx.lineWidth = Math.max(1, T * 0.06);
     ctx.stroke();
     ctx.restore();
   }

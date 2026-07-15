@@ -354,7 +354,7 @@ export function refreshToolSelection() {
     } else if (gameState.levelTutorialStep === 'build_tower') {
       const fireBtn = getDomRefs().towerButtonsContainer.querySelector('[data-tool="fire"]');
       if (fireBtn) fireBtn.classList.add('btn-guide-pulse');
-    } else if (gameState.levelTutorialStep === 'start_wave' || gameState.levelTutorialStep === 'wave_5_guide') {
+    } else if (gameState.levelTutorialStep === 'start_wave' || gameState.levelTutorialStep === 'wave_4_guide' || gameState.levelTutorialStep === 'wave_5_guide') {
       getDomRefs().btnStartWave.classList.add('btn-guide-pulse');
     } else if (gameState.levelTutorialStep === 'merge_guide') {
       getDomRefs().btnMerge.classList.add('btn-guide-pulse');
@@ -405,38 +405,38 @@ export function updateLevelTutorial() {
   switch (gameState.levelTutorialStep) {
     case 'intro':
       textEl.innerHTML = `💡 <b>歡迎來到五行迷宮塔防！</b><br>
-      怪物從<span style="color:#4ade80;"> 左中起點 </span>出發，必須依序通過三個 <span style="color:#f59e0b;">❶❷❸</span> 標記點，最後到達<span style="color:#f87171;"> 右中終點 </span>。<br>
-      地圖已有天然障礙物將怪物路線拉成曲折的 W 形！<br>
-      <span style="color:#f59e0b;"><b>你的任務：</b>在通道旁建造防禦塔，讓怪物在巡迴中大量受擊！</span>`;
+      怪物從<span style="color:#4ade80;"> 左中起點 </span>出發，通過兩個 <span style="color:#f59e0b;">❶❷</span> 標記點，最後到達<span style="color:#f87171;"> 右中終點 </span>。<br>
+      這是一張固定顯示全圖的試煉場，不需要拖曳鏡頭。<br>
+      <span style="color:#f59e0b;"><b>本關會帶你完成：</b>放塔、放牆、加速、隨機技能、對空怪、Boss 與天賦引導。</span>`;
       nextBtn.textContent = '我知道了 (下一步)';
       nextBtn.style.display = 'block';
       break;
 
     case 'build_wall':
-      textEl.innerHTML = `🧱 <b>教學步驟 1/3：建造岩壁塔延長怪物路徑</b><br>
-      請選擇下方的【⛰️ 岩壁塔】，在地圖中的通道口建造牆壁。<br>
-      <span style="color:#38bdf8;"><b>建議位置：</b>地圖右側 ❸ 號點附近（右上方通道口），可強迫怪物額外繞行！</span><br>
-      <span style="color:#94a3b8; font-size:0.85em;">💡 岩壁塔不會攻擊，只用於構建迷宮路線。</span>`;
+      textEl.innerHTML = `🧱 <b>教學步驟 2/8：建造連續岩壁</b><br>
+      接著選擇【⛰️ 岩壁塔】，在藍色提示格放下一段牆。<br>
+      <span style="color:#38bdf8;"><b>作用：</b>岩壁不攻擊，但會迫使地面敵人小幅改道；相鄰岩壁會連成完整牆面。</span><br>
+      <span style="color:#94a3b8; font-size:0.85em;">複雜繞路會留到後續關卡，本關只教一次清楚的改道。</span>`;
       nextBtn.style.display = 'none';
       break;
 
     case 'build_tower':
-      textEl.innerHTML = `🔥 <b>教學步驟 2/3：建造攻擊塔</b><br>
-      太棒了！怪物的路線被你成功拉長了！<br>
-      現在請選擇【🔥 烈焰塔】，在剛才岩壁塔的<span style="color:#f97316; font-weight:bold;"> 旁邊 </span>建造一座攻擊塔！<br>
-      <span style="color:#94a3b8; font-size:0.85em;">💡 技巧：將攻擊塔置於怪物往返的瓶頸口，可對反覆路過的怪物造成多次傷害！</span>`;
+      textEl.innerHTML = `🔥 <b>教學步驟 1/8：建造攻擊塔</b><br>
+      請選擇【🔥 烈焰塔】，放在道路旁的紅色提示格。<br>
+      <span style="color:#f97316; font-weight:bold;">攻擊塔要靠近道路，射程才容易覆蓋怪物的行進路線。</span><br>
+      <span style="color:#94a3b8; font-size:0.85em;">放置後會接著教你用岩壁做一次小幅改道。</span>`;
       nextBtn.style.display = 'none';
       break;
 
     case 'start_wave':
-      textEl.innerHTML = `⚔️ <b>教學步驟 3/6：迎擊第一波！</b><br>
+      textEl.innerHTML = `⚔️ <b>教學步驟 3/8：迎擊第一波！</b><br>
       防線已就緒，準備迎戰！<br>
       請點擊下方控制列的【⚔️ 下一波】按鈕，開始第一波怪物的進攻！`;
       nextBtn.style.display = 'none';
       break;
 
     case 'merge_guide':
-      textEl.innerHTML = `🔮 <b>教學步驟 4/6：合併升級防禦塔</b><br>
+      textEl.innerHTML = `🔮 <b>教學步驟 4/8：合併升級防禦塔</b><br>
       第一波防禦成功！現在系統在相鄰位置免費贈送了第二座【🔥 烈焰塔】。<br>
       請點擊下方的【🔮 合成】按鈕，然後<b>依序點擊這兩座烈焰塔</b>來進行合成！<br>
       <span style="color:#a78bfa; font-weight:bold;">💡 效果：兩座 Lv1 烈焰塔會融合成一座強大的 Lv2 烈焰塔，傷害與範圍全面提升！</span>`;
@@ -444,14 +444,21 @@ export function updateLevelTutorial() {
       break;
 
     case 'speed_guide':
-      textEl.innerHTML = `⚡ <b>教學步驟 5/6：利用加速按鈕</b><br>
+      textEl.innerHTML = `⚡ <b>教學步驟 5/8：利用加速按鈕</b><br>
       合成成功！你現在擁有了威力更強的【🔥 烈焰塔 Lv2】。<br>
       戰鬥過程可能有些漫長，請點擊下方的【⚡ 1x】按鈕，將遊戲速度提升為 <span style="color:#fb923c; font-weight:bold;">2x</span> 或 <span style="color:#facc15; font-weight:bold;">3x</span>！`;
       nextBtn.style.display = 'none';
       break;
 
+    case 'wave_4_guide':
+      textEl.innerHTML = `🪽 <b>教學步驟 7/8：辨認空中敵人</b><br>
+      下一波會出現飛行怪。牠們不受岩壁改道影響，會沿檢查點直接飛向基地。<br>
+      <span style="color:#38bdf8; font-weight:bold;">先確認攻擊塔能覆蓋道路中央，再點擊【⚔️ 下一波】。</span>`;
+      nextBtn.style.display = 'none';
+      break;
+
     case 'wave_5_guide':
-      textEl.innerHTML = `🐲 <b>教學步驟 6/6：最終 Boss 考驗！</b><br>
+      textEl.innerHTML = `🐲 <b>教學步驟 8/8：最終 Boss 考驗！</b><br>
       準備迎接最終防線！第 5 波將會出現強大的 <span style="color:#f43f5e; font-weight:bold;">陽龍 Boss 🐲</span>！<br>
       Boss 的血量高且有特殊技能，請做好準備，點擊【⚔️ 下一波】迎戰 Boss！<br>
       <span style="color:#38bdf8;">（通關第 5 波後，即可解鎖完整天賦樹並獲得天賦點！）</span>`;

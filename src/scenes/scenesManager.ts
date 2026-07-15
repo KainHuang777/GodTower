@@ -3,11 +3,74 @@
 import { GameScene } from '../types';
 import { gameState } from '../state';
 import { getDomRefs } from '../domRefs';
-import { getAvailablePoints, TALENT_TREE, canUnlockTalent, unlockTalent, saveTalentData, TalentId } from '../talent';
+import {
+  getAvailablePoints,
+  TALENT_TREE,
+  TALENT_TRACK_TALENTS,
+  TALENT_TRACK_UNLOCK_POINTS,
+  canUnlockTalent,
+  isTalentTrackUnlocked,
+  unlockTalent,
+  saveTalentData,
+  TalentId,
+  type TalentTrackId
+} from '../talent';
 import { MAPS, loadCustomMaps, deleteCustomMap } from '../maps';
 import { playSFX } from '../audio/audioSystem';
 
 let selectedTalentId: TalentId | null = null;
+let talentLineFrame: number | null = null;
+let talentResizeObserver: ResizeObserver | null = null;
+let observedTalentContainer: HTMLElement | null = null;
+
+interface TalentNodeLayout {
+  x: number;
+  y: number;
+  rotation: number;
+  figure: 'front' | 'back' | 'center';
+}
+
+/**
+ * 以圖譜百分比定位品像，避免將像素座標綁死在單一解析度。
+ * 正面人物約位於 x=26%，背面人物約位於 x=73%，中央留給氣機與太極匯流。
+ */
+const TALENT_NODE_LAYOUT: Record<TalentId, TalentNodeLayout> = {
+  fortress_1: { x: 61, y: 66, rotation: -2, figure: 'back' },
+  fortress_2: { x: 84, y: 30, rotation: 2, figure: 'back' },
+  gold_1: { x: 12, y: 66, rotation: -3, figure: 'front' },
+  gold_2: { x: 40, y: 45, rotation: 2, figure: 'front' },
+  precise_1: { x: 13, y: 22, rotation: -2, figure: 'front' },
+  precise_2: { x: 41, y: 18, rotation: 3, figure: 'front' },
+  rapid_fire: { x: 43, y: 49, rotation: -1, figure: 'center' },
+  wood_awakening: { x: 10, y: 42, rotation: -3, figure: 'front' },
+  fire_awakening: { x: 39, y: 29, rotation: 2, figure: 'front' },
+  earth_awakening: { x: 41, y: 55, rotation: -1, figure: 'front' },
+  wall_discount: { x: 49, y: 77, rotation: 3, figure: 'center' },
+  metal_awakening: { x: 60, y: 24, rotation: -2, figure: 'center' },
+  water_awakening: { x: 12, y: 75, rotation: 2, figure: 'front' },
+  yin_law: { x: 13, y: 66, rotation: -3, figure: 'front' },
+  yang_law: { x: 87, y: 66, rotation: 3, figure: 'back' },
+  taiji_dao: { x: 50, y: 58, rotation: 0, figure: 'center' }
+};
+
+const TRACK_GUIDE: Record<TalentTrackId, { stage: string; title: string; plainLabel: string; requiredPoints: number; story: string }> = {
+  'track-base': {
+    stage: '第一境', title: '任督築基', plainLabel: '基礎', requiredPoints: TALENT_TRACK_UNLOCK_POINTS['track-base'],
+    story: '任督二脈是修行起點：先增加基地生命或開局金幣，建立每一局都用得到的根基。'
+  },
+  'track-attack': {
+    stage: '第二境', title: '氣機初行', plainLabel: '氣血', requiredPoints: TALENT_TRACK_UNLOCK_POINTS['track-attack'],
+    story: '氣血貫通後可強化所有砲台：精準提高傷害，急速縮短攻擊冷卻。'
+  },
+  'track-element': {
+    stage: '第三境', title: '五藏應象', plainLabel: '五行', requiredPoints: TALENT_TRACK_UNLOCK_POINTS['track-element'],
+    story: '五臟各應一行：肝木主控制、心火主爆發、脾土主築防、肺金主鋒銳、腎水主遲滯。'
+  },
+  'track-yinyang': {
+    stage: '第四境', title: '陰陽合化', plainLabel: '陰陽', requiredPoints: TALENT_TRACK_UNLOCK_POINTS['track-yinyang'],
+    story: '陰陽是後期修行：先分別掌握暗影與聖光，最後匯流為太極合成之道。'
+  }
+};
 
 const talentIconMap: Record<TalentId, string> = {
   fortress_1: '盾', fortress_2: '城',
@@ -20,20 +83,30 @@ const talentIconMap: Record<TalentId, string> = {
 };
 
 function renderTalentDetail() {
+  const panelEl = document.getElementById('talentDetailPanel');
   const nameEl = document.getElementById('talentDetailName');
   const iconEl = document.getElementById('talentDetailIcon');
+  const mechanicEl = document.getElementById('talentDetailMechanic');
   const levelEl = document.getElementById('talentDetailLevel');
   const descEl = document.getElementById('talentDetailDesc');
   const prereqEl = document.getElementById('talentDetailPrereq');
+  const loreEl = document.getElementById('talentDetailLore');
+  const sourceEl = document.getElementById('talentDetailSource');
   const upgradeBtn = document.getElementById('btnUpgradeTalent') as HTMLButtonElement | null;
-  if (!nameEl || !iconEl || !levelEl || !descEl || !prereqEl || !upgradeBtn) return;
+  if (!panelEl || !nameEl || !iconEl || !mechanicEl || !levelEl || !descEl || !prereqEl || !loreEl || !sourceEl || !upgradeBtn) return;
 
   const node = selectedTalentId ? TALENT_TREE.find(t => t.id === selectedTalentId) : null;
   if (!node || !selectedTalentId) {
-    nameEl.textContent = '選擇穴位';
+    panelEl.dataset.theme = 'taiji';
+    panelEl.dataset.state = 'idle';
+    iconEl.dataset.theme = 'taiji';
+    mechanicEl.textContent = '選擇節點後顯示機制副標';
+    sourceEl.textContent = '取意來源會顯示於此';
+    nameEl.textContent = '選擇天賦印';
     iconEl.textContent = '☯';
     levelEl.textContent = '經脈尚未選取';
-    descEl.textContent = '選擇穴位查看效果與升級需求。';
+    loreEl.textContent = '每枚天賦印代表一條戰鬥修行路線；圖中位置只作藏象幻想取意。';
+    descEl.textContent = '選擇修習節點查看效果與升級需求。';
     prereqEl.textContent = '';
     upgradeBtn.disabled = true;
     upgradeBtn.textContent = '升級';
@@ -44,16 +117,28 @@ function renderTalentDetail() {
   const level = gameState.talentData.talentLevels[selectedTalentId] || 0;
   const isMax = level >= node.maxLevel;
   const canUpgrade = canUnlockTalent(gameState.talentData, selectedTalentId);
+  const availablePoints = getAvailablePoints(gameState.talentData);
   const unmet = node.prerequisites
     .filter(pid => (gameState.talentData.talentLevels[pid] || 0) < 1)
-    .map(pid => TALENT_TREE.find(t => t.id === pid)?.name ?? pid);
+    .map(pid => TALENT_TREE.find(t => t.id === pid)?.displayName ?? pid);
 
   iconEl.textContent = talentIconMap[selectedTalentId] || '氣';
-  iconEl.dataset.element = selectedTalentId.split('_')[0];
-  nameEl.textContent = node.name;
-  levelEl.textContent = `等級 ${level}/${node.maxLevel}`;
+  iconEl.dataset.theme = node.visualTheme;
+  nameEl.textContent = node.displayName;
+  mechanicEl.textContent = node.mechanicLabel;
+  levelEl.textContent = `等級 ${level}/${node.maxLevel}${isMax ? '・圓滿' : level === 0 ? '・未啟' : '・行氣中'}`;
+  loreEl.textContent = node.classicAllusion;
+  sourceEl.textContent = `取意：${node.sourceRef}`;
   descEl.textContent = node.description;
-  prereqEl.textContent = unmet.length ? `需先開通：${unmet.join('、')}` : `升級消耗 ${node.cost} 點`;
+  panelEl.dataset.theme = node.visualTheme;
+  panelEl.dataset.state = isMax ? 'maxed' : level > 0 ? 'unlocked' : canUpgrade ? 'available' : 'locked';
+  prereqEl.textContent = isMax
+    ? '此穴已修至圓滿'
+    : unmet.length
+      ? `需先開通：${unmet.join('、')}`
+      : availablePoints < node.cost
+        ? `天賦點不足：需 ${node.cost} 點，目前 ${availablePoints} 點`
+        : `升級消耗 ${node.cost} 點`;
   upgradeBtn.disabled = !canUpgrade || isMax;
   upgradeBtn.textContent = isMax ? '已圓滿' : `升級 ${node.cost} 點`;
   upgradeBtn.onclick = null;
@@ -64,6 +149,74 @@ function renderTalentDetail() {
       renderTalentScreen();
     };
   }
+}
+
+function selectTalentCard(card: HTMLElement): void {
+  const talentId = card.dataset.id as TalentId | undefined;
+  if (!talentId) return;
+
+  selectedTalentId = talentId;
+  const activeTrack = document.getElementById(gameState.activeTalentTrack);
+  activeTrack?.querySelectorAll<HTMLElement>('.talent-card').forEach(candidate => {
+    const selected = candidate === card;
+    candidate.classList.toggle('selected', selected);
+    candidate.setAttribute('aria-pressed', String(selected));
+    candidate.tabIndex = selected ? 0 : -1;
+  });
+  renderTalentDetail();
+}
+
+type SpatialDirection = 'left' | 'right' | 'up' | 'down';
+
+function findSpatialTalentCard(cards: HTMLElement[], current: HTMLElement, direction: SpatialDirection): HTMLElement | null {
+  const currentRect = current.getBoundingClientRect();
+  const currentX = currentRect.left + currentRect.width / 2;
+  const currentY = currentRect.top + currentRect.height / 2;
+
+  let best: { card: HTMLElement; score: number } | null = null;
+  for (const candidate of cards) {
+    if (candidate === current) continue;
+    const rect = candidate.getBoundingClientRect();
+    const dx = rect.left + rect.width / 2 - currentX;
+    const dy = rect.top + rect.height / 2 - currentY;
+    const inDirection = direction === 'left' ? dx < -1
+      : direction === 'right' ? dx > 1
+        : direction === 'up' ? dy < -1
+          : dy > 1;
+    if (!inDirection) continue;
+
+    const primary = direction === 'left' || direction === 'right' ? Math.abs(dx) : Math.abs(dy);
+    const secondary = direction === 'left' || direction === 'right' ? Math.abs(dy) : Math.abs(dx);
+    const score = primary + secondary * 0.55;
+    if (!best || score < best.score) best = { card: candidate, score };
+  }
+  return best?.card ?? null;
+}
+
+function handleTalentCardKeydown(event: KeyboardEvent, card: HTMLElement): void {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    card.click();
+    return;
+  }
+
+  const activeTrack = document.getElementById(gameState.activeTalentTrack);
+  const cards = Array.from(activeTrack?.querySelectorAll<HTMLElement>('.talent-card') ?? []);
+  const currentIndex = cards.indexOf(card);
+  if (currentIndex < 0) return;
+
+  let nextCard: HTMLElement | null = null;
+  if (event.key === 'ArrowRight') nextCard = findSpatialTalentCard(cards, card, 'right');
+  if (event.key === 'ArrowDown') nextCard = findSpatialTalentCard(cards, card, 'down');
+  if (event.key === 'ArrowLeft') nextCard = findSpatialTalentCard(cards, card, 'left');
+  if (event.key === 'ArrowUp') nextCard = findSpatialTalentCard(cards, card, 'up');
+  if (event.key === 'Home') nextCard = cards[0] ?? null;
+  if (event.key === 'End') nextCard = cards[cards.length - 1] ?? null;
+  if (!nextCard) return;
+
+  event.preventDefault();
+  selectTalentCard(nextCard);
+  nextCard.focus();
 }
 
 export function switchScene(scene: GameScene) {
@@ -109,7 +262,7 @@ export function switchScene(scene: GameScene) {
       if (gameState.startBattle) {
         gameState.startBattle();
       }
-      if (gameState.currentMap && gameState.currentMap.id === 'test_level') {
+      if (gameState.currentMap?.dimensions?.overview) {
         gameState.mapScale = 1.0;
         gameState.mapOffsetX = 0;
         gameState.mapOffsetY = 0;
@@ -211,20 +364,17 @@ export function renderTalentScreen() {
     gameState.activeTalentTrack = 'track-base';
   }
 
-  // 計算與更新天賦分支按鈕進度與 active 狀態
-  const trackTalents: Record<string, string[]> = {
-    'track-base': ['fortress_1', 'fortress_2', 'gold_1', 'gold_2'],
-    'track-attack': ['precise_1', 'precise_2', 'rapid_fire'],
-    'track-element': ['wood_awakening', 'water_awakening', 'fire_awakening', 'earth_awakening', 'wall_discount', 'metal_awakening'],
-    'track-yinyang': ['yin_law', 'yang_law', 'taiji_dao']
-  };
+  // 既有存檔若已投資某分支，該分支永遠保持開放；重置只退點、不倒退敘事進度。
+  if (!isTalentTrackUnlocked(gameState.talentData, gameState.activeTalentTrack)) {
+    gameState.activeTalentTrack = 'track-base';
+  }
 
   const navBtns = document.querySelectorAll('.talent-nav-btn');
   navBtns.forEach(btn => {
-    const trackId = btn.getAttribute('data-track');
+    const trackId = btn.getAttribute('data-track') as TalentTrackId | null;
     if (!trackId) return;
 
-    const tids = trackTalents[trackId] || [];
+    const tids = TALENT_TRACK_TALENTS[trackId];
     let currentLevelSum = 0;
     let maxLevelSum = 0;
     tids.forEach(tid => {
@@ -235,26 +385,58 @@ export function renderTalentScreen() {
       }
     });
 
-    let originalTitle = '';
-    if (trackId === 'track-base') originalTitle = '基礎';
-    else if (trackId === 'track-attack') originalTitle = '氣血';
-    else if (trackId === 'track-element') originalTitle = '五行';
-    else if (trackId === 'track-yinyang') originalTitle = '陰陽';
-
-    btn.textContent = `${originalTitle} (${currentLevelSum}/${maxLevelSum})`;
-    btn.classList.toggle('active', trackId === gameState.activeTalentTrack);
+    const trackUnlocked = isTalentTrackUnlocked(gameState.talentData, trackId);
+    const navButton = btn as HTMLButtonElement;
+    navButton.disabled = !trackUnlocked || gameState.talentTutorialActive && trackId !== 'track-base';
+    navButton.classList.toggle('track-locked', !trackUnlocked);
+    navButton.title = trackUnlocked
+      ? TRACK_GUIDE[trackId].story
+      : `累積 ${TRACK_GUIDE[trackId].requiredPoints} 點天賦後開放`;
+    const guide = TRACK_GUIDE[trackId];
+    const tabMeta = trackUnlocked
+      ? `${guide.plainLabel}・${currentLevelSum}/${maxLevelSum}`
+      : `${guide.plainLabel}・累積 ${guide.requiredPoints} 點開放`;
+    btn.innerHTML = `
+      <span class="talent-tab-stage">${guide.stage}</span>
+      <span class="talent-tab-name">${guide.title}</span>
+      <span class="talent-tab-meta">${trackUnlocked ? '' : '🔒 '}${tabMeta}</span>
+    `;
+    const active = trackId === gameState.activeTalentTrack;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', String(active));
+    btn.setAttribute('aria-disabled', String(!trackUnlocked));
+    navButton.tabIndex = active ? 0 : -1;
   });
+
+  const storyGuide = document.getElementById('talentStoryGuide');
+  if (storyGuide) {
+    const activeGuide = TRACK_GUIDE[gameState.activeTalentTrack];
+    const nextLocked = (Object.keys(TRACK_GUIDE) as TalentTrackId[])
+      .find(trackId => !isTalentTrackUnlocked(gameState.talentData, trackId));
+    const nextHint = nextLocked
+      ? ` 下一階段「${TRACK_GUIDE[nextLocked].title}」會在累積 ${TRACK_GUIDE[nextLocked].requiredPoints} 點後開放。`
+      : ' 四脈皆已開放，可依本局常用塔系自由修行。';
+    storyGuide.textContent = `${activeGuide.story}${nextHint}`;
+  }
 
   // 控制天賦分支面板的顯示與隱藏
   const tracks = document.querySelectorAll('.talent-track');
   tracks.forEach(track => {
     const htmlTrack = track as HTMLElement;
-    if (htmlTrack.id === gameState.activeTalentTrack) {
+    const active = htmlTrack.id === gameState.activeTalentTrack;
+    htmlTrack.setAttribute('aria-hidden', String(!active));
+    if (active) {
       htmlTrack.style.display = 'flex';
     } else {
       htmlTrack.style.display = 'none';
     }
   });
+
+  const activeTrack = document.getElementById(gameState.activeTalentTrack);
+  if (!selectedTalentId || !activeTrack?.querySelector(`[data-id="${selectedTalentId}"]`)) {
+    const visibleCard = activeTrack?.querySelector('.talent-card') as HTMLElement | null;
+    selectedTalentId = visibleCard?.dataset.id as TalentId | null;
+  }
 
   const cards = document.querySelectorAll('.talent-card');
   cards.forEach(cardEl => {
@@ -277,42 +459,41 @@ export function renderTalentScreen() {
     }
 
     const icon = talentIconMap[tid] || '氣';
-
-    // 計算未滿足的前置條件文字
-    let prereqHtml = '';
-    if (node.prerequisites.length > 0) {
-      const unmetPrereqs = node.prerequisites.filter(
-        pid => (gameState.talentData.talentLevels[pid] || 0) < 1
-      );
-      if (unmetPrereqs.length > 0) {
-        const prereqNames = unmetPrereqs.map(pid => {
-          const prereqNode = TALENT_TREE.find(t => t.id === pid);
-          return prereqNode ? prereqNode.name : pid;
-        });
-        prereqHtml = `<div class="talent-card-prereq">🔒 需解鎖：${prereqNames.join('、')}</div>`;
-      }
-    }
+    const statusMark = isMax ? '成' : level > 0 ? '啟' : canUpgrade ? '可' : '封';
+    const layout = TALENT_NODE_LAYOUT[tid];
 
     cardEl.innerHTML = `
-      <div class="talent-icon">${icon}</div>
-      <div class="talent-card-info">
-        <div class="talent-card-title">
-          <span>${node.name}</span>
-          <span class="talent-card-level">Lv.${level}/${node.maxLevel}</span>
-        </div>
-        <div class="talent-card-desc">${node.description}</div>
-        ${prereqHtml}
-        <div class="talent-card-cost">${isMax ? '✨ 已滿級' : `升級花費: ${node.cost} 點`}</div>
-      </div>
+      <span class="talent-seal" aria-hidden="true"><span class="talent-seal-glyph">${icon}</span></span>
+      <span class="talent-node-copy">
+        <span class="talent-card-title">${node.displayName}</span>
+        <span class="talent-card-level">${node.organ ? `${node.organ}藏・` : ''}Lv.${level}/${node.maxLevel}</span>
+      </span>
+      <span class="talent-state-mark" aria-hidden="true">${statusMark}</span>
     `;
 
     // 重設並重新綁定點擊事件
     const htmlEl = cardEl as HTMLElement;
+    const selected = selectedTalentId === tid;
+    const domState = isMax ? 'maxed' : level > 0 ? 'unlocked' : canUpgrade ? 'available' : 'locked';
+    htmlEl.dataset.theme = node.visualTheme;
+    htmlEl.dataset.state = domState;
+    htmlEl.dataset.figure = layout.figure;
+    htmlEl.style.setProperty('--node-x', `${layout.x}%`);
+    htmlEl.style.setProperty('--node-y', `${layout.y}%`);
+    htmlEl.style.setProperty('--node-rotation', `${layout.rotation}deg`);
+    htmlEl.removeAttribute('role');
+    htmlEl.removeAttribute('aria-selected');
+    htmlEl.setAttribute('aria-pressed', String(selected));
+    htmlEl.setAttribute('aria-controls', 'talentDetailPanel');
+    htmlEl.setAttribute('aria-label', `${node.displayName}，${node.mechanicLabel}，等級 ${level}/${node.maxLevel}，${domState === 'maxed' ? '已滿級' : domState === 'unlocked' ? '已解鎖' : domState === 'available' ? `可學習，花費 ${node.cost} 點` : '尚未可學習'}`);
+    htmlEl.title = `${node.displayName}｜${node.mechanicLabel}`;
+    htmlEl.tabIndex = selected ? 0 : -1;
     htmlEl.onclick = null;
-    htmlEl.classList.toggle('selected', selectedTalentId === tid);
+    htmlEl.onkeydown = null;
+    htmlEl.classList.toggle('selected', selected);
     htmlEl.onclick = () => {
       playSFX('click');
-      selectedTalentId = tid;
+      selectTalentCard(htmlEl);
       if (gameState.talentTutorialActive && canUpgrade && !isMax) {
         unlockTalent(gameState.talentData, tid);
         gameState.talentTutorialActive = false;
@@ -323,6 +504,7 @@ export function renderTalentScreen() {
       }
       renderTalentScreen();
     };
+    htmlEl.onkeydown = event => handleTalentCardKeydown(event, htmlEl);
   });
 
   // 渲染引導氣泡
@@ -344,15 +526,60 @@ export function renderTalentScreen() {
     }
   }
 
-  const activeTrack = document.getElementById(gameState.activeTalentTrack);
-  if (!selectedTalentId || !activeTrack?.querySelector(`[data-id="${selectedTalentId}"]`)) {
-    const visibleCard = activeTrack?.querySelector('.talent-card') as HTMLElement | null;
-    selectedTalentId = visibleCard?.dataset.id as TalentId | null;
-  }
   renderTalentDetail();
+  bindTalentAtlasAsset();
+  observeTalentLayout();
+  scheduleTalentLines();
+}
 
-  // 延遲呼叫以保證佈局已完成
-  setTimeout(drawTalentLines, 50);
+function scheduleTalentLines(): void {
+  if (typeof requestAnimationFrame === 'undefined') return;
+  if (talentLineFrame !== null) return;
+  talentLineFrame = requestAnimationFrame(() => {
+    talentLineFrame = null;
+    drawTalentLines();
+  });
+}
+
+function observeTalentLayout(): void {
+  if (typeof ResizeObserver === 'undefined') return;
+  const container = document.querySelector('.talent-tree-container') as HTMLElement | null;
+  if (!container || observedTalentContainer === container) return;
+
+  talentResizeObserver?.disconnect();
+  talentResizeObserver = new ResizeObserver(scheduleTalentLines);
+  talentResizeObserver.observe(container);
+  observedTalentContainer = container;
+}
+
+function bindTalentAtlasAsset(): void {
+  const image = document.getElementById('talentAtlasArt') as HTMLImageElement | null;
+  const container = document.querySelector('.meridian-bg-container');
+  if (!image || !container) return;
+
+  const showArtwork = () => {
+    image.hidden = false;
+    container.classList.add('asset-loaded');
+    container.classList.remove('asset-fallback');
+    scheduleTalentLines();
+  };
+  const showFallback = () => {
+    image.hidden = true;
+    container.classList.remove('asset-loaded');
+    container.classList.add('asset-fallback');
+    scheduleTalentLines();
+  };
+
+  if (image.dataset.fallbackBound !== 'true') {
+    image.dataset.fallbackBound = 'true';
+    image.onload = showArtwork;
+    image.onerror = showFallback;
+  }
+
+  if (image.complete) {
+    if (image.naturalWidth > 0) showArtwork();
+    else showFallback();
+  }
 }
 
 function drawTalentLines() {
@@ -402,12 +629,7 @@ function drawTalentLines() {
     }
   };
 
-  // 1. 先處理常規連線（排除 yin_law, yang_law 到 taiji_dao 的交叉連線）
-  const regularConnections = connections.filter(
-    c => !((c.from === 'yin_law' || c.from === 'yang_law') && c.to === 'taiji_dao')
-  );
-
-  regularConnections.forEach(({ from, to }) => {
+  connections.forEach(({ from, to }) => {
     const fromEl = document.querySelector(`[data-id="${from}"]`);
     const toEl = document.querySelector(`[data-id="${to}"]`);
     if (!fromEl || !toEl) return;
@@ -416,66 +638,23 @@ function drawTalentLines() {
     const rectTo = toEl.getBoundingClientRect();
     if (rectFrom.width === 0 || rectTo.width === 0) return;
 
-    const x1 = rectFrom.right - containerRect.left;
+    const x1 = rectFrom.left + rectFrom.width / 2 - containerRect.left;
     const y1 = rectFrom.top + rectFrom.height / 2 - containerRect.top;
-    const x2 = rectTo.left - containerRect.left;
+    const x2 = rectTo.left + rectTo.width / 2 - containerRect.left;
     const y2 = rectTo.top + rectTo.height / 2 - containerRect.top;
 
     const fromLvl = gameState.talentData.talentLevels[from as TalentId] || 0;
     const isActive = fromLvl >= 1;
-    
-    const controlOffset = Math.max(30, (x2 - x1) / 2);
-    const d = `M ${x1} ${y1} C ${x1 + controlOffset} ${y1}, ${x2 - controlOffset} ${y2}, ${x2} ${y2}`;
-    
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const bend = Math.min(110, Math.max(32, (Math.abs(dx) + Math.abs(dy)) * 0.28));
+    const d = Math.abs(dx) >= Math.abs(dy)
+      ? `M ${x1} ${y1} C ${x1 + Math.sign(dx || 1) * bend} ${y1}, ${x2 - Math.sign(dx || 1) * bend} ${y2}, ${x2} ${y2}`
+      : `M ${x1} ${y1} C ${x1} ${y1 + Math.sign(dy || 1) * bend}, ${x2} ${y2 - Math.sign(dy || 1) * bend}, ${x2} ${y2}`;
+
     drawSegment(d, isActive);
   });
-
-  // 2. 特殊處理 yin_law / yang_law 到 taiji_dao 的 Y 型分叉連線
-  const yinEl = document.querySelector(`[data-id="yin_law"]`);
-  const yangEl = document.querySelector(`[data-id="yang_law"]`);
-  const taijiEl = document.querySelector(`[data-id="taiji_dao"]`);
-
-  if (yinEl && yangEl && taijiEl) {
-    const rectYin = yinEl.getBoundingClientRect();
-    const rectYang = yangEl.getBoundingClientRect();
-    const rectTaiji = taijiEl.getBoundingClientRect();
-    if (rectYin.width === 0 || rectYang.width === 0 || rectTaiji.width === 0) return;
-
-    const x1_yin = rectYin.right - containerRect.left;
-    const y1_yin = rectYin.top + rectYin.height / 2 - containerRect.top;
-
-    const x1_yang = rectYang.right - containerRect.left;
-    const y1_yang = rectYang.top + rectYang.height / 2 - containerRect.top;
-
-    const x2 = rectTaiji.left - containerRect.left;
-    const y2 = rectTaiji.top + rectTaiji.height / 2 - containerRect.top;
-
-    // 交匯點 M 坐標
-    const mx = x1_yin + (x2 - x1_yin) * 0.4;
-    const my = (y1_yin + y1_yang) / 2;
-
-    const yinLvl = gameState.talentData.talentLevels['yin_law'] || 0;
-    const yangLvl = gameState.talentData.talentLevels['yang_law'] || 0;
-
-    const isYinActive = yinLvl >= 1;
-    const isYangActive = yangLvl >= 1;
-    const isMainActive = isYinActive && isYangActive; // 雙方皆解鎖，主幹才啟動為金色流光
-
-    // 2.1 繪製 Yin 分支線
-    const controlYin = Math.max(20, (mx - x1_yin) / 2);
-    const dYin = `M ${x1_yin} ${y1_yin} C ${x1_yin + controlYin} ${y1_yin}, ${mx - controlYin} ${my}, ${mx} ${my}`;
-    drawSegment(dYin, isYinActive);
-
-    // 2.2 繪製 Yang 分支線
-    const controlYang = Math.max(20, (mx - x1_yang) / 2);
-    const dYang = `M ${x1_yang} ${y1_yang} C ${x1_yang + controlYang} ${y1_yang}, ${mx - controlYang} ${my}, ${mx} ${my}`;
-    drawSegment(dYang, isYangActive);
-
-    // 2.3 繪製主幹部分
-    const controlMain = Math.max(20, (x2 - mx) / 2);
-    const dMain = `M ${mx} ${my} C ${mx + controlMain} ${my}, ${x2 - controlMain} ${y2}, ${x2} ${y2}`;
-    drawSegment(dMain, isMainActive);
-  }
 }
 
 // 註冊至 gameState 以供全域呼叫

@@ -343,6 +343,25 @@ export function initInputEvents() {
         }
       }
     });
+
+    btn.addEventListener('keydown', (event) => {
+      const keyboardEvent = event as KeyboardEvent;
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(keyboardEvent.key)) return;
+
+      const enabledTabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.talent-nav-btn:not(:disabled)'));
+      const currentIndex = enabledTabs.indexOf(btn as HTMLButtonElement);
+      if (currentIndex < 0 || enabledTabs.length === 0) return;
+
+      let nextIndex = currentIndex;
+      if (keyboardEvent.key === 'ArrowRight') nextIndex = (currentIndex + 1) % enabledTabs.length;
+      if (keyboardEvent.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + enabledTabs.length) % enabledTabs.length;
+      if (keyboardEvent.key === 'Home') nextIndex = 0;
+      if (keyboardEvent.key === 'End') nextIndex = enabledTabs.length - 1;
+
+      keyboardEvent.preventDefault();
+      enabledTabs[nextIndex].click();
+      enabledTabs[nextIndex].focus();
+    });
   });
 
   // 戰鬥控制按鈕
@@ -365,6 +384,8 @@ export function initInputEvents() {
 
     if (gameState.levelTutorialStep === 'start_wave') {
       gameState.levelTutorialStep = 'wave_1_active';
+    } else if (gameState.levelTutorialStep === 'wave_4_guide') {
+      gameState.levelTutorialStep = 'idle';
     } else if (gameState.levelTutorialStep === 'wave_5_guide') {
       gameState.levelTutorialStep = 'completed';
     }
@@ -697,9 +718,9 @@ export function initInputEvents() {
     nextBtn.addEventListener('click', () => {
       playSFX('click');
       if (gameState.levelTutorialStep === 'intro') {
-        gameState.levelTutorialStep = 'build_wall';
-        // 自動幫玩家選中岩壁塔以方便點擊建造
-        gameState.selectedTool = 'earth';
+        gameState.levelTutorialStep = 'build_tower';
+        // 先讓玩家理解攻擊塔，再用岩壁示範小幅改道。
+        gameState.selectedTool = 'fire';
         gameState.mergeMode = false;
         if (gameState.refreshToolSelection) {
           gameState.refreshToolSelection();

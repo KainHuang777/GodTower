@@ -1850,22 +1850,25 @@ export function drawTile(
       const pebble = Math.max(1, scale);
       ctx.fillRect(x + ((hash % 9) + 2) * scale, y + (((hash >> 4) % 9) + 2) * scale, pebble * 2, pebble);
     } else {
-      ctx.fillStyle = '#A7C872';
+      // 日間草地採三層像素紋理：底色、明暗草叢、花草／碎石點綴。
+      ctx.fillStyle = '#96BE67';
       ctx.fillRect(x, y, size, size);
-      if (hash % 5 === 0) {
-        ctx.fillStyle = 'rgba(112, 154, 77, 0.14)';
-        ctx.fillRect(x, y, size, size);
-      } else if (hash % 7 === 0) {
-        ctx.fillStyle = 'rgba(235, 218, 135, 0.12)';
-        ctx.fillRect(x + size / 2, y, size / 2, size);
+      ctx.fillStyle = (hash % 4 === 0) ? '#8DB45F' : '#A3C970';
+      ctx.fillRect(x + (hash % 5) * scale, y + ((hash >> 3) % 5) * scale, 5 * scale, 3 * scale);
+      ctx.fillStyle = '#6C9C4F';
+      const tuftX = x + ((hash % 11) + 2) * scale;
+      const tuftY = y + (((hash >> 5) % 10) + 3) * scale;
+      ctx.fillRect(tuftX, tuftY, Math.max(1, scale), 3 * scale);
+      ctx.fillRect(tuftX + scale, tuftY + scale, 2 * scale, Math.max(1, scale));
+      if (hash % 6 === 0) {
+        ctx.fillStyle = '#E8D87A';
+        ctx.fillRect(tuftX + 3 * scale, tuftY, Math.max(1, scale), Math.max(1, scale));
+        ctx.fillStyle = '#FFF3C4';
+        ctx.fillRect(tuftX + 4 * scale, tuftY + scale, Math.max(1, scale), Math.max(1, scale));
       }
-      const px = x + ((hash % 11) + 2) * scale;
-      const py = y + (((hash >> 5) % 11) + 2) * scale;
-      ctx.fillStyle = (hash % 13 === 0) ? '#E7C65A' : 'rgba(67, 111, 54, 0.42)';
-      ctx.fillRect(px, py, Math.max(1, scale), Math.max(2, 2 * scale));
-      if (hash % 7 === 0) {
-        ctx.fillStyle = 'rgba(255, 243, 196, 0.32)';
-        ctx.fillRect(px + 2 * scale, py + scale, Math.max(1, scale), Math.max(1, scale));
+      if (hash % 11 === 0) {
+        ctx.fillStyle = '#B8AE93';
+        ctx.fillRect(x + 11 * scale, y + 11 * scale, 2 * scale, scale);
       }
     }
     return;
@@ -1896,6 +1899,109 @@ export function drawTile(
     ctx.fillStyle = isPath ? '#1e293b' : '#020617';
     ctx.fillRect(x, y, 16 * scale, 16 * scale);
   }
+}
+
+/**
+ * 第二輪敵人剪影：以頭身、肢體與元素核心取代舊版的對稱寶石外型。
+ * 仍使用原生像素方塊，尺寸只影響渲染，不影響既有子彈／碰撞資料。
+ */
+function drawRefinedEnemySprite(
+  ctx: CanvasRenderingContext2D,
+  enemyType: EnemyTypeId,
+  x: number,
+  y: number,
+  scale: number,
+  hitFlashFrame: number,
+  vx: number,
+  vy: number
+): void {
+  const motionFrame = Math.floor(Date.now() / 160) % 2;
+  const isMoving = Math.abs(vx) + Math.abs(vy) > 0.01;
+  const bob = isMoving ? motionFrame * scale : Math.round(Math.sin(Date.now() / 320) * scale);
+  // 目前兩個側視剪影的頭朝左；向右移動時鏡像，垂直移動沿用最後可讀側面。
+  const mirrorSideView = vx > 0 && (enemyType === 'snake' || enemyType === 'salamander');
+  const localX = (gx: number, w: number) => mirrorSideView ? -(gx + w) : gx;
+  const rect = (gx: number, gy: number, w: number, h: number, color: string) => {
+    ctx.fillStyle = hitFlashFrame > 0 ? '#fff7e8' : color;
+    ctx.fillRect(x + localX(gx, w) * scale, y + gy * scale + bob, w * scale, h * scale);
+  };
+  const outline = (gx: number, gy: number, w: number, h: number, fill: string) => {
+    rect(gx, gy, w, h, '#30251F');
+    rect(gx + 1, gy + 1, Math.max(0, w - 2), Math.max(0, h - 2), fill);
+  };
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = 'rgba(41, 32, 24, 0.28)';
+  ctx.fillRect(x - 6 * scale, y + 6 * scale, 12 * scale, 2 * scale);
+
+  switch (enemyType) {
+    case 'snake': {
+      // 小蛇：前傾頭部、眼睛與真正改變曲線的 2 幀 S 型扭動。
+      rect(-5, -6, 5, 3, '#174E2A'); rect(-4, -7, 3, 2, '#41B85A');
+      rect(-4, -5, 5, 5, '#2D9D4B'); rect(-3, -4, 1, 1, '#F5E66B'); rect(-1, -4, 1, 1, '#F5E66B');
+      if (motionFrame === 0) {
+        rect(-2, 0, 5, 3, '#217E3E'); rect(1, 2, 4, 3, '#2D9D4B'); rect(4, 4, 3, 2, '#1B6B34');
+        rect(6, 5, 2, 1, '#E85B3E');
+      } else {
+        rect(-1, 0, 5, 3, '#217E3E'); rect(2, 2, 4, 3, '#2D9D4B'); rect(1, 4, 4, 2, '#1B6B34');
+        rect(0, 5, 2, 1, '#E85B3E');
+      }
+      break;
+    }
+    case 'fly': {
+      // 蒼蠅：雙翼在高低兩個位置振翅，腹部維持清楚的垂直剪影。
+      const wingY = motionFrame === 0 ? -5 : -2;
+      const wingH = motionFrame === 0 ? 4 : 3;
+      rect(-8, wingY, 6, wingH, '#C5E3E8'); rect(2, wingY, 6, wingH, '#C5E3E8');
+      rect(-7, wingY + 1, 3, 1, '#E9F7F8'); rect(4, wingY + 1, 3, 1, '#E9F7F8');
+      outline(-3, -5, 6, 10, '#485361'); rect(-2, -4, 2, 2, '#E2574C'); rect(1, -4, 2, 2, '#E2574C');
+      rect(-2, 1, 4, 3, '#272E38'); rect(-4, 4 + motionFrame, 2, 1, '#272E38'); rect(2, 5 - motionFrame, 2, 1, '#272E38');
+      break;
+    }
+    case 'salamander': {
+      // 火蜥蜴：橫向頭身、交替步態與跳動火紋背脊。
+      rect(-7, -1, 4, 3, '#6D2623'); outline(-4, -4, 8, 8, '#D84B32');
+      rect(-2, -3 - motionFrame, 2, 1 + motionFrame, '#FFC34E'); rect(1, -2, 2, 1, '#FFC34E'); rect(3, motionFrame, 3, 2, '#A83A29');
+      rect(-5, 3, 2, motionFrame === 0 ? 3 : 2, '#842D27');
+      rect(2, 3, 2, motionFrame === 0 ? 2 : 3, '#842D27');
+      rect(-5, 5 + motionFrame, 3, 1, '#54231F'); rect(2, 6 - motionFrame, 3, 1, '#54231F');
+      rect(-3, -2, 1, 1, '#FFF1B5');
+      break;
+    }
+    case 'water_spirit': {
+      // 水靈：水滴頂端與浪花手臂交替收放，形成液態起伏而非整張縮放。
+      const crestLift = motionFrame;
+      rect(-5 - motionFrame, -4, 10 + motionFrame * 2, 8, '#155B9E'); rect(-4, -6 - crestLift, 8, 10 + crestLift, '#2495D3');
+      rect(-3, -7 - crestLift, 6, 2, '#67D8F4'); rect(-2 + motionFrame, -8 - crestLift, 3, 2, '#BDF5FF');
+      rect(-3, -2, 2, 2, '#E9FBFF'); rect(2, -2, 2, 2, '#E9FBFF');
+      rect(-2, -1, 1, 1, '#18334A'); rect(2, -1, 1, 1, '#18334A');
+      rect(-8 + motionFrame, 1 - motionFrame, 4, 2, '#48BCE9'); rect(4 - motionFrame, motionFrame, 4, 2, '#48BCE9');
+      rect(-3 + motionFrame, 4, 6 - motionFrame * 2, 2, '#176DAE');
+      break;
+    }
+    case 'golem': {
+      // 石傀儡：雙臂與腳步交替，沉重步態仍保持方形頭與地核辨識。
+      outline(-4, -7, 8, 6, '#847C70'); rect(-2, -5, 1, 1, '#F0D978'); rect(1, -5, 1, 1, '#F0D978');
+      outline(-5, -1, 10, 7, '#6A6259');
+      rect(-7, motionFrame === 0 ? 0 : 1, 3, 5, '#514B45'); rect(4, motionFrame === 0 ? 1 : 0, 3, 5, '#514B45');
+      rect(-6, 1 + motionFrame, 2, 3, '#9A9081'); rect(4, 2 - motionFrame, 2, 3, '#9A9081');
+      rect(-2, 0, 4, 3, '#A99155'); rect(-1, 1, 2, 1, '#E6D276');
+      rect(-4 + motionFrame, 6, 3, 2, '#514B45'); rect(1 - motionFrame, 6, 3, 2, '#514B45');
+      break;
+    }
+    case 'beetle': {
+      // 金甲蟲：六足前後交替並開合甲殼亮線，避免只靠上下浮動。
+      rect(-8 + motionFrame, 1, 4, 1, '#4A3021'); rect(4 - motionFrame, 1, 4, 1, '#4A3021');
+      rect(-7, 3 + motionFrame, 3, 1, '#4A3021'); rect(4, 4 - motionFrame, 3, 1, '#4A3021');
+      rect(-6 + motionFrame, 6, 3, 1, '#4A3021'); rect(3 - motionFrame, 6, 3, 1, '#4A3021');
+      outline(-5, -5, 10, 11, '#B8791E'); rect(-3, -4, 6, 7, '#DCA52C'); rect(-1, -4, 2, 7, '#FFE278');
+      rect(-2 - motionFrame, -7, 1, 3, '#4A3021'); rect(1 + motionFrame, -7, 1, 3, '#4A3021');
+      rect(-3, 4, 6, 2, motionFrame === 0 ? '#8B541B' : '#A66A1C');
+      break;
+  }
+  }
+  ctx.restore();
 }
 
 /** 繪製怪物精靈 */
@@ -1983,9 +2089,16 @@ export function drawEnemySprite(
     return;
   }
 
-  // 2. Fallback: 原始內建像素精靈多幀動畫
-  const data = ENEMY_SPRITE_MAP[enemyType];
+  // 2. 原生像素預設：常規敵人使用第二輪生物剪影；Boss 保留大尺寸龍影矩陣。
   const pixelScale = scale * getEnemyVisualScale(enemyType);
+  if (enemyType !== 'boss_dragon') {
+    drawRefinedEnemySprite(ctx, enemyType, x, y, pixelScale, hitFlashFrame, vx, vy);
+    ctx.restore();
+    return;
+  }
+
+  // 3. Fallback: 大型 Boss 的原始內建像素精靈多幀動畫
+  const data = ENEMY_SPRITE_MAP[enemyType];
   if (data) {
     const frameCount = data.matrices.length;
     const frameIdx = Math.floor(Date.now() / 180) % frameCount;
@@ -2057,6 +2170,144 @@ function drawBaseTowerPedestal(
   ctx.restore();
 }
 
+/**
+ * 標準基礎塔的第二輪原生像素繪製。
+ * 參考圖的重點不是堆高解析材質，而是「石台 + 建築主體 + 元素核心」
+ * 在 28~32px 顯示時依然能一眼辨識。所有座標維持在 16 單位格中，
+ * 因此不會影響地圖格、尋路或塔的互動座標。
+ */
+function drawRefinedBaseTower(
+  ctx: CanvasRenderingContext2D,
+  type: string,
+  x: number,
+  y: number,
+  scale: number,
+  elementColor: string,
+  wallMask: number = 0,
+  cooldown: number = 0,
+  fireRate: number = 0
+): void {
+  const animationFrame = Math.floor(Date.now() / 220) % 2;
+  const isAttacking = fireRate > 0 && cooldown > fireRate - 15;
+  const rect = (gx: number, gy: number, w: number, h: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x + gx * scale, y + gy * scale, w * scale, h * scale);
+  };
+  const outline = (gx: number, gy: number, w: number, h: number, fill: string, edge = '#33231A') => {
+    rect(gx, gy, w, h, edge);
+    rect(gx + 1, gy + 1, Math.max(0, w - 2), Math.max(0, h - 2), fill);
+  };
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+
+  // 三層石台：攻擊塔共用。岩壁塔改為直接與相鄰格拼接的牆段。
+  if (type !== 'earth') {
+    rect(1, 12, 14, 4, '#38291E');
+    rect(2, 11, 12, 4, '#6B6358');
+    rect(3, 12, 10, 2, '#A79A80');
+    rect(2, 14, 12, 1, '#51493F');
+    rect(4, 11, 2, 1, '#D7C8A8');
+    rect(10, 11, 2, 1, '#D7C8A8');
+    rect(3, 15, 10, 1, elementColor);
+  }
+
+  switch (type) {
+    case 'fire': {
+      // 熔火祭壇：待機火焰左右跳動；攻擊後火舌升高形成清楚的發射幀。
+      outline(4, 6, 8, 7, '#6B3528');
+      rect(5, 7, 2, 4, '#A64A2D'); rect(9, 7, 2, 4, '#8E3928');
+      rect(7, 8 - (isAttacking ? 1 : 0), 2, 3 + (isAttacking ? 1 : 0), '#F29D32'); rect(7, 9, 2, 1, '#FFF0A6');
+      rect(3, 5, 10, 2, '#473126'); rect(4, 4, 8, 1, '#B15D34');
+      const flameTop = isAttacking ? -2 : (animationFrame === 0 ? 1 : 0);
+      rect(7 + animationFrame, flameTop, 2, 5 - flameTop, '#F0572B');
+      rect(6, 2 + animationFrame, 4, 4 - animationFrame, '#F57F28');
+      rect(7, 1 + animationFrame, 2, 4, '#FFE27A'); rect(7 + animationFrame, 3, 1, 2, '#FFF7C4');
+      break;
+    }
+    case 'water': {
+      // 冰泉塔：冰晶以 2 幀呼吸；攻擊幀向上張開側晶片。
+      outline(3, 7, 10, 6, '#5D7C87');
+      rect(4, 8, 8, 2, '#75CFF0'); rect(5, 10, 6, 2, '#277CB6');
+      const crystalLift = isAttacking ? 2 : animationFrame;
+      rect(6, 4 - crystalLift, 4, 5 + crystalLift, '#2A91D0'); rect(7, 3 - crystalLift, 2, 5 + crystalLift, '#7DE5FF');
+      rect(7, 1 - crystalLift, 2, 2, '#C4F5FF'); rect(6, 2 - crystalLift, 4, 1, '#52BFE8');
+      const shardY = isAttacking ? 4 : 6 - animationFrame;
+      rect(3, shardY, 2, 3, '#BCEFFF'); rect(11, shardY, 2, 3, '#BCEFFF');
+      if (isAttacking) {
+        rect(1, 3, 2, 2, '#75CFF0'); rect(13, 3, 2, 2, '#75CFF0');
+      }
+      break;
+    }
+    case 'wood': {
+      // 靈木祠：葉冠左右呼吸，攻擊時枝條抬升、翡翠核心綻放。
+      rect(6, 4, 4, 9, '#573A23'); rect(5, 8, 2, 4, '#75492A'); rect(9, 7, 2, 5, '#75492A');
+      const branchLift = isAttacking ? 2 : animationFrame;
+      rect(2 + animationFrame, 4 - branchLift, 5, 3, '#277041'); rect(9 - animationFrame, 3 - branchLift, 5, 4, '#2D8146'); rect(5, 2 - branchLift, 6, 3, '#3E9A4F');
+      rect(3 + animationFrame, 3 - branchLift, 2, 2, '#70C75B'); rect(11 - animationFrame, 4 - branchLift, 2, 2, '#78D564');
+      outline(6, 7 - (isAttacking ? 1 : 0), 4, 4 + (isAttacking ? 1 : 0), '#2F9F62');
+      rect(7, 8 - (isAttacking ? 1 : 0), 2, 2, isAttacking ? '#E3FF9E' : '#B8F28B');
+      if (isAttacking) { rect(4, 1, 1, 2, '#9BE36F'); rect(11, 0, 1, 2, '#9BE36F'); }
+      break;
+    }
+    case 'earth': {
+      // 岩壁塔：每格都是真正牆段。上/右/下/左相鄰時，牆體延伸至格邊並消除斷口。
+      const connectedUp = (wallMask & 1) !== 0;
+      const connectedRight = (wallMask & 2) !== 0;
+      const connectedDown = (wallMask & 4) !== 0;
+      const connectedLeft = (wallMask & 8) !== 0;
+      const top = connectedUp ? 0 : 6;
+      const bottom = connectedDown ? 16 : 15;
+      rect(0, top, 16, bottom - top + 1, '#342B24');
+      rect(1, top + 1, 14, Math.max(1, bottom - top - 1), '#6E675B');
+      rect(2, top + 2, 5, 2, '#A69C88'); rect(9, top + 2, 5, 2, '#8C8475');
+      rect(4, top + 5, 5, 2, '#827A6B'); rect(10, top + 7, 4, 2, '#B4AA92');
+      if (!connectedUp) {
+        rect(1, 5, 3, 2, '#AFA58E'); rect(6, 4, 4, 3, '#8F8776'); rect(12, 5, 3, 2, '#B9AF98');
+      }
+      if (!connectedLeft) rect(0, top + 2, 2, 4, '#8B8374');
+      if (!connectedRight) rect(14, top + 5, 2, 4, '#8B8374');
+      break;
+    }
+    case 'metal': {
+      // 金塔：旗刃左右擺動；攻擊幀拉長中央鏡刃與高光。
+      outline(4, 7, 8, 6, '#A87524');
+      rect(5, 8, 6, 3, '#D5A639'); rect(7, 8, 2, 4, '#FFF0A6');
+      rect(3, 6, 10, 2, '#4A3A2B'); rect(4, 5, 8, 1, '#E4B947');
+      rect(5, 4, 6, 2, '#5B452C'); rect(6, 3, 4, 2, '#E9C454');
+      const bladeTop = isAttacking ? -2 : 1 - animationFrame;
+      rect(7, bladeTop, 2, 4 - bladeTop, '#FFE27A'); rect(8, bladeTop - 1, 1, 3, '#FFF7C4');
+      rect(animationFrame === 0 ? 4 : 9, 1, 3, 1, '#D5A639');
+      if (isAttacking) { rect(5, 0, 1, 2, '#FFF0A6'); rect(10, -1, 1, 2, '#FFF0A6'); }
+      break;
+    }
+    case 'yin': {
+      // 陰塔：雙側陰影交替升降；攻擊幀收攏至太極核心。
+      outline(4, 7, 8, 6, '#403B4E'); rect(5, 8, 6, 3, '#232534');
+      const yinLift = isAttacking ? 3 : animationFrame;
+      rect(2 + (isAttacking ? 2 : 0), 5 - yinLift, 2, 4 + yinLift, '#272432');
+      rect(12 - (isAttacking ? 2 : 0), 4 - (isAttacking ? 3 : 1 - animationFrame), 2, 5 + (isAttacking ? 2 : 0), '#272432');
+      rect(5, 4, 6, 4, '#161720'); rect(6, 3, 4, 1, '#605875');
+      rect(6, 4, 4, 3, '#E9E0C5'); rect(6, 6, 4, 1, '#1C1D28');
+      rect(7, 5, 1, 1, '#1C1D28'); rect(8, 6, 1, 1, isAttacking ? '#FFFFFF' : '#F8F1D4');
+      break;
+    }
+    case 'yang': {
+      // 陽塔：日輪光芒交替伸縮；攻擊時形成完整八方放射剪影。
+      outline(4, 8, 8, 5, '#B8822D'); rect(5, 9, 6, 2, '#EAC44F');
+      rect(6, 6, 4, 3, '#FFF0A6'); rect(7, 5, 2, 4, '#F6C644');
+      const rayReach = isAttacking ? 2 : animationFrame;
+      rect(6, 3 - rayReach, 4, 1 + rayReach, '#F6C644'); rect(5, 2 - rayReach, 1, 2 + rayReach, '#FFE27A'); rect(10, 2 - rayReach, 1, 2 + rayReach, '#FFE27A');
+      rect(3 - rayReach, 4, 3 + rayReach, 1, '#F6C644'); rect(10, 4, 3 + rayReach, 1, '#F6C644');
+      rect(7, 1 - rayReach, 2, 2 + rayReach, '#FFF7C4');
+      if (isAttacking) { rect(3, 1, 1, 1, '#FFE27A'); rect(12, 1, 1, 1, '#FFE27A'); }
+      break;
+  }
+  }
+
+  ctx.restore();
+}
+
 export function drawTowerSprite(
   ctx: CanvasRenderingContext2D, 
   towerType: TowerTypeId, 
@@ -2066,7 +2317,8 @@ export function drawTowerSprite(
   style: string = 'pixel',
   cooldown: number = 0,
   fireRate: number = 0,
-  recoilY: number = 0
+  recoilY: number = 0,
+  wallMask: number = 0
 ): void {
   // 合成塔暫用基礎屬性的精靈（加上 Lv 標記）
   let baseType = towerType.replace(/_2$/, '').split('_')[0];
@@ -2081,24 +2333,26 @@ export function drawTowerSprite(
   const ringColor = ELEMENT_RING_COLORS[baseType] ?? elementColor;
   const breathT = Date.now() / 600;
   const breath = 0.85 + Math.sin(breathT) * 0.15; // 0.7~1.0 呼吸
-  ctx.save();
-  // 外層識別環（低透明度，alpha 隨呼吸脈動）
-  ctx.beginPath();
-  ctx.ellipse(x + 8 * scale, y + 14 * scale, 13 * scale * breath, 6 * scale * breath, 0, 0, Math.PI * 2);
-  ctx.fillStyle = hexToRgba(elementColor, 0.18 * breath);
-  ctx.fill();
-  // 內層底盤（3D 透視橢圓，較實心）
-  ctx.beginPath();
-  ctx.ellipse(x + 8 * scale, y + 12 * scale, 10 * scale, 5 * scale, 0, 0, Math.PI * 2);
-  ctx.fillStyle = hexToRgba(elementColor, 0.20);
-  ctx.fill();
-  ctx.strokeStyle = hexToRgba(ringColor, 0.65);
-  ctx.lineWidth = 1.5 * scale;
-  ctx.stroke();
-  ctx.restore();
+  if (towerType !== 'earth') {
+    ctx.save();
+    // 外層識別環（低透明度，alpha 隨呼吸脈動）
+    ctx.beginPath();
+    ctx.ellipse(x + 8 * scale, y + 14 * scale, 13 * scale * breath, 6 * scale * breath, 0, 0, Math.PI * 2);
+    ctx.fillStyle = hexToRgba(elementColor, 0.18 * breath);
+    ctx.fill();
+    // 內層底盤（3D 透視橢圓，較實心）
+    ctx.beginPath();
+    ctx.ellipse(x + 8 * scale, y + 12 * scale, 10 * scale, 5 * scale, 0, 0, Math.PI * 2);
+    ctx.fillStyle = hexToRgba(elementColor, 0.20);
+    ctx.fill();
+    ctx.strokeStyle = hexToRgba(ringColor, 0.65);
+    ctx.lineWidth = 1.5 * scale;
+    ctx.stroke();
+    ctx.restore();
+  }
 
   const isBaseTower = ['fire', 'water', 'wood', 'earth', 'metal', 'yin', 'yang'].includes(towerType);
-  if (isBaseTower) {
+  if (isBaseTower && style === 'highres') {
     drawBaseTowerPedestal(ctx, x, y, scale, elementColor);
   }
 
@@ -2150,6 +2404,37 @@ export function drawTowerSprite(
       }
     }
     
+    ctx.restore();
+    drawTowerLevelStars(ctx, towerType, x, y, scale);
+    return;
+  }
+
+  // 正式原生像素塔：72×96 高密度像素插畫，以約 48×64px 顯示於戰場。
+  // 座標仍錨定在單一邏輯格的底部，故不改變放置、尋路或碰撞邏輯。
+  const pixelTowerImage = imageAssetCache.get(`tower_pixel_${baseType}`);
+  if (isBaseTower && baseType !== 'earth' && style === 'pixel' && pixelTowerImage?.complete && pixelTowerImage.naturalWidth !== 0) {
+    const width = 27.5 * scale;
+    const height = 36.5 * scale;
+    const centerX = x + 8 * scale;
+    const baseY = y + 16 * scale;
+    ctx.save();
+    if (recoilY !== 0) ctx.translate(0, recoilY * scale);
+    ctx.imageSmoothingEnabled = false;
+    ctx.shadowBlur = 3 * scale;
+    ctx.shadowColor = hexToRgba(elementColor, 0.26);
+    ctx.drawImage(pixelTowerImage, centerX - width / 2, baseY - height, width, height);
+    ctx.restore();
+    drawTowerLevelStars(ctx, towerType, x, y, scale);
+    return;
+  }
+
+  // 資產載入失敗時，回退到程式原生像素建築剪影。
+  if (isBaseTower && style !== 'highres') {
+    ctx.save();
+    if (recoilY !== 0) ctx.translate(0, recoilY * scale);
+    ctx.shadowBlur = 4 * scale;
+    ctx.shadowColor = hexToRgba(elementColor, 0.35);
+    drawRefinedBaseTower(ctx, baseType, x, y, scale, elementColor, wallMask, cooldown, fireRate);
     ctx.restore();
     drawTowerLevelStars(ctx, towerType, x, y, scale);
     return;

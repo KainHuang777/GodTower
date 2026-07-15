@@ -217,8 +217,8 @@ export function renderGame() {
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
-    const rx = 58 * gameState.TILE_SIZE;
-    const ry = 17 * gameState.TILE_SIZE;
+    const rx = 48 * gameState.TILE_SIZE;
+    const ry = 22 * gameState.TILE_SIZE;
     ctx.strokeRect(rx, ry, gameState.TILE_SIZE, gameState.TILE_SIZE);
     ctx.fillStyle = '#38bdf8';
     ctx.font = 'bold 9px sans-serif';
@@ -248,36 +248,43 @@ export function renderGame() {
 
   // 檢查點
   gameState.WAYPOINTS.forEach((wp, idx) => {
-    ctx.beginPath();
     const wpScale = gameState.TILE_SIZE / 16;
-    ctx.arc(wp.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, wp.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, 10 * wpScale, 0, Math.PI * 2);
-    
-    let wpBg = '#f59e0b';
-    let wpFg = '#fff';
-    
-    if (gameState.currentTheme === 'chinese') {
-      wpBg = '#ea580c';
-    } else if (gameState.currentTheme === 'ink') {
-      wpBg = '#334155';
-    } else if (gameState.currentTheme === 'starry') {
-      wpBg = '#8b5cf6';
+    const cx = wp.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
+    const cy = wp.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
+    const pulse = 0.86 + Math.sin(Date.now() / 400 + idx) * 0.10;
+    ctx.save();
+    // 地面法陣：外光圈、石製分段環與中央編號印記，避免暫代向量圓點感。
+    ctx.beginPath();
+    ctx.arc(cx, cy, 14 * wpScale * pulse, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 204, 91, 0.18)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 10 * wpScale, 0, Math.PI * 2);
+    ctx.fillStyle = '#4A3425';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 8 * wpScale, 0, Math.PI * 2);
+    ctx.fillStyle = '#D69D42';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5.5 * wpScale, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFF0B0';
+    ctx.fill();
+    ctx.fillStyle = '#8B5A2B';
+    for (let mark = 0; mark < 4; mark++) {
+      const angle = mark * Math.PI / 2 + Math.PI / 4;
+      ctx.fillRect(cx + Math.cos(angle) * 9 * wpScale - wpScale, cy + Math.sin(angle) * 9 * wpScale - wpScale, 2 * wpScale, 2 * wpScale);
     }
-    
-    ctx.fillStyle = wpBg; ctx.fill();
-    
-    if (gameState.currentTheme === 'ink') {
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 1 * wpScale;
-      ctx.stroke();
-    }
-    
-    ctx.fillStyle = wpFg; ctx.font = `bold ${Math.round(11 * wpScale)}px Outfit, sans-serif`;
+    ctx.fillStyle = '#3A251B';
+    ctx.font = `900 ${Math.round(10 * wpScale)}px ${'"Noto Sans TC", "Microsoft JhengHei", sans-serif'}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText((idx + 1).toString(), wp.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2, wp.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2);
+    ctx.fillText((idx + 1).toString(), cx, cy + 0.5 * wpScale);
+    ctx.restore();
   });
 
-  // 砲台
-  for (const t of gameState.towers) {
+  // 砲台依底部座標排序。較上方的塔先畫、較下方的塔後畫，形成穩定前後景。
+  const renderTowers = [...gameState.towers].sort((a, b) => a.y - b.y || a.x - b.x || a.id - b.id);
+  for (const t of renderTowers) {
     // P2: 合成引導金色脈衝光圈
     if (gameState.mergeTutorialState === 'active' && gameState.mergeTutorialTowers.includes(t.id)) {
       ctx.save();
@@ -297,7 +304,32 @@ export function renderGame() {
       ctx.restore();
     }
 
-    drawTowerSprite(ctx, t.typeId, t.x * gameState.TILE_SIZE, t.y * gameState.TILE_SIZE, gameState.TILE_SIZE / 16, gameState.currentStyle, t.cooldown, t.def.fireRate, t.recoilY);
+    const isEarthWall = t.typeId === 'earth';
+    const nearbyTower = !isEarthWall && gameState.towers.some(other =>
+      other.id !== t.id && other.typeId !== 'earth' &&
+      Math.abs(other.x - t.x) <= 1 && Math.abs(other.y - t.y) <= 1
+    );
+    // 相鄰塔縮至約 40px 視覺寬度，保留合成功能並留出可辨識的前後景。
+    const towerScale = (gameState.TILE_SIZE / 16) * (isEarthWall ? 1 : nearbyTower ? 1.48 : 1.75);
+    const towerOverflow = (16 * towerScale - gameState.TILE_SIZE) / 2;
+    const wallMask = isEarthWall
+      ? (gameState.towers.some(other => other.typeId === 'earth' && other.x === t.x && other.y === t.y - 1) ? 1 : 0)
+        | (gameState.towers.some(other => other.typeId === 'earth' && other.x === t.x + 1 && other.y === t.y) ? 2 : 0)
+        | (gameState.towers.some(other => other.typeId === 'earth' && other.x === t.x && other.y === t.y + 1) ? 4 : 0)
+        | (gameState.towers.some(other => other.typeId === 'earth' && other.x === t.x - 1 && other.y === t.y) ? 8 : 0)
+      : 0;
+    drawTowerSprite(
+      ctx,
+      t.typeId,
+      t.x * gameState.TILE_SIZE - (isEarthWall ? 0 : towerOverflow),
+      t.y * gameState.TILE_SIZE - (isEarthWall ? 0 : towerOverflow * 2),
+      towerScale,
+      gameState.currentStyle,
+      t.cooldown,
+      t.def.fireRate,
+      t.recoilY,
+      wallMask
+    );
     gameState.drawCallCount++;
 
     // 合成模式高亮與幽靈預覽
@@ -381,10 +413,9 @@ export function renderGame() {
 
   // 教學關卡：build_wall 步驟高亮推薦建塔區域
   if (gameState.currentMap.id === 'tutorial' && gameState.levelTutorialStep === 'build_wall') {
-    // 建議在右上通道口 (x=62~66, y=6~14) 建造，對應地圖三號點附近
+    // 全圖教室只示範一次小幅改道，避免教學被拖曳與長距離繞路打斷。
     const HINT_TILES = [
-      { x: 62, y: 8 }, { x: 62, y: 9 }, { x: 62, y: 10 },
-      { x: 63, y: 8 }, { x: 63, y: 9 }, { x: 63, y: 10 },
+      { x: 9, y: 3 }, { x: 10, y: 3 }, { x: 11, y: 3 },
     ];
     const ts = gameState.TILE_SIZE;
     const pulse = 0.55 + 0.45 * Math.abs(Math.sin(Date.now() / 400)); // 脈衝透明度
@@ -410,10 +441,10 @@ export function renderGame() {
 
   // 教學關卡：build_tower 步驟高亮推薦建塔區域
   if (gameState.currentMap.id === 'tutorial' && gameState.levelTutorialStep === 'build_tower') {
-    // 建議在剛建的岩壁塔（牆壁）周邊 (x=61, y=8~10 或 x=64, y=8~10) 建造烈焰塔
+    // 先把攻擊塔放在上半段道路旁，讓玩家立即看懂射程與行進線的關係。
     const HINT_TILES = [
-      { x: 61, y: 8 }, { x: 61, y: 9 }, { x: 61, y: 10 },
-      { x: 64, y: 8 }, { x: 64, y: 9 }, { x: 64, y: 10 }
+      { x: 7, y: 4 }, { x: 8, y: 4 }, { x: 9, y: 4 },
+      { x: 10, y: 4 }, { x: 11, y: 4 }
     ];
     const ts = gameState.TILE_SIZE;
     const pulse = 0.55 + 0.45 * Math.abs(Math.sin(Date.now() / 400)); // 脈衝透明度
@@ -885,6 +916,14 @@ export function loadAllHighResSprites(): void {
     ['tower_metal',        `${SPRITE_BASE}/towers/metal.png`],
     ['tower_yin',          `${SPRITE_BASE}/towers/yin.png`],
     ['tower_yang',         `${SPRITE_BASE}/towers/yang.png`],
+    // --- 第二輪正式原生像素塔（72×96 來源，透明背景）---
+    ['tower_pixel_fire',  `${SPRITE_BASE}/towers-v2/fire-v2.png`],
+    ['tower_pixel_water', `${SPRITE_BASE}/towers-v2/water-v2.png`],
+    ['tower_pixel_wood',  `${SPRITE_BASE}/towers-v2/wood-v2.png`],
+    ['tower_pixel_earth', `${SPRITE_BASE}/towers-v2/earth-v2.png`],
+    ['tower_pixel_metal', `${SPRITE_BASE}/towers-v2/metal-v2.png`],
+    ['tower_pixel_yin',   `${SPRITE_BASE}/towers-v2/yin-v2.png`],
+    ['tower_pixel_yang',  `${SPRITE_BASE}/towers-v2/yang-v2.png`],
     // --- Lv2 塔 ---
     ['tower_fire_2',       `${SPRITE_BASE}/towers_lv2/fire_2.png`],
     ['tower_water_2',      `${SPRITE_BASE}/towers_lv2/water_2.png`],

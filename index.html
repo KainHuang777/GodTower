@@ -1119,144 +1119,212 @@
   </div>
 
   <!-- ===== 場景 2: 天賦頁 ===== -->
-  <div id="talentScreen" class="scene">
+  <div id="talentScreen" class="scene talent-atlas-v2">
+    <div class="talent-atlas-frame">
+      <span class="talent-frame-corner corner-nw" aria-hidden="true"></span>
+      <span class="talent-frame-corner corner-ne" aria-hidden="true"></span>
+      <span class="talent-frame-corner corner-sw" aria-hidden="true"></span>
+      <span class="talent-frame-corner corner-se" aria-hidden="true"></span>
+      <div class="talent-atlas-page">
     <div class="talent-header">
-      <h2>五行經脈</h2>
-      <div>
-        <span class="talent-points-display">可用天賦點: <span id="talentPointsVal">0</span></span>
-        <button id="btnResetTalents" class="btn" style="margin-left:12px;">🔄 重置天賦</button>
+      <div class="talent-title-group">
+        <span class="talent-title-seal" aria-hidden="true">靈</span>
+        <div class="talent-title-copy">
+          <h2 id="talentAtlasTitle">靈蘭藏象圖</h2>
+          <span class="talent-screen-subtitle">五行經脈・天賦修習</span>
+        </div>
+      </div>
+      <div class="talent-header-actions">
+        <div class="talent-points-display talent-jade-plaque" aria-label="可用天賦點">
+          <span class="talent-points-caption">靈蘊</span>
+          <strong id="talentPointsVal">0</strong>
+          <span class="talent-points-unit">點可用</span>
+        </div>
+        <button id="btnResetTalents" class="btn talent-reset-btn">🔄 重置天賦</button>
       </div>
     </div>
     <!-- ===== Track 快速導覽列 ===== -->
-    <div class="talent-nav" id="talentNav">
+    <div class="talent-nav" id="talentNav" role="tablist" aria-label="天賦章節">
       <span class="talent-nav-label">經脈：</span>
-      <button class="talent-nav-btn active" data-track="track-base">基礎</button>
-      <button class="talent-nav-btn" data-track="track-attack">氣血</button>
-      <button class="talent-nav-btn" data-track="track-element">五行</button>
-      <button class="talent-nav-btn" data-track="track-yinyang">陰陽</button>
+      <button id="talentTabBase" class="talent-nav-btn active" data-track="track-base" role="tab" aria-controls="track-base" aria-selected="true">基礎</button>
+      <button id="talentTabAttack" class="talent-nav-btn" data-track="track-attack" role="tab" aria-controls="track-attack" aria-selected="false" tabindex="-1">氣血</button>
+      <button id="talentTabElement" class="talent-nav-btn" data-track="track-element" role="tab" aria-controls="track-element" aria-selected="false" tabindex="-1">五行</button>
+      <button id="talentTabYinyang" class="talent-nav-btn" data-track="track-yinyang" role="tab" aria-controls="track-yinyang" aria-selected="false" tabindex="-1">陰陽</button>
+    </div>
+    <div id="talentStoryGuide" class="talent-story-guide" aria-live="polite">
+      先從任督二脈穩固基地與資源；累積天賦點後，其他經脈會逐步開放。
     </div>
     <div class="talent-workspace">
       <div class="talent-tree-wrapper">
-        <div class="talent-tree-container" style="position: relative;">
-        <svg id="talentSvg" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></svg>
+        <div class="talent-tree-container">
+        <svg id="talentSvg" class="talent-lines-svg" aria-hidden="true"></svg>
         
-        <!-- P3: 人體經脈五臟背景 SVG -->
-        <div class="meridian-bg-container" style="position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: 0.18; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-          <svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; max-height: 100%;">
-             <!-- 經脈輪廓 -->
-             <path d="M 400 40 C 440 40, 450 80, 400 120 C 350 80, 360 40, 400 40" fill="none" stroke="#818cf8" stroke-width="2.5"/>
-             <path d="M 400 120 C 460 150, 490 240, 470 360 C 450 480, 415 570, 400 600 C 385 570, 350 480, 330 360 C 310 240, 340 150, 400 120" fill="none" stroke="#818cf8" stroke-width="2.5"/>
-             <!-- 五行對應五臟標記 -->
-             <!-- 肝(木) -->
-             <circle cx="360" cy="270" r="22" fill="none" stroke="#4ade80" stroke-width="2" stroke-dasharray="4,4"/>
-             <text x="360" y="274" fill="#4ade80" font-size="12" text-anchor="middle" font-family="'DotGothic16', sans-serif" font-weight="bold">肝 (木)</text>
-             <!-- 心(火) -->
-             <circle cx="400" cy="210" r="22" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="4,4"/>
-             <text x="400" y="214" fill="#ef4444" font-size="12" text-anchor="middle" font-family="'DotGothic16', sans-serif" font-weight="bold">心 (火)</text>
-             <!-- 脾(土) -->
-             <circle cx="440" cy="275" r="22" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4,4"/>
-             <text x="440" y="279" fill="#fbbf24" font-size="12" text-anchor="middle" font-family="'DotGothic16', sans-serif" font-weight="bold">脾 (土)</text>
-             <!-- 肺(金) -->
-             <circle cx="400" cy="170" r="24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
-             <text x="400" y="174" fill="#cbd5e1" font-size="12" text-anchor="middle" font-family="'DotGothic16', sans-serif" font-weight="bold">肺 (金)</text>
-             <!-- 腎(水) -->
-             <circle cx="400" cy="340" r="22" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4,4"/>
-             <text x="400" y="344" fill="#38bdf8" font-size="12" text-anchor="middle" font-family="'DotGothic16', sans-serif" font-weight="bold">腎 (水)</text>
-             
-             <!-- 任督二脈與太極核心 -->
-             <path d="M 400 40 L 400 600" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="6,6"/>
-             <circle cx="400" cy="305" r="54" fill="#f2dfa7" stroke="#5a3826" stroke-width="5"/>
-             <text x="400" y="320" fill="#3a251b" font-size="44" text-anchor="middle" font-family="sans-serif" font-weight="bold">☯</text>
+        <!-- P2-C: responsive 人體、任督、五藏、太極與八卦裝飾 SVG -->
+        <div class="meridian-bg-container" aria-hidden="true">
+          <img id="talentAtlasArt" class="talent-atlas-art"
+               src="/assets/ui/talent-atlas-figures-v1.png" alt="" aria-hidden="true" decoding="async">
+          <svg class="meridian-atlas-svg" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet"
+               xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <!-- 八卦只作易象水印，不表示醫療或穴位方位。 -->
+            <g class="meridian-bagua-ring">
+              <circle cx="400" cy="300" r="226"/>
+              <circle cx="400" cy="300" r="194"/>
+              <g class="meridian-trigram" transform="translate(400 82)">
+                <path d="M-24-12H24 M-24 0H24 M-24 12H24"/>
+              </g>
+              <g class="meridian-trigram" transform="translate(554 146) rotate(45)">
+                <path d="M-24-12H-6 M6-12H24 M-24 0H24 M-24 12H24"/>
+              </g>
+              <g class="meridian-trigram" transform="translate(618 300) rotate(90)">
+                <path d="M-24-12H24 M-24 0H-6 M6 0H24 M-24 12H24"/>
+              </g>
+              <g class="meridian-trigram" transform="translate(554 454) rotate(135)">
+                <path d="M-24-12H24 M-24 0H-6 M6 0H24 M-24 12H-6 M6 12H24"/>
+              </g>
+              <g class="meridian-trigram" transform="translate(400 518)">
+                <path d="M-24-12H-6 M6-12H24 M-24 0H-6 M6 0H24 M-24 12H-6 M6 12H24"/>
+              </g>
+              <g class="meridian-trigram" transform="translate(246 454) rotate(45)">
+                <path d="M-24-12H-6 M6-12H24 M-24 0H-6 M6 0H24 M-24 12H24"/>
+              </g>
+              <g class="meridian-trigram" transform="translate(182 300) rotate(90)">
+                <path d="M-24-12H-6 M6-12H24 M-24 0H24 M-24 12H-6 M6 12H24"/>
+              </g>
+              <g class="meridian-trigram" transform="translate(246 146) rotate(135)">
+                <path d="M-24-12H24 M-24 0H24 M-24 12H-6 M6 12H24"/>
+              </g>
+            </g>
+
+            <!-- 背面人體稍向右錯位；督脈以點劃線與脊節刻痕辨識。 -->
+            <g class="meridian-figure meridian-figure-back" transform="translate(250 28) scale(.9)">
+              <path class="meridian-body-shape" d="M400 58 C378 58 368 78 371 98 C374 117 386 129 400 129 C414 129 426 117 429 98 C432 78 422 58 400 58 Z"/>
+              <path class="meridian-body-shape" d="M384 126 L382 145 C350 151 325 169 316 199 L287 315 C284 329 291 340 302 340 C313 340 319 331 322 319 L346 224 L353 355 L338 521 C336 540 348 551 362 545 L393 386 L407 386 L438 545 C452 551 464 540 462 521 L447 355 L454 224 L478 319 C481 331 487 340 498 340 C509 340 516 329 513 315 L484 199 C475 169 450 151 418 145 L416 126"/>
+              <path class="meridian-back-detail" d="M357 184 Q400 212 443 184 M368 211 Q400 232 432 211 M377 244 Q400 258 423 244"/>
+              <path class="meridian-line-halo" d="M400 64 C421 91 407 116 400 137 C393 176 401 208 400 245 C399 292 401 338 400 386 C399 421 401 452 400 484"/>
+              <path class="meridian-line meridian-line-du" d="M400 64 C421 91 407 116 400 137 C393 176 401 208 400 245 C399 292 401 338 400 386 C399 421 401 452 400 484"/>
+              <path class="meridian-spine-ticks" d="M389 158H411 M391 180H409 M390 202H410 M392 224H408 M390 246H410 M392 268H408 M390 290H410 M392 312H408 M390 334H410 M392 356H408"/>
+              <g class="meridian-orientation-mark" transform="translate(450 134)">
+                <rect x="-14" y="-14" width="28" height="28" rx="3"/>
+                <text y="6">背</text>
+              </g>
+            </g>
+
+            <!-- 正面人體與任脈；不標具名穴位，僅作遊戲化經脈示意。 -->
+            <g class="meridian-figure meridian-figure-front" transform="translate(-170 28) scale(.9)">
+              <path class="meridian-body-shape" d="M400 58 C378 58 368 78 371 98 C374 117 386 129 400 129 C414 129 426 117 429 98 C432 78 422 58 400 58 Z"/>
+              <path class="meridian-body-shape" d="M384 126 L382 145 C350 151 325 169 316 199 L287 315 C284 329 291 340 302 340 C313 340 319 331 322 319 L346 224 L353 355 L338 521 C336 540 348 551 362 545 L393 386 L407 386 L438 545 C452 551 464 540 462 521 L447 355 L454 224 L478 319 C481 331 487 340 498 340 C509 340 516 329 513 315 L484 199 C475 169 450 151 418 145 L416 126"/>
+              <path class="meridian-front-detail" d="M382 145 Q400 157 418 145 M357 185 Q400 165 443 185 M365 207 Q400 222 435 207 M378 354 Q400 367 422 354"/>
+              <path class="meridian-line-halo" d="M400 119 C396 153 401 184 400 217 C399 253 401 289 400 326 C399 356 400 382 400 416"/>
+              <path class="meridian-line meridian-line-ren" d="M400 119 C396 153 401 184 400 217 C399 253 401 289 400 326 C399 356 400 382 400 416"/>
+              <g class="meridian-ren-nodes">
+                <circle cx="400" cy="164" r="3"/><circle cx="400" cy="207" r="3"/>
+                <circle cx="400" cy="252" r="3"/><circle cx="400" cy="297" r="3"/>
+                <circle cx="400" cy="344" r="3"/><circle cx="400" cy="389" r="3"/>
+              </g>
+              <g class="meridian-orientation-mark" transform="translate(350 134)">
+                <rect x="-14" y="-14" width="28" height="28" rx="3"/>
+                <text y="6">正</text>
+              </g>
+            </g>
+
+            <!-- 五藏印記以藏象／五行標籤呈現，並非現代解剖定位。 -->
+            <g class="meridian-organ-seals" transform="translate(-170 28) scale(.9)">
+              <g class="meridian-organ organ-metal" transform="translate(376 194)">
+                <path d="M0-18 L18 0 L0 18 L-18 0 Z"/><text y="4">肺金</text>
+              </g>
+              <g class="meridian-organ organ-fire" transform="translate(421 226)">
+                <path d="M0-18 L17-5 L11 17 L-11 17 L-17-5 Z"/><text y="4">心火</text>
+              </g>
+              <g class="meridian-organ organ-wood" transform="translate(365 268)">
+                <path d="M-19-12 Q0-23 19-12 L15 15 Q0 22-15 15 Z"/><text y="4">肝木</text>
+              </g>
+              <g class="meridian-organ organ-earth" transform="translate(435 280)">
+                <path d="M-19 15 L0-19 L19 15 Z"/><text y="7">脾土</text>
+              </g>
+              <g class="meridian-organ organ-water" transform="translate(400 326)">
+                <path d="M0-20 C15-8 18 1 14 10 C10 21-10 21-14 10 C-18 1-15-8 0-20 Z"/><text y="6">腎水</text>
+              </g>
+            </g>
+
+            <!-- 純 SVG 太極核心，不依賴字型中的太極符號。 -->
+            <g class="meridian-taiji" transform="translate(400 360)">
+              <path class="taiji-light" d="M0 44 A44 44 0 0 1 0-44 A22 22 0 0 1 0 0 A22 22 0 0 0 0 44 Z"/>
+              <path class="taiji-dark" d="M0-44 A44 44 0 0 1 0 44 A22 22 0 0 1 0 0 A22 22 0 0 0 0-44 Z"/>
+              <circle class="taiji-dark" cx="0" cy="-22" r="5.5"/>
+              <circle class="taiji-light" cx="0" cy="22" r="5.5"/>
+              <circle class="taiji-outline" cx="0" cy="0" r="44"/>
+            </g>
           </svg>
         </div>
         
-        <!-- Track 1: 🛡️ 基礎強化 -->
-        <div id="track-base" class="talent-track">
-          <div class="track-label">🛡️<br>任<br>督<br>二<br>脈</div>
-          <div class="track-paths">
-            <div class="path-row">
-              <div class="talent-card" data-id="fortress_1"></div>
-              <div class="talent-arrow" data-from="fortress_1" data-to="fortress_2">➜</div>
-              <div class="talent-card" data-id="fortress_2"></div>
-            </div>
-            <div class="path-row">
-              <div class="talent-card" data-id="gold_1"></div>
-              <div class="talent-arrow" data-from="gold_1" data-to="gold_2">➜</div>
-              <div class="talent-card" data-id="gold_2"></div>
-            </div>
+        <!-- Track 1: 任督築基 -->
+        <div id="track-base" class="talent-track" role="tabpanel" aria-labelledby="talentTabBase">
+          <div class="track-label"><span>基礎</span><strong>任督築基</strong><small>固關・養元</small></div>
+          <div class="talent-node-field" aria-label="任督築基天賦印">
+            <button type="button" class="talent-card" data-id="fortress_1"></button>
+            <button type="button" class="talent-card" data-id="fortress_2"></button>
+            <button type="button" class="talent-card" data-id="gold_1"></button>
+            <button type="button" class="talent-card" data-id="gold_2"></button>
           </div>
         </div>
 
-        <!-- Track 2: ⚔️ 攻擊強化 -->
-        <div id="track-attack" class="talent-track">
-          <div class="track-label">⚔️<br>氣<br>血<br>運<br>行</div>
-          <div class="track-paths">
-            <div class="path-row">
-              <div class="talent-card" data-id="precise_1"></div>
-              <div class="path-branch">
-                <div class="branch-top">
-                  <div class="talent-arrow" data-from="precise_1" data-to="precise_2">➜</div>
-                  <div class="talent-card" data-id="precise_2"></div>
-                </div>
-                <div class="branch-bottom">
-                  <div class="talent-arrow" data-from="precise_1" data-to="rapid_fire">➜</div>
-                  <div class="talent-card" data-id="rapid_fire"></div>
-                </div>
-              </div>
-            </div>
+        <!-- Track 2: 氣機初行 -->
+        <div id="track-attack" class="talent-track" role="tabpanel" aria-labelledby="talentTabAttack">
+          <div class="track-label"><span>氣血</span><strong>氣機初行</strong><small>凝神・行氣</small></div>
+          <div class="talent-node-field" aria-label="氣機初行天賦印">
+            <button type="button" class="talent-card" data-id="precise_1"></button>
+            <button type="button" class="talent-card" data-id="precise_2"></button>
+            <button type="button" class="talent-card" data-id="rapid_fire"></button>
           </div>
         </div>
 
-        <!-- Track 3: 🌿 五行覺醒 -->
-        <div id="track-element" class="talent-track">
-          <div class="track-label">🌿<br>五<br>臟<br>氣<br>機</div>
-          <div class="track-paths">
-            <div class="path-row-grid">
-              <div class="grid-cell"><div class="talent-card" data-id="wood_awakening"></div></div>
-              <div class="grid-cell"><div class="talent-card" data-id="water_awakening"></div></div>
-              <div class="grid-cell"><div class="talent-card" data-id="fire_awakening"></div></div>
-              <div class="grid-cell-flow">
-                <div class="talent-card" data-id="earth_awakening"></div>
-                <div class="talent-arrow" data-from="earth_awakening" data-to="wall_discount">➜</div>
-                <div class="talent-card" data-id="wall_discount"></div>
-              </div>
-              <div class="grid-cell"><div class="talent-card" data-id="metal_awakening"></div></div>
-            </div>
+        <!-- Track 3: 五藏應象 -->
+        <div id="track-element" class="talent-track" role="tabpanel" aria-labelledby="talentTabElement">
+          <div class="track-label"><span>五行</span><strong>五藏應象</strong><small>肝心脾肺腎</small></div>
+          <div class="talent-node-field" aria-label="五藏應象天賦印">
+            <button type="button" class="talent-card" data-id="wood_awakening"></button>
+            <button type="button" class="talent-card" data-id="water_awakening"></button>
+            <button type="button" class="talent-card" data-id="fire_awakening"></button>
+            <button type="button" class="talent-card" data-id="earth_awakening"></button>
+            <button type="button" class="talent-card" data-id="wall_discount"></button>
+            <button type="button" class="talent-card" data-id="metal_awakening"></button>
           </div>
         </div>
 
-        <!-- Track 4: ☯️ 陰陽解鎖 -->
-        <div id="track-yinyang" class="talent-track">
-          <div class="track-label">☯️<br>陰<br>陽<br>歸<br>一</div>
-          <div class="track-paths">
-            <div class="path-row-merge">
-              <div class="merge-sources">
-                <div class="talent-card" data-id="yin_law"></div>
-                <div class="talent-card" data-id="yang_law"></div>
-              </div>
-              <div class="merge-connector">
-                <div class="merge-arrows">
-                  <div class="talent-arrow" data-from="yin_law" data-to="taiji_dao">➜</div>
-                  <div class="talent-arrow" data-from="yang_law" data-to="taiji_dao">➜</div>
-                </div>
-              </div>
-              <div class="talent-card" data-id="taiji_dao"></div>
-            </div>
+        <!-- Track 4: 陰陽合化 -->
+        <div id="track-yinyang" class="talent-track" role="tabpanel" aria-labelledby="talentTabYinyang">
+          <div class="track-label"><span>陰陽</span><strong>陰陽合化</strong><small>兩儀歸太極</small></div>
+          <div class="talent-node-field" aria-label="陰陽合化天賦印">
+            <button type="button" class="talent-card" data-id="yin_law"></button>
+            <button type="button" class="talent-card" data-id="yang_law"></button>
+            <button type="button" class="talent-card" data-id="taiji_dao"></button>
           </div>
         </div>
 
         </div>
       </div>
-      <aside id="talentDetailPanel" class="talent-detail-panel" aria-live="polite">
+      <aside id="talentDetailPanel" class="talent-detail-panel" aria-live="polite" aria-labelledby="talentDetailName">
+        <span class="talent-detail-chapter-mark" aria-hidden="true">章</span>
         <div id="talentDetailIcon" class="talent-detail-icon">☯</div>
         <h3 id="talentDetailName">選擇穴位</h3>
+        <div id="talentDetailMechanic" class="talent-detail-mechanic">選擇節點後顯示機制副標</div>
         <div id="talentDetailLevel" class="talent-detail-level">經脈尚未選取</div>
-        <p id="talentDetailDesc">選擇左側穴位查看效果與升級需求。</p>
+        <section class="talent-detail-section talent-detail-allusion">
+          <h4>藏象取意</h4>
+          <p id="talentDetailLore" class="talent-detail-lore">穴位不只提供數值，也代表一條戰鬥修行路線。</p>
+          <div id="talentDetailSource" class="talent-detail-source">取意來源會顯示於此</div>
+        </section>
+        <section class="talent-detail-section talent-detail-effect">
+          <h4>戰鬥效果</h4>
+          <p id="talentDetailDesc">選擇左側穴位查看效果與升級需求。</p>
+        </section>
         <div id="talentDetailPrereq" class="talent-detail-prereq"></div>
         <button id="btnUpgradeTalent" class="menu-btn primary" disabled>升級</button>
       </aside>
     </div>
-    <button id="btnBackFromTalent" class="menu-btn" style="margin-top:15px; margin-bottom:10px;">← 返回主介面</button>
+    <button id="btnBackFromTalent" class="menu-btn talent-back-btn">← 返回主介面</button>
+      </div>
+    </div>
   </div>
 
   <!-- ===== 場景 3: 結算畫面 ===== -->

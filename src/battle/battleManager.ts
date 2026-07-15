@@ -15,16 +15,11 @@ import { showFloat, initBgStars } from '../renderer/gameRenderer';
 import { updateUI } from '../ui/uiManager';
 
 export function startBattle() {
-  // 根據地圖動態決定網格大小與 gameState.TILE_SIZE
-  if (gameState.currentMap.id === 'test_level') {
-    gameState.COLS = 20;
-    gameState.ROWS = 10;
-    gameState.TILE_SIZE = 64;
-  } else {
-    gameState.COLS = 80;
-    gameState.ROWS = 40;
-    gameState.TILE_SIZE = 16;
-  }
+  // 關卡可宣告自己的展示尺寸；未宣告者沿用標準大地圖。
+  const dimensions = gameState.currentMap.dimensions;
+  gameState.COLS = dimensions?.cols ?? 80;
+  gameState.ROWS = dimensions?.rows ?? 40;
+  gameState.TILE_SIZE = dimensions?.tileSize ?? 16;
 
   // 重新分配 gameState.grid 大小
   gameState.grid = Array.from({ length: gameState.COLS }, () => Array(gameState.ROWS).fill(0));
@@ -311,14 +306,21 @@ export function checkWaveEnd() {
     if (gameState.currentMap.id !== 'test_level' && gameState.wave >= maxWaves) {
       setTimeout(() => endBattle(true), 1500);
     } else {
-      // Roguelike 卡牌：排除測試關坅與教學關坅，內容不干擾引導流程
-      const isNormalBattle = gameState.currentMap.id !== 'test_level' && gameState.currentMap.id !== 'tutorial';
-      if (isNormalBattle && gameState.wave > 0) {
-        // 波次 Buff 衰減處理
-        tickWaveBuffs();
-        // 延遲 800ms 再彈出卡牌（讓玩家先看到結束浮字）
-        setTimeout(() => showCardPicker(), 800);
-      }
+        // 教學關在合成後（第 2 波）只展示一次隨機技能，讓首局重心
+        // 從繞路轉向「合成 + 波間選擇」；其餘教學波不額外打斷節奏。
+        const isTutorialSkillMoment = gameState.currentMap.id === 'tutorial'
+          && gameState.wave === 2
+          && gameState.levelTutorialStep === 'idle';
+        const isNormalBattle = gameState.currentMap.id !== 'test_level' && gameState.currentMap.id !== 'tutorial';
+        if ((isNormalBattle || isTutorialSkillMoment) && gameState.wave > 0) {
+          // 波次 Buff 衰減處理
+          tickWaveBuffs();
+          // 延遲 800ms 再彈出卡牌（讓玩家先看到結束浮字）
+          if (isTutorialSkillMoment) {
+            showFloat(640, 280, '✨ 第二波防禦成功！選一張隨機術法，強化下一輪。', '#a78bfa', 16);
+          }
+          setTimeout(() => showCardPicker(), 800);
+        }
       // 教學關第一波防禦成功觸發合成引導並免費生成第二座烈焰塔
       if (gameState.currentMap.id === 'tutorial' && gameState.wave === 1 && gameState.levelTutorialStep === 'wave_1_active') {
         const firstTower = gameState.towers.find(t => t.typeId === 'fire');
@@ -362,8 +364,11 @@ export function checkWaveEnd() {
         setTimeout(() => showFloat(640, 280, '🎉 第一波防禦成功！現在為您放置第二座烈焰塔，準備合成！', '#10b981', 16), 300);
       }
 
-      // 教學關第四波防禦成功觸發 Boss 戰引導
-      if (gameState.currentMap.id === 'tutorial' && gameState.wave === 4) {
+      // 第三波後先明確預告空中敵人，第四波後再銜接 Boss。
+      if (gameState.currentMap.id === 'tutorial' && gameState.wave === 3) {
+        gameState.levelTutorialStep = 'wave_4_guide';
+        updateUI();
+      } else if (gameState.currentMap.id === 'tutorial' && gameState.wave === 4) {
         gameState.levelTutorialStep = 'wave_5_guide';
         updateUI();
       }

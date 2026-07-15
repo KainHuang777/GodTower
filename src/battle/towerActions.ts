@@ -79,14 +79,14 @@ export function handleBuild(x: number, y: number) {
   
   // 新手教學關卡引導狀態機
   if (gameState.currentMap.id === 'tutorial' && gameState.levelTutorialStep !== 'idle' && gameState.levelTutorialStep !== 'completed') {
-    if (gameState.levelTutorialStep === 'build_wall' && def.isWall) {
-      gameState.levelTutorialStep = 'build_tower';
-      gameState.selectedTool = 'fire';
+    if (gameState.levelTutorialStep === 'build_tower' && def.id === 'fire') {
+      gameState.levelTutorialStep = 'build_wall';
+      gameState.selectedTool = 'earth';
       if (gameState.refreshToolSelection) {
         gameState.refreshToolSelection();
       }
       updateUI();
-    } else if (gameState.levelTutorialStep === 'build_tower' && def.id === 'fire') {
+    } else if (gameState.levelTutorialStep === 'build_wall' && def.isWall) {
       gameState.levelTutorialStep = 'start_wave';
       if (gameState.refreshToolSelection) {
         gameState.refreshToolSelection();

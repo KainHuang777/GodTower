@@ -1,0 +1,7 @@
+interface:
+  display_name: "Codex Fusion Research"
+  short_description: "Multi-agent research with optional OpenCode Go panels"
+  default_prompt: "Use $codex-fusion-research to analyze this decision from independent perspectives and synthesize an evidence-backed recommendation. Use OpenCode Go panels only when explicitly requested."
+
+policy:
+  allow_implicit_invocation: true

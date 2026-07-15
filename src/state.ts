@@ -185,7 +185,7 @@ export interface GameState {
       resultTypeId: string;
     } | null;
     talentTutorialActive: boolean;
-    levelTutorialStep: 'idle' | 'intro' | 'build_wall' | 'build_tower' | 'start_wave' | 'wave_1_active' | 'merge_guide' | 'speed_guide' | 'wave_5_guide' | 'completed';
+    levelTutorialStep: 'idle' | 'intro' | 'build_wall' | 'build_tower' | 'start_wave' | 'wave_1_active' | 'merge_guide' | 'speed_guide' | 'wave_4_guide' | 'wave_5_guide' | 'completed';
     activeTalentTrack: 'track-base' | 'track-attack' | 'track-element' | 'track-yinyang';
 
     // Roguelike 系統狀態

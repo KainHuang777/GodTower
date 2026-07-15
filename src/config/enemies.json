@@ -3,31 +3,37 @@
     "snake": {
       "id": "snake", "name": "小蛇", "element": "wood",
       "baseHp": 80, "speed": 1.0, "goldAward": 2, "isFlying": false,
+      "visualScale": 1.42,
       "colorPrimary": "#22c55e", "colorSecondary": "#bbf7d0"
     },
     "fly": {
       "id": "fly", "name": "小蒼蠅", "element": "metal",
       "baseHp": 50, "speed": 1.4, "goldAward": 3, "isFlying": true,
+      "visualScale": 1.25,
       "colorPrimary": "#6b7280", "colorSecondary": "#d1d5db"
     },
     "salamander": {
       "id": "salamander", "name": "火蜥蜴", "element": "fire",
       "baseHp": 100, "speed": 0.9, "goldAward": 3, "isFlying": false,
+      "visualScale": 1.48,
       "colorPrimary": "#ef4444", "colorSecondary": "#fbbf24"
     },
     "water_spirit": {
       "id": "water_spirit", "name": "水靈", "element": "water",
       "baseHp": 70, "speed": 1.1, "goldAward": 2, "isFlying": false,
+      "visualScale": 1.42,
       "colorPrimary": "#38bdf8", "colorSecondary": "#bfdbfe"
     },
     "golem": {
       "id": "golem", "name": "石傀儡", "element": "earth",
       "baseHp": 180, "speed": 0.6, "goldAward": 4, "isFlying": false,
+      "visualScale": 1.55,
       "colorPrimary": "#a8a29e", "colorSecondary": "#78716c"
     },
     "beetle": {
       "id": "beetle", "name": "金甲蟲", "element": "metal",
       "baseHp": 120, "speed": 0.8, "goldAward": 3, "isFlying": false,
+      "visualScale": 1.45,
       "colorPrimary": "#fbbf24", "colorSecondary": "#d97706"
     },
     "boss_dragon": {

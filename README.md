@@ -8,13 +8,13 @@
 
 **五行迷宮塔防**是一款執行於 Web 瀏覽器的純前端塔防遊戲，融合了：
 
-- **迷宮建構**：砲台同時充當牆壁，玩家需在 80×40 網格中建立迷宮，迫使怪物走最長路徑（A\* 動態尋路）
-- **多地圖**：內建 4 張不同格局與難度的關卡地圖（含折返走廊教學關卡）
+- **迷宮建構**：砲台同時充當牆壁，標準關卡在 80×40 網格中建立迷宮，迫使怪物走最長路徑（A\* 動態尋路）
+- **多地圖**：內建 4 張不同格局與難度的關卡地圖；教學與測試關卡另使用 20×10、64px 的全圖展示尺寸
 - **五行陰陽系統**：7 種基礎屬性砲台（金木水火土 + 陰陽），含同系升級合成與異系配方合成（4 種活躍配方）
 - **Meta 進度系統**：跨局天賦樹，支援多級升級，以 `localStorage` 持久化存儲
 - **Roguelike 元素**：波間卡牌三選一（Common/Rare/Legendary）、起始隨機補給、神秘召喚、合成費用、詞條對策卡牌
 - **Ascension 難度系統**：通關後解鎖分級難度（0-10 層），大幅延長遊戲壽命
-- **像素美術**：所有精靈以程式碼內建像素矩陣繪製，無需外部圖片資源，Mindustry 風格高飽和調色盤 + 螢光 Glow
+- **像素美術**：塔與怪物以高密度像素精靈搭配程式化 fallback，維持外部資產失敗時仍可遊玩；主視覺採明亮日間山水與暖色道路
 
 ---
 
@@ -29,6 +29,14 @@
 | **五行相剋** | 金剋木 → 木剋土 → 土剋水 → 水剋火 → 火剋金；克制屬性傷害 **+30%** |
 
 > **🎯 設計哲學**：本遊戲的核心樂趣是「**繞路迷宮建構 + 豐富合成路線探索**」。岩壁塔 3g 的低成本設計是有意為之——讓玩家能自由實驗迷宮佈局，透過逐步遭遇高難度關卡與怪物來學習繞路策略與合成搭配，而非在資源極度稀缺的壓力下被迫尋找唯一解。這是一款節奏從容的迷宮塔防，隨著 Ascension 層級提升逐步增加挑戰深度。
+
+### 教學關卡目前流程
+
+教學關卡固定顯示整張 20×10 試煉場，不需要拖曳鏡頭，依序引導：放置攻擊塔、放置連續岩壁、第一波戰鬥、塔合成、加速、波間隨機技能、空中敵人、Boss，最後進入天賦引導。複雜迷宮與長距離繞路保留給後續關卡。
+
+### 地形素材狀態
+
+目前已套用設計稿的明亮色盤、暖色道路、草地密度方向與檢查點光圈表現；設計稿中的草叢、石岸、水面仍是參考稿，尚未拆成正式可無縫平鋪的 runtime 素材。相關參考圖位於 `docs/mockups/terrain-material-board-v1.png`，後續會在不破壞尋路與效能的前提下逐步替換。
 
 ---
 
@@ -127,14 +135,14 @@
 |:---|:---|
 | **語言** | TypeScript |
 | **打包工具** | Vite 5 |
-| **測試框架** | Vitest（172 tests，6 files：towers / enemies / talent / pathfinding / difficulty / achieve） |
+| **測試框架** | Vitest（181 tests，6 files） |
 | **渲染** | HTML5 Canvas |
 | **精靈渲染** | OffscreenCanvas 預渲染快取，支援 16x16 與 16x24 2.5D 原生像素動畫與 45 度等角立體光影 |
-| **視覺風格** | Mindustry 風格高飽和調色盤（`theme.ts`）+ 2px 深色描邊 + 雙層螢光 Glow + 屬性底盤光環 |
+| **視覺風格** | 明亮日間暖色山水 + 高密度像素精靈 + 深色描邊與柔和 Glow；夜色、星空、雷雨僅作特殊關卡主題 |
 | **特效與後處理**| 高效 Outlines 邊框、受擊閃白快取、recoil 砲台後退、squash 怪物變形及拋物線/死亡 Splatters 特效 |
 | **畫面適配** | 雙向等比例自適應縮放，搭載 CSS transform 縮放後的物理至邏輯座標精準映射對齊 |
 | **音效系統** | 多通道 HTML5 Audio 靜態對象池（限制 10 實例避免洩漏）與背景音樂自動跳過錯誤 Fallback 機制 |
-| **目標解析度** | 80×40 格（每格 16px = 1280×640） |
+| **目標解析度** | 標準關卡 80×40 格（每格 16px = 1280×640）；教學/測試關卡 20×10 格（每格 64px = 1280×640） |
 | **目標幀率** | 60 FPS |
 | **同屏最大怪物** | 50+ |
 | **同屏最大子彈** | 200+ |
@@ -178,12 +186,12 @@ GodTower/
 │   ├── state.ts            # 全域狀態單例 GameState
 │   ├── domRefs.ts          # DOM 元素參考集中管理
 │   ├── types.ts            # 共用型別定義（MAX_WAVES, Enemy, Tower 等）
-│   ├── theme.ts            # Mindustry 風格集中化調色盤
+│   ├── theme.ts            # 明亮日間暖色集中化調色盤
 │   ├── towers.ts           # 砲台定義、合成邏輯、元素體系、合成費用
 │   ├── enemies.ts          # 怪物定義、波次配置
 │   ├── talent.ts           # 天賦樹定義、天賦計算、localStorage 持久化、成就系統
 │   ├── maps.ts             # 內建地圖配置、自訂地圖持久化
-│   ├── sprites.ts          # 像素精靈矩陣、OffscreenCanvas 預渲染、雙層螢光 Glow
+│   ├── sprites.ts          # 高密度像素精靈、程式化 fallback、OffscreenCanvas 預渲染
 │   ├── config/             # 資料驅動 JSON 配置
 │   │   ├── towers.json     # 砲台數值配置
 │   │   ├── enemies.json    # 怪物數值配置
@@ -195,12 +203,15 @@ GodTower/
 │   ├── input/              # 輸入處理（inputHandler）
 │   ├── audio/              # 音效系統（audioSystem）
 │   ├── system/             # 系統模組（roguelikeSystem, traitLearning）
-│   └── __tests__/          # Vitest 單元測試（6 files，172 tests）
+│   └── __tests__/          # Vitest 單元測試（6 files，181 tests）
+├── assets/
+│   └── sprites/towers-v2/  # 72×96 高密度塔精靈（缺失時回退程式化繪製）
 └── docs/
     ├── GDD.md              # 遊戲設計文件 (Game Design Document)
     ├── GDD_Template.md     # GDD 模板
     ├── 72H_Progression_Design.md  # 72 小時 Roguelike 成長曲線設計
-    └── AI_Coding_Guidelines.md    # AI 協同開發規範
+    ├── AI_Coding_Guidelines.md    # AI 協同開發規範
+    └── mockups/terrain-material-board-v1.png # 地形材質參考稿
 ```
 
 ---

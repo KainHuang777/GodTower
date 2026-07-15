@@ -14,6 +14,12 @@ export interface MapConfig {
   basePoint: Point;
   waypoints: Point[];
   obstacles: Point[]; // 預設天然地形阻擋的網格點
+  dimensions?: {
+    cols: number;
+    rows: number;
+    tileSize: number;
+    overview?: boolean;
+  };
 }
 
 // 輔助函式：產生指定矩形區域內的點陣
@@ -77,31 +83,23 @@ export const MAPS: MapConfig[] = [
       { x: 10, y: 7 },
       { x: 15, y: 2 }
     ],
-    obstacles: []
+    obstacles: [],
+    dimensions: { cols: 20, rows: 10, tileSize: 64, overview: true }
   },
-  // 1. 教學關卡 (引導玩家使用 W 折返迷宮)
+  // 1. 教學關卡（低繞路負擔：先學合成與隨機技能，再逐步學迷宮）
   {
     id: 'tutorial',
-    name: '【教學】W型折返走廊',
+    name: '【教學】清風試煉場',
     difficulty: '教學',
-    description: '教學關卡：由於下方長長的地形障礙物阻擋，怪物出發後會先被迫向右繞行到 3 號檢查點入口才得以上行前往 1 號檢查點。請跟隨提示在右側瓶頸處建造攻擊塔，發揮交叉火力！',
-    spawnPoint: { x: 5, y: 20 },
-    basePoint: { x: 75, y: 20 },
+    description: '教學關卡：全圖固定顯示的短 S 型試煉場，依序認識攻擊塔、連續岩壁、加速、隨機技能、空中敵人與 Boss。完整迷宮策略於後續關卡逐步開放。',
+    spawnPoint: { x: 0, y: 5 },
+    basePoint: { x: 19, y: 5 },
     waypoints: [
-      { x: 20, y: 10 }, // 檢查點 1
-      { x: 40, y: 30 }, // 檢查點 2
-      { x: 60, y: 10 }  // 檢查點 3
+      { x: 6, y: 3 },
+      { x: 13, y: 7 }
     ],
-    obstacles: [
-      // 橫向主隔離牆：迫使怪物必須向右走到 x=56 之後的開口才能上去
-      ...generateRectPoints(0, 15, 55, 15),
-      // 1 號點左側阻擋：封住左上角，防止怪物走捷徑
-      ...generateRectPoints(12, 0, 12, 14),
-      // 2 號點左側阻擋：在二號點左側隔離，防止起點怪直接走到二號點
-      ...generateRectPoints(35, 18, 35, 39),
-      // 3 號點右側阻擋：引導三號點的怪往右下出發去基地
-      ...generateRectPoints(65, 0, 65, 14),
-    ]
+    obstacles: [],
+    dimensions: { cols: 20, rows: 10, tileSize: 64, overview: true }
   },
   
   // 2. 簡單關卡 (經典平原，原版配置)

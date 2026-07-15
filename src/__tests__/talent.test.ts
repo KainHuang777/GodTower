@@ -12,7 +12,10 @@ import {
   canUnlockTalent,
   unlockTalent,
   isTowerUnlocked,
+  isTalentTrackUnlocked,
   getTalentDifficultyMod,
+  TALENT_TREE,
+  TALENT_THEME_BY_ID,
 } from '../talent';
 import type { TalentSaveData } from '../talent';
 
@@ -38,6 +41,35 @@ beforeEach(() => {
   vi.stubGlobal('localStorage', {
     getItem: vi.fn((key: string) => storage[key] ?? null),
     setItem: setItemSpy,
+  });
+});
+
+describe('P2-A talent display metadata', () => {
+  it('keeps all 16 stable TalentIds with complete display metadata', () => {
+    const expectedIds = [
+      'fortress_1', 'fortress_2', 'gold_1', 'gold_2',
+      'precise_1', 'precise_2', 'rapid_fire',
+      'wood_awakening', 'water_awakening', 'fire_awakening',
+      'earth_awakening', 'wall_discount', 'metal_awakening',
+      'yin_law', 'yang_law', 'taiji_dao',
+    ];
+
+    expect(TALENT_TREE.map(node => node.id)).toEqual(expectedIds);
+    for (const node of TALENT_TREE) {
+      expect(node.displayName.length).toBeGreaterThan(0);
+      expect(node.mechanicLabel.length).toBeGreaterThan(0);
+      expect(node.classicAllusion.length).toBeGreaterThan(0);
+      expect(node.sourceRef.length).toBeGreaterThan(0);
+      expect(node.visualTheme).toBe(TALENT_THEME_BY_ID[node.id]);
+    }
+  });
+
+  it('maps themes explicitly instead of deriving them from TalentId text', () => {
+    expect(TALENT_THEME_BY_ID.fortress_1).toBe('du');
+    expect(TALENT_THEME_BY_ID.gold_1).toBe('ren');
+    expect(TALENT_THEME_BY_ID.wood_awakening).toBe('wood');
+    expect(TALENT_THEME_BY_ID.wall_discount).toBe('earth');
+    expect(TALENT_THEME_BY_ID.taiji_dao).toBe('taiji');
   });
 });
 
@@ -82,6 +114,29 @@ describe('calcTalentPointsEarned', () => {
     // same player second time: milestone already in list → no bonus
     const result2 = calcTalentPointsEarned(5, 5, [5], true);
     expect(result2).toBe(1); // base=1, PB=0, no milestone
+  });
+});
+
+describe('isTalentTrackUnlocked', () => {
+  it('keeps the base track open for a new player', () => {
+    expect(isTalentTrackUnlocked(mockSaveData(), 'track-base')).toBe(true);
+  });
+
+  it('opens tracks at 2 / 6 / 12 lifetime talent points', () => {
+    expect(isTalentTrackUnlocked(mockSaveData({ totalTalentPoints: 1 }), 'track-attack')).toBe(false);
+    expect(isTalentTrackUnlocked(mockSaveData({ totalTalentPoints: 2 }), 'track-attack')).toBe(true);
+    expect(isTalentTrackUnlocked(mockSaveData({ totalTalentPoints: 5 }), 'track-element')).toBe(false);
+    expect(isTalentTrackUnlocked(mockSaveData({ totalTalentPoints: 6 }), 'track-element')).toBe(true);
+    expect(isTalentTrackUnlocked(mockSaveData({ totalTalentPoints: 11 }), 'track-yinyang')).toBe(false);
+    expect(isTalentTrackUnlocked(mockSaveData({ totalTalentPoints: 12 }), 'track-yinyang')).toBe(true);
+  });
+
+  it('preserves a previously invested legacy track below the new threshold', () => {
+    const legacyData = mockSaveData({
+      totalTalentPoints: 2,
+      talentLevels: { water_awakening: 1 },
+    });
+    expect(isTalentTrackUnlocked(legacyData, 'track-element')).toBe(true);
   });
 });
 
@@ -394,6 +449,20 @@ describe('localStorage persistence', () => {
     expect(reloaded.totalTalentPoints).toBe(original.totalTalentPoints);
     expect(reloaded.spentTalentPoints).toBe(original.spentTalentPoints);
     expect(reloaded.talentLevels).toEqual(original.talentLevels);
+    expect(storage['td_talent_data']).toBeDefined();
+  });
+
+  it('loads the previous checkpoint_maze_td_talent key as a fallback', () => {
+    storage['checkpoint_maze_td_talent'] = JSON.stringify({
+      totalTalentPoints: 7,
+      spentTalentPoints: 2,
+      talentLevels: { gold_1: 1 },
+    });
+
+    const data = loadTalentData();
+    expect(data.totalTalentPoints).toBe(7);
+    expect(data.spentTalentPoints).toBe(2);
+    expect(data.talentLevels.gold_1).toBe(1);
   });
 
   it('loadTalentData with corrupted JSON -> default, no throw', () => {

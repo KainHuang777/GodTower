@@ -56,16 +56,17 @@ describe('Tutorial Onboarding Logic Tests', () => {
       name: 'Tutorial Map',
       difficulty: '教學',
       description: 'Test',
-      spawnPoint: { x: 5, y: 20 },
-      basePoint: { x: 75, y: 20 },
+      spawnPoint: { x: 0, y: 5 },
+      basePoint: { x: 19, y: 5 },
       waypoints: [],
-      obstacles: []
+      obstacles: [],
+      dimensions: { cols: 20, rows: 10, tileSize: 64, overview: true }
     };
     gameState.wave = 0;
     gameState.isWaveActive = false;
     gameState.levelTutorialStep = 'intro';
     gameState.towers = [];
-    gameState.grid = Array.from({ length: 80 }, () => Array(40).fill(0));
+    gameState.grid = Array.from({ length: 20 }, () => Array(10).fill(0));
     gameState.nextTowerId = 1;
     gameState.gameSpeed = 1;
     gameState.talentData = {
@@ -86,15 +87,15 @@ describe('Tutorial Onboarding Logic Tests', () => {
     // 建立第一座烈焰塔
     gameState.towers.push({
       id: gameState.nextTowerId++,
-      x: 61,
-      y: 9,
+      x: 8,
+      y: 2,
       typeId: 'fire',
       def: { cost: 10, isWall: true } as any,
       cooldown: 0,
       damageDealt: 0,
       recoilY: 0
     });
-    gameState.grid[61][9] = 1;
+    gameState.grid[8][2] = 1;
 
     gameState.wave = 1;
     gameState.isWaveActive = true;
@@ -106,8 +107,8 @@ describe('Tutorial Onboarding Logic Tests', () => {
     // 應該生成第二座烈焰塔
     expect(gameState.towers.length).toBe(2);
     expect(gameState.towers[1].typeId).toBe('fire');
-    // 第二座塔應該在第一座塔的相鄰格 (例如 62, 9)
-    expect(Math.abs(gameState.towers[1].x - 61) + Math.abs(gameState.towers[1].y - 9)).toBe(1);
+    // 第二座塔應該在第一座塔的相鄰格
+    expect(Math.abs(gameState.towers[1].x - 8) + Math.abs(gameState.towers[1].y - 2)).toBe(1);
     
     // 狀態轉移
     expect(gameState.levelTutorialStep).toBe('merge_guide');
@@ -121,8 +122,8 @@ describe('Tutorial Onboarding Logic Tests', () => {
       duration: 30,
       t1: { id: 1, typeId: 'fire' },
       t2: { id: 2, typeId: 'fire' },
-      resultX: 61,
-      resultY: 9,
+      resultX: 8,
+      resultY: 2,
       resultTypeId: 'fire_2'
     } as any;
 
@@ -141,6 +142,16 @@ describe('Tutorial Onboarding Logic Tests', () => {
 
     // 狀態轉移
     expect(gameState.levelTutorialStep).toBe('wave_5_guide');
+  });
+
+  it('should introduce flying enemies after wave 3 ends', () => {
+    gameState.wave = 3;
+    gameState.isWaveActive = true;
+    gameState.levelTutorialStep = 'idle';
+
+    checkWaveEnd();
+
+    expect(gameState.levelTutorialStep).toBe('wave_4_guide');
   });
 });
 
