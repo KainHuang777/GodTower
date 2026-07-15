@@ -17,6 +17,16 @@ import {
 } from '../talent';
 import { MAPS, loadCustomMaps, deleteCustomMap } from '../maps';
 import { playSFX } from '../audio/audioSystem';
+import {
+  TALENT_CONNECTIONS,
+  TALENT_OUTER_SEALS,
+  buildTalentConnectionCurve,
+  getTalentConnectionState,
+  isTalentOuterSealId,
+  type TalentConnectionDefinition,
+  type TalentConnectionState,
+  type TalentSealMotif,
+} from '../ui/talentConnections';
 
 let selectedTalentId: TalentId | null = null;
 let talentLineFrame: number | null = null;
@@ -72,15 +82,43 @@ const TRACK_GUIDE: Record<TalentTrackId, { stage: string; title: string; plainLa
   }
 };
 
-const talentIconMap: Record<TalentId, string> = {
-  fortress_1: '盾', fortress_2: '城',
-  gold_1: '金', gold_2: '財',
-  precise_1: '準', precise_2: '刃', rapid_fire: '速',
-  wood_awakening: '木', water_awakening: '水', fire_awakening: '火',
-  earth_awakening: '土', metal_awakening: '金',
-  yin_law: '陰', yang_law: '陽', taiji_dao: '☯',
-  wall_discount: '壁'
+const TALENT_MOTIF_BY_ID: Record<TalentId, TalentSealMotif> = {
+  fortress_1: 'fortress', fortress_2: 'wall',
+  gold_1: 'wealth', gold_2: 'wealth',
+  precise_1: 'precision', precise_2: 'blade', rapid_fire: 'flow',
+  wood_awakening: 'wood', water_awakening: 'water', fire_awakening: 'fire',
+  earth_awakening: 'earth', metal_awakening: 'metal',
+  yin_law: 'yin', yang_law: 'yang', taiji_dao: 'taiji',
+  wall_discount: 'wall',
 };
+
+function createTalentSealArt(motif: TalentSealMotif, className: string): SVGSVGElement | null {
+  if (typeof document.createElementNS !== 'function') return null;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', className);
+  svg.setAttribute('viewBox', '0 0 64 64');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+
+  const ring = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  ring.setAttribute('href', '#talent-bronze-cloud-ring');
+  ring.setAttribute('class', 'talent-bronze-ring-art');
+
+  const emblem = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  emblem.setAttribute('href', `#talent-motif-${motif}`);
+  emblem.setAttribute('class', 'talent-bronze-motif-art');
+  svg.append(ring, emblem);
+  return svg;
+}
+
+function replaceTalentSealArt(container: HTMLElement, motif: TalentSealMotif, className: string): void {
+  const art = createTalentSealArt(motif, className);
+  if (art && typeof container.replaceChildren === 'function') {
+    container.replaceChildren(art);
+    return;
+  }
+  container.textContent = '';
+}
 
 function renderTalentDetail() {
   const panelEl = document.getElementById('talentDetailPanel');
@@ -103,7 +141,7 @@ function renderTalentDetail() {
     mechanicEl.textContent = '選擇節點後顯示機制副標';
     sourceEl.textContent = '取意來源會顯示於此';
     nameEl.textContent = '選擇天賦印';
-    iconEl.textContent = '☯';
+    replaceTalentSealArt(iconEl, 'taiji', 'talent-detail-seal-art');
     levelEl.textContent = '經脈尚未選取';
     loreEl.textContent = '每枚天賦印代表一條戰鬥修行路線；圖中位置只作藏象幻想取意。';
     descEl.textContent = '選擇修習節點查看效果與升級需求。';
@@ -122,7 +160,7 @@ function renderTalentDetail() {
     .filter(pid => (gameState.talentData.talentLevels[pid] || 0) < 1)
     .map(pid => TALENT_TREE.find(t => t.id === pid)?.displayName ?? pid);
 
-  iconEl.textContent = talentIconMap[selectedTalentId] || '氣';
+  replaceTalentSealArt(iconEl, TALENT_MOTIF_BY_ID[selectedTalentId], 'talent-detail-seal-art');
   iconEl.dataset.theme = node.visualTheme;
   nameEl.textContent = node.displayName;
   mechanicEl.textContent = node.mechanicLabel;
@@ -133,7 +171,7 @@ function renderTalentDetail() {
   panelEl.dataset.theme = node.visualTheme;
   panelEl.dataset.state = isMax ? 'maxed' : level > 0 ? 'unlocked' : canUpgrade ? 'available' : 'locked';
   prereqEl.textContent = isMax
-    ? '此穴已修至圓滿'
+    ? '此印已修至圓滿'
     : unmet.length
       ? `需先開通：${unmet.join('、')}`
       : availablePoints < node.cost
@@ -164,6 +202,7 @@ function selectTalentCard(card: HTMLElement): void {
     candidate.tabIndex = selected ? 0 : -1;
   });
   renderTalentDetail();
+  scheduleTalentLines();
 }
 
 type SpatialDirection = 'left' | 'right' | 'up' | 'down';
@@ -220,6 +259,7 @@ function handleTalentCardKeydown(event: KeyboardEvent, card: HTMLElement): void 
 }
 
 export function switchScene(scene: GameScene) {
+  if (scene !== 'TALENT_SCREEN') stopTalentLineObservation();
   gameState.currentScene = scene;
   getDomRefs().mainMenuEl.classList.remove('active');
   getDomRefs().levelSelectScreenEl.classList.remove('active');
@@ -438,6 +478,8 @@ export function renderTalentScreen() {
     selectedTalentId = visibleCard?.dataset.id as TalentId | null;
   }
 
+  renderTalentOuterSeals();
+
   const cards = document.querySelectorAll('.talent-card');
   cards.forEach(cardEl => {
     const tid = cardEl.getAttribute('data-id') as TalentId;
@@ -458,18 +500,20 @@ export function renderTalentScreen() {
       if (canUpgrade && !isMax) cardEl.classList.add('available');
     }
 
-    const icon = talentIconMap[tid] || '氣';
     const statusMark = isMax ? '成' : level > 0 ? '啟' : canUpgrade ? '可' : '封';
     const layout = TALENT_NODE_LAYOUT[tid];
 
     cardEl.innerHTML = `
-      <span class="talent-seal" aria-hidden="true"><span class="talent-seal-glyph">${icon}</span></span>
+      <span class="talent-seal" aria-hidden="true"></span>
       <span class="talent-node-copy">
         <span class="talent-card-title">${node.displayName}</span>
         <span class="talent-card-level">${node.organ ? `${node.organ}藏・` : ''}Lv.${level}/${node.maxLevel}</span>
       </span>
       <span class="talent-state-mark" aria-hidden="true">${statusMark}</span>
     `;
+
+    const sealArt = createTalentSealArt(TALENT_MOTIF_BY_ID[tid], 'talent-seal-art');
+    if (sealArt) cardEl.querySelector('.talent-seal')?.appendChild(sealArt);
 
     // 重設並重新綁定點擊事件
     const htmlEl = cardEl as HTMLElement;
@@ -478,6 +522,7 @@ export function renderTalentScreen() {
     htmlEl.dataset.theme = node.visualTheme;
     htmlEl.dataset.state = domState;
     htmlEl.dataset.figure = layout.figure;
+    htmlEl.dataset.tier = tid === 'taiji_dao' ? 'core' : node.prerequisites.length > 0 ? 'branch' : 'outer';
     htmlEl.style.setProperty('--node-x', `${layout.x}%`);
     htmlEl.style.setProperty('--node-y', `${layout.y}%`);
     htmlEl.style.setProperty('--node-rotation', `${layout.rotation}deg`);
@@ -552,6 +597,43 @@ function observeTalentLayout(): void {
   observedTalentContainer = container;
 }
 
+function stopTalentLineObservation(): void {
+  talentResizeObserver?.disconnect();
+  talentResizeObserver = null;
+  observedTalentContainer = null;
+  if (talentLineFrame !== null && typeof cancelAnimationFrame !== 'undefined') {
+    cancelAnimationFrame(talentLineFrame);
+    talentLineFrame = null;
+  }
+}
+
+function renderTalentOuterSeals(): void {
+  const field = document.getElementById('talentOuterSeals');
+  if (!field || typeof document.createDocumentFragment !== 'function' || typeof field.replaceChildren !== 'function') return;
+
+  const fragment = document.createDocumentFragment();
+  TALENT_OUTER_SEALS.forEach(seal => {
+    const marker = document.createElement('span');
+    marker.className = 'talent-outer-seal';
+    marker.dataset.outerId = seal.id;
+    marker.dataset.theme = seal.theme;
+    marker.dataset.state = 'locked';
+    marker.setAttribute('role', 'note');
+    marker.setAttribute('aria-label', `${seal.label}，未開放章節`);
+    marker.title = `${seal.label}｜未開放章節`;
+
+    const label = document.createElement('span');
+    label.className = 'talent-outer-seal-label';
+    label.textContent = '外章未開';
+
+    const art = createTalentSealArt(seal.motif, 'talent-outer-seal-art');
+    if (art) marker.append(art, label);
+    else marker.appendChild(label);
+    fragment.appendChild(marker);
+  });
+  field.replaceChildren(fragment);
+}
+
 function bindTalentAtlasAsset(): void {
   const image = document.getElementById('talentAtlasArt') as HTMLImageElement | null;
   const container = document.querySelector('.meridian-bg-container');
@@ -582,10 +664,10 @@ function bindTalentAtlasAsset(): void {
   }
 }
 
-function drawTalentLines() {
-  const svg = document.getElementById('talentSvg') as any;
+function drawTalentLines(): void {
+  const svg = document.getElementById('talentSvg') as SVGSVGElement | null;
   if (!svg) return;
-  svg.innerHTML = ''; // 清空舊的連線
+  svg.replaceChildren();
   
   const container = document.querySelector('.talent-tree-container') as HTMLElement;
   if (!container) return;
@@ -598,62 +680,62 @@ function drawTalentLines() {
   
   const containerRect = container.getBoundingClientRect();
   
-  // 連線對應定義
-  const connections = [
-    { from: 'fortress_1', to: 'fortress_2' },
-    { from: 'gold_1', to: 'gold_2' },
-    { from: 'precise_1', to: 'precise_2' },
-    { from: 'precise_1', to: 'rapid_fire' },
-    { from: 'earth_awakening', to: 'wall_discount' },
-    { from: 'yin_law', to: 'taiji_dao' },
-    { from: 'yang_law', to: 'taiji_dao' },
-  ];
-
-  // 輔助繪圖函式，用來畫出線條（包括背景流動與虛線）
-  const drawSegment = (dPath: string, isActive: boolean) => {
-    if (isActive) {
-      const bgLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      bgLine.setAttribute('d', dPath);
-      bgLine.setAttribute('class', 'talent-bg-line active');
-      svg.appendChild(bgLine);
-      
-      const flowLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      flowLine.setAttribute('d', dPath);
-      flowLine.setAttribute('class', 'talent-flow-line');
-      svg.appendChild(flowLine);
-    } else {
-      const lockedLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      lockedLine.setAttribute('d', dPath);
-      lockedLine.setAttribute('class', 'talent-locked-line');
-      svg.appendChild(lockedLine);
-    }
+  const createPath = (dPath: string, className: string): SVGPathElement => {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', dPath);
+    path.setAttribute('class', className);
+    return path;
   };
 
-  connections.forEach(({ from, to }) => {
-    const fromEl = document.querySelector(`[data-id="${from}"]`);
-    const toEl = document.querySelector(`[data-id="${to}"]`);
+  const drawConnection = (
+    dPath: string,
+    connection: TalentConnectionDefinition,
+    state: TalentConnectionState,
+  ): void => {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    group.setAttribute('class', 'talent-line-group');
+    group.dataset.from = connection.from;
+    group.dataset.to = connection.to;
+    group.dataset.theme = connection.theme;
+    group.dataset.state = state;
+    group.dataset.kind = connection.kind;
+    if (selectedTalentId === connection.from || selectedTalentId === connection.to) {
+      group.dataset.selected = 'true';
+    }
+
+    group.append(
+      createPath(dPath, 'talent-line-halo'),
+      createPath(dPath, 'talent-line-ink'),
+    );
+    if (state === 'active') group.appendChild(createPath(dPath, 'talent-line-flow'));
+    if (state === 'maxed') group.appendChild(createPath(dPath, 'talent-line-completion'));
+    svg.appendChild(group);
+  };
+
+  TALENT_CONNECTIONS.forEach(connection => {
+    const fromEl = document.querySelector(`[data-id="${connection.from}"]`);
+    const toSelector = isTalentOuterSealId(connection.to)
+      ? `[data-outer-id="${connection.to}"]`
+      : `[data-id="${connection.to}"]`;
+    const toEl = document.querySelector(toSelector);
     if (!fromEl || !toEl) return;
 
     const rectFrom = fromEl.getBoundingClientRect();
     const rectTo = toEl.getBoundingClientRect();
     if (rectFrom.width === 0 || rectTo.width === 0) return;
 
-    const x1 = rectFrom.left + rectFrom.width / 2 - containerRect.left;
-    const y1 = rectFrom.top + rectFrom.height / 2 - containerRect.top;
-    const x2 = rectTo.left + rectTo.width / 2 - containerRect.left;
-    const y2 = rectTo.top + rectTo.height / 2 - containerRect.top;
+    const from = {
+      x: rectFrom.left + rectFrom.width / 2 - containerRect.left,
+      y: rectFrom.top + rectFrom.height / 2 - containerRect.top,
+    };
+    const to = {
+      x: rectTo.left + rectTo.width / 2 - containerRect.left,
+      y: rectTo.top + rectTo.height / 2 - containerRect.top,
+    };
+    const d = buildTalentConnectionCurve(from, to);
 
-    const fromLvl = gameState.talentData.talentLevels[from as TalentId] || 0;
-    const isActive = fromLvl >= 1;
-
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const bend = Math.min(110, Math.max(32, (Math.abs(dx) + Math.abs(dy)) * 0.28));
-    const d = Math.abs(dx) >= Math.abs(dy)
-      ? `M ${x1} ${y1} C ${x1 + Math.sign(dx || 1) * bend} ${y1}, ${x2 - Math.sign(dx || 1) * bend} ${y2}, ${x2} ${y2}`
-      : `M ${x1} ${y1} C ${x1} ${y1 + Math.sign(dy || 1) * bend}, ${x2} ${y2 - Math.sign(dy || 1) * bend}, ${x2} ${y2}`;
-
-    drawSegment(d, isActive);
+    const state = getTalentConnectionState(gameState.talentData, connection);
+    drawConnection(d, connection, state);
   });
 }
 

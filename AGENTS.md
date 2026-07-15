@@ -46,6 +46,27 @@ index.html     — 入口頁面
 - 每個自訂命令物件應包含 `description`（說明）與 `template`（要執行的命令內容）欄位。
 - 隨附的 `verify_opencode.py` 驗證腳本必須保持與 `command` 物件格式一致的檢驗邏輯。
 
+## Fusion／OpenCode Go 外部面板規則
+
+- 使用者以下列指令要求 Fusion 時，視為已明確授權該次**去敏感摘要派發**，不得再次詢問是否啟用外部面板：
+
+  > 請使用 `$codex-fusion-research`，並明確啟用 OpenCode Go 外部面板 `glm` 與 `kimi`。
+  > 只傳送我提供的去敏感分析摘要；不要傳送原始碼、`.env`、token、私鑰或 OpenCode 設定。
+  > 請回報每個面板的 wrapper JSON 結果；未取得 `ok:true` 時，不要宣稱已派發或被外傳政策攔截。
+
+- 必須使用 `$codex-fusion-research`，並分別呼叫 OpenCode Go 的 `glm` 與 `kimi` 面板。
+- 外部面板 prompt 只能包含使用者提供的去敏感分析摘要與抽象問題；不得要求面板讀取工作區檔案。
+- 禁止傳送或嵌入：
+  - 專案原始碼、diff、完整專案文件或可還原原始內容的長段摘錄。
+  - `.env`、token、API key、密碼、私鑰、憑證或其他秘密。
+  - `opencode.json`、OpenCode agent 設定、provider 設定或其他 OpenCode 配置內容。
+  - 不必要的本機絕對路徑、使用者個資或可識別私人工作區的資訊。
+- 必須分別保存並向使用者回報 `glm` 與 `kimi` 的 wrapper JSON；不得只回報合併摘要。
+- 只有某面板的 wrapper JSON 明確包含 `ok: true`，才可宣稱該面板已成功派發並取得結果。
+- 若 wrapper 未產生、JSON 無效、`ok` 缺失或 `ok` 不為 `true`，只能回報「未取得可驗證的面板結果」及該次工具錯誤摘要；不得宣稱面板已派發、資料已送達、被外傳政策攔截，或 OpenCode／Fusion 整體遭環境封鎖。
+- 工具層錯誤不是面板 wrapper 結果。可準確說明「本次工具呼叫在 wrapper 結果產生前失敗」，但不得將單次錯誤推論成 OpenCode 的永久或全面狀態。
+- 失敗後不得藉由加入原始碼、設定或其他敏感資料繞過限制；只可使用更精簡的使用者去敏感摘要重新派發。
+
 ## 防禦性資產載入 (Assets Fallback)
 - 為了維持 Vibecoding 快速迭代下的系統穩定性，所有前端外置資產（如 Stable Diffusion 產生的圖片、背景音樂、SFX 音效）之載入必須設計 **Fallback 機制**。
 - 若外部資源缺失或載入失敗（如 `Image.onload` / `onerror` 或 `audio.play().catch()`），必須能安全且無縫地回退到原生像素精靈矩陣或 Emoji 渲染，不可中斷遊戲流程。

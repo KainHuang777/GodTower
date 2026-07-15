@@ -31,13 +31,13 @@
 |:---|:---|
 | 當前任務名稱 | 天賦經脈頁概念圖視覺對齊第二階段 |
 | 任務目標 | 在不改動天賦數值、`TalentId`、依賴或存檔格式的前提下，以古書框架、任督二脈、五藏印記、太極／八卦與印章節點，將目前抽象底板推進為可讀的古代經脈圖譜。 |
-| 任務狀態 | In Progress（P2-C 品質重製完成；P2-D／P2-E 核心程式完成，待 Antigravity 總驗收） |
-| 已完成內容 | Fusion 已安裝並通過 OpenCode bridge 診斷；由 GLM-5.2、Kimi K2.7 與 Codex 視覺 QA 分工。正／背古書手繪人物改為左右分離，SVG 同步作故障 fallback；16 個原生印章按鈕依圖像位置散落，加入空間方向鍵、非色彩狀態、ResizeObserver／rAF 連線重畫及 responsive 單欄版面。 |
-| 進行中內容 | 自動、桌面 1280×720 與橫向 896×414 瀏覽器驗證完成；待 Antigravity 確認人物筆觸、節點密度、經線對比與更大桌面尺寸。 |
-| 尚未完成內容 | P2-D 的 theme／kind 五色經線細化；P2-E 的 Antigravity 1366×768、1680×944、844×390 最終視覺驗收。 |
+| 任務狀態 | In Progress（P2-A～P2-E 工程與瀏覽器驗收完成；待 Antigravity 最終美術驗收） |
+| 已完成內容 | 正／背古書手繪人物、SVG fallback 與 16 個散落式印章節點完成。P2-D 將 7 條真實前置線由 `TALENT_TREE` 自動生成，加入 theme／state／kind／selected 五色經線、五個 inert 外環印記、四態非色彩線型、方向鍵高亮同步、ResizeObserver／rAF 與場景清理；印記美術再升級為青銅雲雷／回紋主印與可重用 SVG 圖形內核。 |
+| 進行中內容 | 僅待 Antigravity 檢視整體筆觸、密度、五個外章與桌面／橫向構圖。 |
+| 尚未完成內容 | P2-E 的 Antigravity 最終美術驗收。 |
 | 下一個具體行動 | 請切換 Antigravity 檢視本輪畫面；依回饋只微調節點位置、人物比例與經線色彩，不再退回重疊人體或大型卡片牆。 |
 | 目前阻塞問題 | 無程式碼阻塞；最終美術品像需具視覺能力的 Antigravity 驗收。 |
-| 最近驗證時間 | 2026-07-15（Asia/Taipei）：Vitest 6 個測試檔、184/184 通過；production build 成功；瀏覽器確認圖像載入與 SVG fallback、桌面／橫向 Mobile 無水平溢位、空間方向鍵正常。 |
+| 最近驗證時間 | 2026-07-16（Asia/Taipei）：Fusion GLM／Kimi wrapper 均 `ok:true`；Vitest 7 個測試檔、189/189 通過；production build 成功（40 modules）；瀏覽器確認 1366×768、1680×944、896×414、844×390 無頁面水平溢位，方向鍵同步、五個外印 inert、reduced-motion 與圖片失敗 SVG fallback 均有效。 |
 
 ---
 
@@ -71,10 +71,11 @@
 | `src/input/inputHandler.ts` | 滑鼠／觸控輸入與座標處理。 | 已修改；需驗證特殊尺寸地圖座標。 |
 | `src/renderer/gameRenderer.ts`、`src/renderer/tileCache.ts` | Canvas 戰場與地形快取渲染。 | 已修改；需做效能與畫面驗收。 |
 | `src/sprites.ts`、`assets/sprites/towers-v2/` | 塔與怪物精靈、外置塔素材及程式化 fallback。 | 已修改／新增未追蹤資產；須確認每個素材缺失時回退正常。 |
-| `src/ui/uiManager.ts`、`src/ui/visualRefresh.css`、`src/scenes/scenesManager.ts` | 教學文案、HUD、畫面狀態切換與可讀性樣式。 | 已修改；需在 Antigravity 驗收。 |
+| `src/ui/uiManager.ts`、`src/ui/visualRefresh.css`、`src/scenes/scenesManager.ts` | 教學文案、HUD、畫面狀態切換、P2-D SVG renderer 與可讀性樣式。 | 已修改；P2-A～P2-E 自動與瀏覽器驗證通過，待 Antigravity 最終美術驗收。 |
+| `src/ui/talentConnections.ts`、`src/__tests__/talentConnections.test.ts` | 由天賦前置資料衍生 theme／state／kind 連線、外章定義、自適應曲線與純函式測試。 | P2-D 新增；5 項專項測試通過。 |
 | `src/state.ts`、`src/config/enemies.json`、`src/__tests__/tutorial.test.ts` | 教學狀態、敵人資料與教學單元測試。 | 已修改；需要重新執行測試。 |
 | `src/talent.ts`、`src/scenes/scenesManager.ts`、`src/__tests__/talent.test.ts` | 天賦資料、五臟敘事、分支漸進開放、經脈頁渲染與單元測試。 | 天賦敘事深化完成；181/181 測試與 build 通過，待 Antigravity 視覺驗收。 |
-| `docs/TALENT_MERIDIAN_PHASE2_PLAN.md` | 天賦頁第二階段的史料邊界、顯示命名、古書／經脈構圖、實作順序與驗收基準。 | P2-A／P2-B／P2-C 已完成；P2-D／P2-E 核心程式完成，待五色經線與 Antigravity 總驗收。 |
+| `docs/TALENT_MERIDIAN_PHASE2_PLAN.md` | 天賦頁第二階段的史料邊界、顯示命名、古書／經脈構圖、實作順序與驗收基準。 | P2-A～P2-E 工程與瀏覽器驗收完成，待 Antigravity 總驗收。 |
 | `assets/ui/talent-atlas-figures-v1.png` | 左右分離的正／背古書手繪人物與淡墨太極八卦底圖。 | 新增；載入失敗時自動回退 inline SVG。 |
 | `.agents/skills/codex-fusion-research/`、`.opencode/agents/fusion-codex-*.md`、`scripts/codex-opencode-*` | Fusion skill、OpenCode 面板代理與受控橋接腳本。 | 已按 `E:\WORK\Fusion\README.md` 安裝；未覆寫 `opencode.json`、憑證或 `.env`。 |
 | `docs/mockups/terrain-material-board-v1.png` | 地形色盤與材質方向參考稿，非正式 runtime 素材。 | 新增未追蹤；待拆分為可平鋪資產。 |
@@ -98,6 +99,9 @@
 | P2-B 古書框架與詳情章頁驗證 | 2026-07-14：完成木／青銅框、紙頁、CSS 雲雷角飾、玉印標題、玉牌、章籤與右側固定資訊層級；Vitest 184/184 通過（1.02s）；`npx tsc --noEmit` 與 build 通過（39 modules，926ms）；尚待 Antigravity 視覺確認。 |
 | P2-C 人體任督五藏 SVG 驗證 | 2026-07-15：以單一 responsive inline SVG 完成正／背人體、任督雙線、五藏印記、純 path 太極與低對比八卦；保留 `z0` 裝飾、`z1` 動態連線、`z2` HTML 節點及 `pointer-events: none`。Vitest 184/184 通過（1.08s）；build 成功（39 modules，1.12s）；`git diff --check` 通過；待 Antigravity 視覺確認。 |
 | P2-C 品質重製／Fusion 驗證 | 2026-07-15：Fusion bridge 以 GLM-5.2 回傳 `bridge diagnostic acknowledged`；GLM、Kimi 與 Codex QA 完成分工。瀏覽器 1280×720 與 896×414 驗證無水平溢位，生成圖成功載入；暫時移除圖片後自動顯示分離式 SVG fallback；空間方向鍵由 `fortress_1` 正確移至 `fortress_2`。Vitest 184/184 與 production build 通過。 |
+| P2-D 五色經線與外環印記驗證 | 2026-07-15：本輪 OpenCode 外部面板因環境私有程式碼外送風險審查遭拒，未繞過限制；改由三個本地 Codex 面板完成視覺／架構／無障礙 Fusion 審查。Vitest 7 檔 189/189、build 40 modules 通過；瀏覽器 1280×720、896×414、844×390 驗證無頁面水平溢位，端點誤差 0px、鍵盤高亮同步、五個外印不可操作、reduced-motion 規則有效。 |
+| P2-D 青銅印記美術重製驗證 | 2026-07-15：依新去敏感規則派發 OpenCode Go；GLM wrapper `ok:true`（`opencode-go/glm-5.2`），Kimi wrapper `ok:true`（`opencode-go/kimi-k2.7-code`）。採青銅雲雷／方折回紋、inline SVG symbols 與 CSS 浮雕；Vitest 189/189、build 40 modules 通過；瀏覽器 1280×720 與 896×414 確認主印、節點與詳情圖形正常且無頁面水平溢位。 |
+| P2-E 響應式與回退驗證 | 2026-07-16：以去敏感摘要取得 GLM wrapper `ok:true`（`opencode-go/glm-5.2`）與 Kimi wrapper `ok:true`（`opencode-go/kimi-k2.7-code`）；採共同建議驗收 PC 與橫向觸控。瀏覽器確認 1366×768、1680×944、896×414、844×390 無頁面水平溢位，橫向最小點按區約 54px、方向鍵維持單一 roving tabindex 與選取同步、五個外印皆為 inert `role=note`；暫時停用人物 raster 後，自動切換 SVG 且四枚互動印章仍可用。Vitest 7 檔 189/189、build 40 modules 通過。 |
 | 已知錯誤 | `TODO`：本次未發現新的執行期錯誤；既有文件未列出可重現錯誤訊息。 |
 | 尚未驗證項目 | 20×10 教學全圖是否免拖曳、塔／岩壁前後景與連接、Mobile 橫向 HUD、外置塔精靈失敗 fallback、Canvas 效能與視覺可讀性（需 Antigravity 畫面驗收）。 |
 
@@ -131,6 +135,9 @@
 | 2026-07-14 | P2-B 古書框架與詳情章頁 | 新增可縮放深木／青銅框、四角雲雷飾、紙纖維章頁、玉印標題、天賦點玉牌與章籤導覽；詳情欄拆分機制副標、藏象取意／來源、實際戰鬥效果與前置／花費狀態。 | 全部使用 HTML／CSS 與現有 inline SVG，無外置紋理依賴；不改天賦數值或存檔。 | P2-C～P2-E 尚未實作；P2-B 畫面需 Antigravity 視覺確認。 |
 | 2026-07-15 | P2-C 人體、任督、五藏、太極與八卦 SVG | 將簡化底圖替換為單一 responsive inline SVG，加入錯位正／背人體、任督雙線、五藏藏象印記、純 SVG 太極與八卦水印；保留獨立動態連線與 HTML 操作層。 | 只改靜態 HTML／CSS／SVG，不改 TalentId、數值、存檔、節點 renderer 或 P2-D 連線狀態；不把五藏示意當成現代解剖。 | 需 Antigravity 確認人體輪廓、經線對比與點擊範圍；P2-D／P2-E 尚未實作。 |
 | 2026-07-15 | P2-C 古書人物與印章節點品質重製 | 依使用者視覺回饋安裝 Fusion 並分派 GLM／Kimi／Codex QA；以生成圖重做左右分離的正背人物，SVG 改為 fallback；16 個節點改為散落式原生印章按鈕，補空間鍵盤導覽、ResizeObserver／rAF、reduced motion、Mobile 單欄與資產失敗回退。 | 圖像只承擔美術，文字、狀態與互動由 HTML 提供；避免醫療穴位宣稱；鎖定／可學／已啟／滿級不只靠顏色。 | theme／kind 五色經線與 Antigravity 多尺寸美術總驗收仍待完成。 |
+| 2026-07-15 | P2-D 五色經線與外環印記 | 新增資料驅動 SVG group renderer、五行／任督／氣／陰陽色票、四態線型、分支／匯流／外章 kind、五個 inert 外印、selected 路徑同步、observer/rAF 場景清理及 5 項純函式測試。 | 真實邊只由 `TALENT_TREE.prerequisites` 衍生；外印不進天賦樹、存檔或操作流程；UI 統一稱天賦印／外環印記，不宣稱醫療穴位。 | OpenCode 本輪外部面板遭環境風險審查阻擋；Antigravity 大尺寸美術總驗收仍待完成。 |
+| 2026-07-15 | P2-D 青銅雲紋印記重製 | 使用去敏感摘要成功取得 GLM／Kimi `ok:true` wrapper；新增青銅雲雷／回紋 SVG symbol、14 類圖形內核、三層「靈」主印、詳情印與五個外章浮雕外環，移除節點內的純文字圖示。 | 只改 HTML／CSS／SVG 美術層，不傳送專案原始碼給外部面板，不改 TalentId、數值、解鎖、存檔或連線資料。 | Antigravity 仍需確認五行頁五個外章的完整視覺密度與 1366／1680 大尺寸構圖。 |
+| 2026-07-16 | P2-E Fusion 響應式與回退驗收 | 以去敏感摘要成功取得 GLM／Kimi `ok:true` wrapper；完成 1366×768、1680×944、896×414、844×390 瀏覽器驗收、方向鍵 roving tabindex、reduced-motion、外印 inert 語意與人物 raster 失敗時的 SVG 回退驗證。Vitest 189/189 與 production build 通過。 | P2-E 不新增玩法或資料，只以現有 CSS／HTML／SVG 交付；直向 Mobile 與實體裝置／Lighthouse 不列為本專案 PC／橫向觸控範圍的阻塞項。 | 僅待 Antigravity 審視整體筆觸、五個外章與各尺寸構圖；依回饋限縮為美術微調。 |
 | 2026-07-13 | 教學關卡全圖化（既有紀錄） | 教學／測試關卡改採 `dimensions`，目標為 20×10、64px 全圖；教學流程擴充為放塔、岩壁、戰鬥、合成、加速、卡牌、空中敵人、Boss、天賦引導。 | 特殊尺寸不可硬編碼進戰鬥核心。 | 地形設計稿尚未拆為可平鋪 runtime 素材；本次尚未重驗測試與視覺。 |
 
 ---
@@ -255,13 +262,13 @@
   - [x] 第二批：纏繞塔、鏡刃塔、暗影塔、聖光塔、蒼蠅、水靈、石傀儡、金甲蟲的 code-native 專屬姿態。
   - [x] 既有覆蓋確認：岩壁塔鄰接狀態、Boss 4 幀、Lv2 與配方塔 2 幀矩陣。
 - [x] **天賦敘事深化**：加入五臟對應、逐步解鎖與新手理解提示，避免經脈頁只具裝飾性（2026-07-13；待 Antigravity 視覺驗收）。
-- [ ] **天賦經脈頁概念圖視覺對齊（二階）**：以古書框架、人體任督、五藏印記、太極八卦、印章節點與彩色經線，補足目前抽象底板與矩形卡片的落差；詳見 `docs/TALENT_MERIDIAN_PHASE2_PLAN.md`。
+- [ ] **天賦經脈頁概念圖視覺對齊（二階）**：以古書框架、人體任督、五藏印記、太極八卦、印章節點與彩色經線，補足目前抽象底板與矩形卡片的落差；僅餘 Antigravity 最終視覺驗收，詳見 `docs/TALENT_MERIDIAN_PHASE2_PLAN.md`。
   - [x] 史料分層、16 節點顯示命名、實作順序與驗收條件規劃（2026-07-14）。
   - [x] P2-A：顯示 metadata、theme mapping、DOM state 與 CSS scope（2026-07-14；184/184、TypeScript 與 build 通過）。
   - [x] P2-B：古書框架、章籤、玉牌與右側詳情章頁（2026-07-14；程式完成，待 Antigravity 視覺確認）。
   - [x] P2-C：正／背人物改為左右分離的古書手繪生成圖，inline SVG 作資產失敗 fallback（2026-07-15）。
-  - [ ] P2-D：16 個印章節點、非色彩狀態、鎖定外穴與 ResizeObserver／rAF 已完成；theme／kind 五色經線待細化。
-  - [ ] P2-E：桌面 1280×720、橫向 896×414、reduced motion、自動測試與 build 已通過；Antigravity 多尺寸總驗收待完成。
+  - [x] P2-D：資料驅動 theme／state／kind 五色經線、四態線型、五個 inert 外環印記、ResizeObserver／rAF 與方向鍵高亮同步完成（2026-07-15）。
+  - [x] P2-E：桌面 1366×768／1680×944、橫向 896×414／844×390、reduced motion、圖片失敗 SVG fallback、鍵盤與 189 項測試／build 已通過（2026-07-16）；Antigravity 多尺寸美術總驗收待完成。
 
 ---
 
@@ -368,7 +375,7 @@
 
 ---
 
-*最後更新：2026-07-15（P2-C 古書人物與印章節點品質重製完成；P2-D／P2-E 核心程式與瀏覽器驗證通過，待 Antigravity 美術總驗收。）*
+*最後更新：2026-07-16（P2-E Fusion、響應式、鍵盤、減弱動態與圖片回退驗收完成；待 Antigravity 美術總驗收。）*
 
 ### 教學關卡全圖化（2026-07-13）
 

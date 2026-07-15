@@ -1120,6 +1120,37 @@
 
   <!-- ===== 場景 2: 天賦頁 ===== -->
   <div id="talentScreen" class="scene talent-atlas-v2">
+    <svg class="talent-bronze-defs" width="0" height="0" aria-hidden="true" focusable="false">
+      <defs>
+        <symbol id="talent-bronze-cloud-ring" viewBox="0 0 64 64">
+          <path fill="currentColor" opacity=".2" fill-rule="evenodd" d="M4 4h56v56H4V4Zm7 7v42h42V11H11Z"/>
+          <path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter" d="M5 22V5h17m20 0h17v17M59 42v17H42M22 59H5V42M10 20V10h10m24 0h10v10M54 44v10H44M20 54H10V44"/>
+          <path fill="none" stroke="currentColor" stroke-width="1.8" d="M17 17h11v5h-6v6h-5V17Zm30 0H36v5h6v6h5V17Zm0 30H36v-5h6v-6h5v11Zm-30 0h11v-5h-6v-6h-5v11Z"/>
+          <circle cx="32" cy="8" r="1.7" fill="currentColor"/><circle cx="56" cy="32" r="1.7" fill="currentColor"/><circle cx="32" cy="56" r="1.7" fill="currentColor"/><circle cx="8" cy="32" r="1.7" fill="currentColor"/>
+        </symbol>
+        <symbol id="talent-bronze-title-frame" viewBox="0 0 72 72">
+          <path fill="currentColor" opacity=".18" d="M7 7h58v58H7z"/>
+          <path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" d="M4 29V4h25v7H12v18H4Zm64 0V4H43v7h17v18h8ZM4 43v25h25v-7H12V43H4Zm64 0v25H43v-7h17V43h8Z"/>
+          <path fill="none" stroke="currentColor" stroke-width="2" d="M14 27V14h13v5h-8v8h-5Zm44 0V14H45v5h8v8h5ZM14 45v13h13v-5h-8v-8h-5Zm44 0v13H45v-5h8v-8h5Z"/>
+          <path fill="currentColor" d="M31 5h10l-2.5 4 2.5 4H31l2.5-4L31 5Zm0 54h10l-2.5 4 2.5 4H31l2.5-4L31 59Z"/>
+          <circle cx="8" cy="36" r="2" fill="currentColor"/><circle cx="64" cy="36" r="2" fill="currentColor"/>
+        </symbol>
+        <symbol id="talent-motif-fortress" viewBox="0 0 64 64"><path fill="currentColor" d="M32 13 49 20v12c0 10-6 17-17 22-11-5-17-12-17-22V20l17-7Zm0 7-10 4v8c0 6 3 10 10 14 7-4 10-8 10-14v-8l-10-4Z"/><path fill="currentColor" d="M27 28h10v12H27z"/></symbol>
+        <symbol id="talent-motif-wall" viewBox="0 0 64 64"><path fill="currentColor" d="M14 17h9v7h7v-7h7v7h7v-7h7v31H13V17h1Zm6 15v9h7v-9h-7Zm17 0v9h7v-9h-7Z"/></symbol>
+        <symbol id="talent-motif-wealth" viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M23 12h25v25H23V12Zm7 7v11h11V19H30Z"/><path fill="currentColor" fill-rule="evenodd" d="M13 27h24v24H13V27Zm7 7v10h10V34H20Z"/><path fill="currentColor" d="m37 39 12 5-6 3 3 6-12-7 3-7Z"/></symbol>
+        <symbol id="talent-motif-precision" viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M8 32 20 19h24l12 13-12 13H20L8 32Zm10 0 7 7h14l7-7-7-7H25l-7 7Z"/><path fill="currentColor" d="m32 24 8 8-8 8-8-8 8-8Z"/></symbol>
+        <symbol id="talent-motif-blade" viewBox="0 0 64 64"><path fill="currentColor" d="m14 47 8-4 23-28 5-1-1 6-23 27-2 9-4-7-6-2Zm20-2 4-5 12 8-5 5-11-8Z"/></symbol>
+        <symbol id="talent-motif-flow" viewBox="0 0 64 64"><path fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" d="M10 23c12-10 22-10 30-2 5 5 10 5 15 1M9 37c10-8 18-8 25-1 6 6 13 7 21 1M17 49c8-5 15-4 22 2"/></symbol>
+        <symbol id="talent-motif-wood" viewBox="0 0 64 64"><path fill="currentColor" d="M15 50c4-19 14-30 34-36-1 20-11 32-29 34l-5 2Zm10-9c8-2 14-7 19-16-9 5-15 10-19 16Z"/><path fill="none" stroke="currentColor" stroke-width="3" d="M18 49c8-8 15-14 25-21"/></symbol>
+        <symbol id="talent-motif-fire" viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M35 7c2 12-8 16-4 25 4-5 8-7 12-13 7 9 11 17 8 26-3 9-10 13-19 13-12 0-20-8-19-19 1-10 9-18 22-32Zm-3 28c-7 7-8 13 0 17 7-3 9-9 4-17l-2 7-2-7Z"/></symbol>
+        <symbol id="talent-motif-earth" viewBox="0 0 64 64"><path fill="currentColor" d="m8 48 15-23 8 10 11-20 15 33H8Zm17-3h25l-9-20-10 18-7-9-8 11h9Z"/><path fill="currentColor" d="M12 51h42v5H12z"/></symbol>
+        <symbol id="talent-motif-metal" viewBox="0 0 64 64"><path fill="currentColor" d="m13 44 8-5 22-26 8 1-2 8-24 23-4 8-8-9Zm25 4 5-6 10 8-6 6-9-8Z"/><path fill="currentColor" d="m13 19 7-6 11 13-5 6-13-13Z"/></symbol>
+        <symbol id="talent-motif-water" viewBox="0 0 64 64"><path fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" d="M8 26c7 0 7-7 14-7s7 7 14 7 7-7 14-7 7 7 7 7M8 41c7 0 7-7 14-7s7 7 14 7 7-7 14-7 7 7 7 7"/></symbol>
+        <symbol id="talent-motif-yin" viewBox="0 0 64 64"><path fill="currentColor" d="M43 11c-15 2-24 11-24 22 0 10 7 17 19 20-17 2-29-7-29-21 0-15 14-25 34-21Z"/><circle cx="43" cy="22" r="4" fill="currentColor"/></symbol>
+        <symbol id="talent-motif-yang" viewBox="0 0 64 64"><path fill="currentColor" d="m32 7 5 8 9-3 1 9 9 2-5 8 6 7-8 4 2 9-9-1-4 8-6-6-7 6-4-8-9 2 1-9-8-4 6-7-5-8 9-2 1-9 9 3 5-8Z"/><circle cx="32" cy="32" r="9" fill="#f2dfaa"/></symbol>
+        <symbol id="talent-motif-taiji" viewBox="0 0 64 64"><path fill="currentColor" d="M32 9a23 23 0 1 1 0 46 11.5 11.5 0 1 0 0-23 11.5 11.5 0 1 1 0-23Z"/><circle cx="32" cy="20.5" r="3" fill="#f2dfaa"/><circle cx="32" cy="43.5" r="3" fill="currentColor"/><circle cx="32" cy="32" r="23" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
+      </defs>
+    </svg>
     <div class="talent-atlas-frame">
       <span class="talent-frame-corner corner-nw" aria-hidden="true"></span>
       <span class="talent-frame-corner corner-ne" aria-hidden="true"></span>
@@ -1128,7 +1159,10 @@
       <div class="talent-atlas-page">
     <div class="talent-header">
       <div class="talent-title-group">
-        <span class="talent-title-seal" aria-hidden="true">靈</span>
+        <span class="talent-title-seal" aria-hidden="true">
+          <svg class="talent-title-seal-art" viewBox="0 0 72 72"><use href="#talent-bronze-title-frame"></use></svg>
+          <span class="talent-title-seal-core">靈</span>
+        </span>
         <div class="talent-title-copy">
           <h2 id="talentAtlasTitle">靈蘭藏象圖</h2>
           <span class="talent-screen-subtitle">五行經脈・天賦修習</span>
@@ -1281,6 +1315,7 @@
         <!-- Track 3: 五藏應象 -->
         <div id="track-element" class="talent-track" role="tabpanel" aria-labelledby="talentTabElement">
           <div class="track-label"><span>五行</span><strong>五藏應象</strong><small>肝心脾肺腎</small></div>
+          <div id="talentOuterSeals" class="talent-outer-seal-field" aria-label="未開放外章"></div>
           <div class="talent-node-field" aria-label="五藏應象天賦印">
             <button type="button" class="talent-card" data-id="wood_awakening"></button>
             <button type="button" class="talent-card" data-id="water_awakening"></button>
@@ -1305,18 +1340,18 @@
       </div>
       <aside id="talentDetailPanel" class="talent-detail-panel" aria-live="polite" aria-labelledby="talentDetailName">
         <span class="talent-detail-chapter-mark" aria-hidden="true">章</span>
-        <div id="talentDetailIcon" class="talent-detail-icon">☯</div>
-        <h3 id="talentDetailName">選擇穴位</h3>
+        <div id="talentDetailIcon" class="talent-detail-icon" aria-hidden="true"></div>
+        <h3 id="talentDetailName">選擇天賦印</h3>
         <div id="talentDetailMechanic" class="talent-detail-mechanic">選擇節點後顯示機制副標</div>
-        <div id="talentDetailLevel" class="talent-detail-level">經脈尚未選取</div>
+        <div id="talentDetailLevel" class="talent-detail-level">天賦印尚未選取</div>
         <section class="talent-detail-section talent-detail-allusion">
           <h4>藏象取意</h4>
-          <p id="talentDetailLore" class="talent-detail-lore">穴位不只提供數值，也代表一條戰鬥修行路線。</p>
+          <p id="talentDetailLore" class="talent-detail-lore">天賦印不只提供數值，也代表一條戰鬥修行路線。</p>
           <div id="talentDetailSource" class="talent-detail-source">取意來源會顯示於此</div>
         </section>
         <section class="talent-detail-section talent-detail-effect">
           <h4>戰鬥效果</h4>
-          <p id="talentDetailDesc">選擇左側穴位查看效果與升級需求。</p>
+          <p id="talentDetailDesc">選擇左側天賦印查看效果與升級需求。</p>
         </section>
         <div id="talentDetailPrereq" class="talent-detail-prereq"></div>
         <button id="btnUpgradeTalent" class="menu-btn primary" disabled>升級</button>

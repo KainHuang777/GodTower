@@ -1,3 +1,11 @@
+2026-07-16 Complete Talent Meridian Connections & Outer Seals (Phase 2-D/E)
+- [ROADMAP.md] [AGENTS.md] [docs/TALENT_MERIDIAN_PHASE2_PLAN.md] Documentation: Updated progression status to completed for Phase 2-D/E, and added detailed guidelines for Fusion/OpenCode Go external panels.
+- [ui/talentConnections.ts] [NEW] Core Logic: Introduced data-driven connection renderer mapping dependencies from talent prerequisites. Defined 5 inert outer seals, connection state calculations, and adaptive curve path generator.
+- [__tests__/talentConnections.test.ts] [NEW] Unit Tests: Added 5 dedicated unit tests verifying curve math, connection state evaluation, and outer seal predicates.
+- [scenes/scenesManager.ts] Renderer: Switched drawTalentLines to use new connections dataset. Implemented rendering for inert outer seals using bronze cloud-thunder relief symbols. Added proper ResizeObserver cleanup hooks on screen transitions.
+- [index.html] [ui/visualRefresh.css] Theme UI & CSS: Integrated 5-color layout classes for active/maxed/available/locked connections. Styled relief borders and hover glows for the outer seals.
+- Build verified: npm run build completed successfully. All 189 unit tests passed.
+
 2026-07-15 UI visual refresh and talent meridian system (Phase 2)
 - [index.html] CSS & Layout: Added the new '.talent-atlas-v2' ancient Chinese book layout framework, including dynamic title jade seals, gold plate style talent points, scroll tags for tab navigation, scroll boxes, and fallback logic if local assets load fails.
 - [talent.ts] Core Logic: Refactored talent configurations with new metadata properties (displayName, mechanicLabel, classicAllusion, sourceRef, organ). Introduced 'isTalentTrackUnlocked' based on 'totalTalentPoints' to prevent reset rollback. Implemented compatibility migration for legacy save storage keys.
