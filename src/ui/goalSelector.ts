@@ -24,6 +24,7 @@ import { saveTalentData } from '../talent';
 import { getAllGoals, getGoalConfigVersion } from '../goals/config';
 import { isGoalCompleted, isGoalUnlocked, selectGoal } from '../goals/state';
 import { renderGoalBoard } from './goalBoard';
+import { getGoalIconMarkup } from './goalIcons';
 
 const PANEL_ID = 'goal-panel-v1';
 
@@ -129,7 +130,7 @@ function renderSelectTab(container: HTMLElement): void {
 
     card.innerHTML = `
       <div class="goal-card-head">
-        <span class="goal-card-seal" aria-hidden="true">${goal.emoji}</span>
+        <span class="goal-card-seal" aria-hidden="true">${getGoalIconMarkup(goal.id)}</span>
         <span class="goal-card-copy">
           <span class="goal-card-label">${goal.label}</span>
           <span class="goal-card-category">${goal.category}</span>

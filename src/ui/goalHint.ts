@@ -15,6 +15,7 @@
 import { gameState } from '../state';
 import { getGoalById } from '../goals/config';
 import { isGoalCompleted } from '../goals/state';
+import { getGoalIconMarkup } from './goalIcons';
 
 const HINT_BAR_ID = 'goal-hint-bar';
 
@@ -47,7 +48,7 @@ export function renderGoalHint(): void {
   }
 
   bar.innerHTML = `
-    <span class="goal-hint-marker" aria-hidden="true">${goal.emoji}</span>
+    <span class="goal-hint-marker" aria-hidden="true">${getGoalIconMarkup(goal.id)}</span>
     <span class="goal-hint-copy"><span class="goal-hint-eyebrow">下次目標</span><span class="goal-hint-label">${goal.label}</span></span>
     ${completed ? '<span class="goal-hint-completed-tag">✓ 已達成</span>' : ''}
     <span class="goal-hint-sub">${goal.description}</span>

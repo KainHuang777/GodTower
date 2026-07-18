@@ -1,3 +1,13 @@
+2026-07-18 Complete Remaining Codex Tasks for Next Target System (Phase 3 Gate B)
+- [docs/P3_GATE_B_CODEX_HANDOFF.md] Documentation: Updated handoff checklists marking all 9 items as fully completed.
+- [src/ui/goalIcons.ts] [NEW] Core UI: Implemented code-native scaleable SVG icons for all 8 goals, replacing simple emojis with a unified theme.
+- [src/ui/goalRunResult.ts] [NEW] Core UI: Added game over screen result board displaying target status feedbacks (achieved, near-miss, ongoing).
+- [src/__tests__/goalRunResult.test.ts] [NEW] Unit Tests: Added test suite validating goal run result feedback logic.
+- [src/battle/battleManager.ts] Core Logic: Integrated live HUD goal progress tracking, particle celebration effect triggers, success audio playbacks with fallback, and game-over goal statistics presentation.
+- [src/ui/goalBoard.ts] [src/ui/goalHint.ts] [src/ui/goalSelector.ts] [src/ui/uiManager.ts] [index.html] UI Integration: Rendered the new SVG goal icons across selector cards, main menu hints, and records board. Injected HUD layout structures.
+- [ROADMAP.md] Docs: Updated progress indicators.
+- Build verified: npm run build successfully completed. All 240 unit tests passed.
+
 2026-07-18 Implement Next Target (Goal) System & P3 Gate A/B Features
 - [docs/P3_GATE_B_CODEX_HANDOFF.md] [NEW] Handoff Documentation: Added detailed handoff status for the next target system visual and audio assets.
 - [src/goals/*] [NEW] Goals Logic: Added config, types, state, and migration for the new goal/target system.

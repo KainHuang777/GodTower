@@ -14,6 +14,7 @@
 import type { TalentSaveData } from '../talent';
 import { getGoalById } from '../goals/config';
 import type { BoardSnapshot, GoalRunResult } from '../goals/types';
+import { getGoalIconMarkup } from './goalIcons';
 
 const RESULT_TEXT: Record<GoalRunResult, string> = {
   success: '已達成',
@@ -58,7 +59,7 @@ export function renderGoalBoard(container: HTMLElement, data: TalentSaveData): v
   container.innerHTML = `
     <div class="goal-board-card${snap.completed ? ' goal-board-completed' : ''}">
       <div class="goal-board-head">
-        <span class="goal-board-seal" aria-hidden="true">${goal.emoji}</span>
+        <span class="goal-board-seal" aria-hidden="true">${getGoalIconMarkup(goal.id)}</span>
         <span class="goal-board-label">${goal.label}</span>
         <span class="goal-board-badges">
           ${snap.completed ? '<span class="goal-board-tag">✓ 已達成</span>' : ''}

@@ -458,6 +458,24 @@
     .gameover-title.defeat { color: var(--danger); }
     .gameover-stats { display: flex; flex-direction: column; gap: 8px; align-items: center; font-size: 1.1rem; }
     .gameover-stats .highlight { color: var(--gold); font-weight: 600; font-size: 1.3rem; }
+    .goal-run-result {
+      position: relative; width: min(360px, calc(100vw - 32px)); padding: 12px 16px;
+      border: 1px solid rgba(226, 183, 92, .65); border-radius: 4px;
+      background: linear-gradient(135deg, rgba(65, 45, 28, .95), rgba(38, 30, 24, .95));
+      box-shadow: inset 0 0 0 2px rgba(255, 234, 179, .08), 0 3px 0 rgba(15, 10, 7, .45);
+      color: #f9e7bb; text-align: center;
+    }
+    .goal-run-result-title { font-size: 1.02rem; font-weight: 900; letter-spacing: .04em; }
+    .goal-run-result-detail { margin-top: 4px; color: #dfcda5; font-size: .8rem; line-height: 1.45; }
+    .goal-run-result-achieved { border-color: #b7d37c; background: linear-gradient(135deg, rgba(44, 73, 42, .96), rgba(29, 48, 31, .96)); animation: goal-run-result-arrive .45s ease-out both; }
+    .goal-run-result-achieved .goal-run-result-title { color: #e6f5ad; }
+    .goal-celebration-burst { position: absolute; top: 12px; left: 50%; width: 1px; height: 1px; pointer-events: none; }
+    .goal-celebration-burst i { position: absolute; width: 6px; height: 6px; background: #f8de78; box-shadow: 0 0 7px #f8de78; animation: goal-celebration-particle .7s ease-out both; }
+    .goal-run-result-near { border-color: #e19a55; }
+    .goal-run-result-near .goal-run-result-title { color: #ffca84; }
+    .goal-run-result-ongoing { border-color: rgba(194, 165, 111, .65); }
+    @keyframes goal-run-result-arrive { from { opacity: 0; transform: translateY(7px) scale(.96); } to { opacity: 1; transform: none; } }
+    @keyframes goal-celebration-particle { from { opacity: 0; transform: translate(-50%, -50%) scale(.3); } 35% { opacity: 1; } to { opacity: 0; transform: translate(var(--burst-x), var(--burst-y)) rotate(120deg) scale(.9); } }
 
     /* === 戰鬥場景 === */
     .game-container {
@@ -1231,6 +1249,8 @@
     .goal-card-locked { background: linear-gradient(145deg, #d8caab, #b8a887); color: #6f6253; filter: saturate(.55); opacity: .74; }
     .goal-card-head { position: relative; z-index: 1; gap: 8px; flex-wrap: nowrap; }
     .goal-card-seal, .goal-board-seal { display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; border: 1px solid #8c4f31; border-radius: 50%; background: #ecd18e; box-shadow: inset 0 0 0 2px rgba(255,246,211,.6), inset 0 0 0 4px rgba(117,60,37,.35); font-size: .95rem; }
+    .goal-icon { width: 19px; height: 19px; color: #663827; }
+    .goal-hint-marker .goal-icon { width: 21px; height: 21px; color: #f6e1a1; filter: drop-shadow(0 1px 1px rgba(0,0,0,.55)); }
     .goal-card-copy { display: grid; min-width: 0; } .goal-card-label { overflow: hidden; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
     .goal-card-category { color: #8f6544; font-size: .59rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
     .goal-card-state { display: flex; gap: 4px; margin-left: auto; } .goal-card-current, .goal-card-tag { padding: 2px 4px; border: 1px solid currentColor; border-radius: 2px; font-size: .63rem; font-weight: 800; line-height: 1.1; white-space: nowrap; }
@@ -1585,6 +1605,7 @@
       <div>總傷害輸出: <span id="goDamageVal" class="highlight">0</span></div>
       <div>獲得天賦點: <span id="goTalentVal" class="highlight">0</span></div>
     </div>
+    <div id="goalRunResult" class="goal-run-result" hidden aria-live="polite"></div>
     <div id="goDpsStats" style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 10px; width: 100%; max-width: 320px; font-size: 0.85rem; text-align: left;"></div>
     <button id="btnBackToMenu" class="menu-btn primary">返回主介面</button>
   </div>
@@ -1626,6 +1647,7 @@
             <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">擊殺</span>
             <span id="killVal" class="stat-val-wave" style="font-size: 1.4rem; font-weight: 800; line-height: 1.2; color: #a5b4fc;">0</span>
           </div>
+          <div id="hudGoalProgress" hidden style="max-width: 210px; padding: 6px 9px; border: 1px solid rgba(226,183,92,.55); background: rgba(83,57,31,.62); color: #f5d98e; font-size: .72rem; font-weight: 800; line-height: 1.25; text-align: center;"></div>
         </div>
       </div>
       <canvas id="gameCanvas" width="1280" height="640"></canvas>

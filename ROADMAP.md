@@ -33,11 +33,11 @@
 | 任務目標 | 下次目標勾選（天賦頁）→ 主選單提示 → 起卦儀式 → 跨局完成紀錄；保留圖鑑／成就／難度選擇至後續。 |
 | 任務狀態 | ✅ P3 Gate B Completed。 |
 | 已完成內容 | • `src/goals/` 純邏輯層（types/config/state/migrate）<br>• `src/config/goals.json` 8 個 v1 目標<br>• `talent.ts` TalentSaveData +7 新欄位 migration<br>• `src/ui/goalSelector/goalHint/goalBoard/ritual.ts` 渲染層<br>• `scenesManager.ts` 場景接線<br>• `battleManager.ts` 結算寫入（F1 test_level/tutorial guard + F2 catch QuotaExceededError）<br>• `inputHandler.ts` btnStartGame 起卦儀式包裝<br>• `state.ts` mergeCount 追蹤 + `towerActions.ts` 合成計數<br>• `playOpeningRitual` singleton guard + `hasPlayedBefore` 布林正規化（P0）<br>• Codex 美術接手：CSS 程式化五行起卦動畫、羊皮紙／青銅／朱砂目標面板、主選單提示與紀錄板視覺（無外部資產依賴） |
-| 進行中內容 | 無；Codex 交接盤點已完成：9 項中 5 項完成、1 項部分完成、3 項待辦，詳見 `docs/P3_GATE_B_CODEX_HANDOFF.md`。 |
-| 尚未完成內容 | Codex 待辦：GAME_OVER 目標達成提示（F4）、HUD 目標進度（F9）、慶祝粒子／音效；部分完成：正式目標 icon 取代 emoji。另有 v1.1 邏輯改善：clearTimeMinutes 真實時間（F6）、runsCompleted 正式計數器（F10）。 |
-| 下一個具體行動 | 先在 Antigravity 驗收儀式與目標面板的桌面／橫向 Mobile 畫面；其後從 F4、F9、正式 icon 或慶祝音效中擇一接續。 |
+| 進行中內容 | Codex 交接 9 項均已完成，待 Antigravity 做桌面／橫向 Mobile 畫面驗收。 |
+| 尚未完成內容 | Codex 交接無程式待辦。另有 v1.1 邏輯改善：clearTimeMinutes 真實時間（F6）、runsCompleted 正式計數器（F10）。 |
+| 下一個具體行動 | 在 Antigravity 驗收儀式、目標面板、結算回饋與 HUD 的桌面／橫向 Mobile 畫面；驗收後再決定是否接續 F6／F10。 |
 | 目前阻塞問題 | 無。 |
-| 最近驗證時間 | 2026-07-18（Asia/Taipei）：本機目前的 Vitest 10 files、237/237 通過；`npm run build` 52 modules clean。先前 244/244 為 2026-07-17 交接紀錄；文件與工作區測試數不一致時，以最新驗證為準。 |
+| 最近驗證時間 | 2026-07-18（Asia/Taipei）：正式 SVG icon 與達成慶祝完成後，Vitest 11 files、240/240 通過；`npm run build` 54 modules clean。先前 244/244 為 2026-07-17 交接紀錄；文件與工作區測試數不一致時，以最新驗證為準。 |
 
 ---
 
@@ -147,7 +147,7 @@
 
 | 日期 | 任務名稱 | 完成內容 | 重要決策 | 遺留問題 |
 |:---|:---|:---|:---|:---|
-| 2026-07-18 | Codex：起卦儀式與目標面板美術接手 | 預設 ritual provider 改為不依賴外部檔案的 CSS／DOM 五行陣（太極、五行方位、卦爻、≤2.2 秒、可跳過）；主陣於桌面放大為原設計的 1.5 倍，木→火→土→金→水依序顯現，最後才展示中央題字。五個元素以同圓周、72° 等角距的正五邊形排列，並從中央放大位移至外圓邊界頂點。成功播放不再誤顯示 fallback，失敗才回到文字。目標選擇、主選單提示與紀錄板改為羊皮紙、青銅與朱砂視覺，補連續挑戰提示、鍵盤焦點與 reduced-motion 規則。Vitest 237/237、build 52 modules 通過。 | 不新增圖像／音效資產，維持離線可用與安全 fallback；保留 `RitualAssetProvider` 注入契約，以便日後替換正式資產。 | 交接盤點：9 項中 5 項完成、1 項部分完成、3 項待辦；需 Antigravity 驗收。待辦為 F4、F9、慶祝動畫／音效與正式目標 icon；F6／F10 為另行保留的 v1.1 邏輯改善。 |
+| 2026-07-18 | Codex：P3 Gate B 美術與回饋交接完成 | 預設 ritual provider 改為不依賴外部檔案的 CSS／DOM 五行陣（太極、五行方位、卦爻、≤2.2 秒、可跳過）；主陣於桌面放大為原設計的 1.5 倍，木→火→土→金→水依序顯現，最後才展示中央題字。五個元素以同圓周、72° 等角距的正五邊形排列，並從中央放大位移至外圓邊界頂點。目標選擇、主選單提示與紀錄板改為羊皮紙、青銅與朱砂視覺；GAME_OVER 新增「達成／差一點／挑戰中」三態回饋；HUD 顯示波次／擊殺／合成目標進度；8 個 emoji 改為 code-native SVG icon；首次達成播放金色粒子與成功音效 fallback。Vitest 240/240、build 54 modules 通過。 | 不新增外部圖像／音效資產，維持離線可用與安全 fallback；保留 `RitualAssetProvider` 注入契約。 | Codex 交接 9/9 完成，需 Antigravity 驗收。F6／F10 為另行保留的 v1.1 邏輯改善。 |
 | 2026-07-13 | Roadmap 改造：專案規劃與任務上下文記憶 | 在 `ROADMAP.md` 新增 Project Overview、Current Task Context、Technical Decisions、Files and Components、Verification、長期規劃索引與本表；保留原有所有 Phase、P3/P4、技術債與盲點資料；重跑 `npm test`（178/178）與 `npm run build`（成功）。 | 長期規劃與單次任務狀態分離；不確定資訊以 `TODO`／`需要確認` 標示；以程式碼與最新驗證覆蓋過時文件。 | 需在 Antigravity 驗收未提交的教學與美術改動；`Sample/codex/` 用途需要確認。 |
 | 2026-07-13 | Git 忽略本機 Sample 目錄 | 在 `.gitignore` 加入 `Sample/`，保留本機檔案但排除公開 Git 追蹤。 | `Sample/` 為本機內容，不應推送到公開空間。 | 無。 |
 | 2026-07-13 | 第一批逐類精靈重繪 | 修改 `src/sprites.ts`：小蛇與火蜥蜴加入依 `vx` 左右鏡像及 2 幀身體／四肢步態；烈焰塔加入火焰待機與攻擊升焰幀；冰凍塔加入冰晶呼吸與攻擊張開幀。`npm test` 178/178、`npm run build` 成功。 | 正式 pixel 模式延伸 code-native 精靈，不以 AI 高畫素圖取代；不改碰撞、網格或資產載入 fallback。 | 需於 Antigravity 驗收輪廓、方向與動畫幅度；整體逐類重繪仍未完成。 |

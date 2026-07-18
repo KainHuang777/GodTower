@@ -4,18 +4,18 @@
 > 邏輯層已全數完成（交接時為 244 測試綠、52 modules build clean；目前工作區的最新驗證數以 `ROADMAP.md` 為準），
 > 以下僅列出視覺/動畫/音效相關的待替換與強化項目。
 
-> 2026-07-18 交接盤點：**尚未全部完成**。9 個交接項目中，5 個完成（1／4／5／6／9）、1 個部分完成（3：已做印章容器，但仍使用 emoji）、3 個待辦（2／7／8）。畫面需在 Antigravity 做最後驗收。
+> 2026-07-18 交接盤點：**9 個交接項目均已完成**。目標圖示改為 code-native SVG；首次達成會顯示粒子並播放現有成功音效，音效不可用時安全無聲回退。畫面仍需在 Antigravity 做最後驗收。
 
 | # | 項目 | 狀態 | 說明 |
 |:--:|:---|:---:|:---|
 | 1 | 起卦儀式動畫 | ✅ | 程式化五行陣、正五邊形、依序出現、跳過與 fallback 已完成。 |
-| 2 | GAME_OVER 目標達成提示 | ⏳ | F4，尚未實作。 |
-| 3 | 目標卡片 icon | ◐ | 已有青銅印章容器；正式 pixel／SVG icon 尚未取代 emoji。 |
+| 2 | GAME_OVER 目標達成提示 | ✅ | 已實作達成／差一點／挑戰中三態回饋，並有 3 項純函式測試。 |
+| 3 | 目標卡片 icon | ✅ | 8 個目標已改用可縮放、主題一致的 code-native SVG icon。 |
 | 4 | 紀錄板視覺風格 | ✅ | 紙本格線、狀態色與達成徽章已完成。 |
 | 5 | 主選單目標提示 | ✅ | 印章提示、連續嘗試色彩與轉場已完成。 |
 | 6 | 天賦頁目標選擇面板 | ✅ | 羊皮紙、青銅、朱砂、鎖定／選取／完成狀態已完成。 |
-| 7 | HUD 目標進度 | ⏳ | F9，尚未實作。 |
-| 8 | 慶祝動畫／音效 | ⏳ | 僅有紀錄板「剛剛達成」標籤；粒子與音效未實作。 |
+| 7 | HUD 目標進度 | ✅ | 波次／擊殺／合成目標會在 HUD 顯示即時進度；其他類型自動隱藏。 |
+| 8 | 慶祝動畫／音效 | ✅ | 首次達成觸發金色粒子與成功音效；音效不可用時無聲回退。 |
 | 9 | CSS 動畫與轉場 | ✅ | 儀式、面板、卡片、提示與 reduced-motion 規則已完成。 |
 
 ---
@@ -94,11 +94,12 @@ const NoOpProvider: RitualAssetProvider = {
 
 ---
 
-## 2. GAME_OVER 目標達成提示 — High（待辦）
+## 2. GAME_OVER 目標達成提示 — High（完成）
 
-### 現況
-- 未實作（F4，v1.1 待開發）
-- GAME_OVER 場景目前只顯示：波次/擊殺/傷害/連殺/天賦點
+### 完成內容
+- GAME_OVER 新增 `#goalRunResult`，僅在一般關卡且已選目標時顯示。
+- 依現有 `commitEndOfRun()`／`RunStats` 呈現三態：目標達成、接近門檻與挑戰中。
+- 教學／測試關、未選目標或無效目標時安全隱藏；存檔失敗仍可顯示本局的即時回饋。
 
 ### 需新增
 在 GAME_OVER DOM（`#gameOverScreen`）的統計區下方，加入 `.goal-run-result` 元素：
@@ -119,12 +120,11 @@ const NoOpProvider: RitualAssetProvider = {
 
 ---
 
-## 3. 目標卡片 Icon 替換 — Low（部分完成）
+## 3. 目標卡片 Icon 替換 — Low（完成）
 
-### 現況
-- `src/config/goals.json` 定義每個目標的 `emoji` 欄位
-- 目前使用 emoji：🌊 👹 ⚗️ ☯️ 📐 💨 🏅 ⚔️
-- UI 已以 `.goal-card-seal` 將 emoji 納入青銅印章容器；尚未替換為獨立 pixel icon／SVG emblem
+### 完成內容
+- 新增 `src/ui/goalIcons.ts`，為 8 個目標提供可縮放的 code-native SVG icon。
+- 目標卡、主選單提示與紀錄板均改用同一組 SVG，保留 `emoji` 欄位作資料相容 fallback。
 
 ### 建議
 - 替換為主題一致的 pixel icon / SVG emblem（規格 32×32 或 48×48）
@@ -222,11 +222,12 @@ const NoOpProvider: RitualAssetProvider = {
 
 ---
 
-## 7. HUD 目標進度指示 (v1.1) — Medium（待辦）
+## 7. HUD 目標進度指示 (v1.1) — Medium（完成）
 
-### 現況
-- 未實作（F9，v1.1 待開發）
-- 戰鬥中完全無目標感知
+### 完成內容
+- 在戰鬥 HUD 新增 `#hudGoalProgress`，以 `🎯 目標名・進度 current/target` 顯示。
+- 只顯示可直接量化的 `highestWave`、`killCount`、`mergeCount`，其他目標、未選目標會自動隱藏。
+- 跟隨既有 `updateUI()` 週期更新，因此波次、擊殺與合成變化會立即反映。
 
 ### 需新增
 在戰鬥 HUD（`#battleHud`）中新增極簡目標進度指示器：
@@ -246,12 +247,11 @@ const NoOpProvider: RitualAssetProvider = {
 
 ---
 
-## 8. 慶祝動畫/音效 — Low（待辦）
+## 8. 慶祝動畫/音效 — Low（完成）
 
-### 現況
-- `commitEndOfRun` 回傳 `justAchieved: boolean`
-- GoalSelector tab 改為 `justAchieved` 時自動切到 board tab
-- **無動畫、無音效**
+### 完成內容
+- `justAchieved=true` 時，在 GAME_OVER 目標回饋上方播放金色粒子爆發。
+- 同時重用既有 `merge_success` 成功音效；音效檔缺失或瀏覽器拒絕播放時由既有音效系統安全 fallback／無聲繼續。
 
 ### 期望
 - 當 `justAchieved=true`：

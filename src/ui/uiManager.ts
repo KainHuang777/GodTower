@@ -11,6 +11,7 @@ import { getWaveConfig, ENEMY_DEFS } from '../enemies';
 import { getElementAccent } from '../theme';
 import { rollMysteryBox } from '../system/roguelikeSystem';
 import { isFullRefundAvailable } from '../battle/p3GateA';
+import { getGoalById } from '../goals/config';
 
 export function updateUI() {
   getDomRefs().hpVal.textContent = gameState.currentMap.id === 'test_level' ? '∞' : Math.floor(gameState.hp).toString();
@@ -25,6 +26,7 @@ export function updateUI() {
   updateWaveProgress();
   updateLevelTutorial();
   updateRoguelikeHUD();
+  updateHudGoalProgress();
 
   const testControls = document.getElementById('testControls');
   if (testControls) {
@@ -106,6 +108,41 @@ export function updateUI() {
       }
     }
   }
+}
+
+/** F9：只為能在戰鬥中量化的目標顯示極簡進度。 */
+function updateHudGoalProgress(): void {
+  const progressEl = document.getElementById('hudGoalProgress');
+  if (!progressEl) return;
+
+  const goal = getGoalById(gameState.talentData.nextGoalId ?? null);
+  if (!goal || goal.completion.operator !== 'gte') {
+    progressEl.hidden = true;
+    return;
+  }
+
+  let current: number;
+  let label: string;
+  switch (goal.completion.key) {
+    case 'highestWave':
+      current = gameState.wave;
+      label = '波次';
+      break;
+    case 'killCount':
+      current = gameState.killCount;
+      label = '擊殺';
+      break;
+    case 'mergeCount':
+      current = gameState.mergeCount;
+      label = '合成';
+      break;
+    default:
+      progressEl.hidden = true;
+      return;
+  }
+
+  progressEl.hidden = false;
+  progressEl.textContent = `🎯 ${goal.label}・${label} ${Math.min(current, goal.completion.value)}/${goal.completion.value}`;
 }
 
 export function updateWaveProgress() {

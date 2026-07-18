@@ -15,6 +15,8 @@ import { P3_GATE_A_CONFIG, getElementResistanceRate, getLowHpCompensation } from
 import { commitEndOfRun } from '../goals/state';
 import type { RunStats } from '../goals/types';
 import { refreshGoalSelectorIfPresent } from '../ui/goalSelector';
+import { renderGoalRunResult } from '../ui/goalRunResult';
+import type { GoalRunFeedbackContext } from '../ui/goalRunResult';
 
 // 引入渲染與 UI 更新
 import { showFloat, initBgStars } from '../renderer/gameRenderer';
@@ -292,7 +294,9 @@ export function endBattle(isVictory: boolean) {
   }
 
   // P3 Gate B：跨局目標結算寫入（F1 test_level/tutorial 阻斷、F2 quota try-catch）
-  commitGoalRunResult(isVictory);
+  // F4：將本局目標結果帶入 GAME_OVER 提示。
+  const goalRunFeedback = commitGoalRunResult(isVictory);
+  renderGoalRunResult(goalRunFeedback);
 
   if (gameState.switchScene) {
     gameState.switchScene('GAME_OVER');
@@ -341,18 +345,19 @@ function buildRunStats(isVictory: boolean): RunStats {
  *
  * 呼叫時機：endBattle 寫完結算 DOM、在 switchScene('GAME_OVER') 之前。
  */
-function commitGoalRunResult(isVictory: boolean): void {
+function commitGoalRunResult(isVictory: boolean): GoalRunFeedbackContext | null {
   const mapId = gameState.currentMap?.id;
   // F1：測試 / 教學關卡不汙染跨局目標統計
-  if (mapId === 'test_level' || mapId === 'tutorial') return;
+  if (mapId === 'test_level' || mapId === 'tutorial') return null;
 
   const goalId = gameState.talentData.nextGoalId ?? null;
-  if (!goalId) return; // 玩家未勾選下次目標 → 不記錄，但仍可正常結算
+  if (!goalId) return null; // 玩家未勾選下次目標 → 不記錄，但仍可正常結算
 
   const runStats = buildRunStats(isVictory);
   const result = isVictory ? 'success' : 'failure';
+  let justAchieved = false;
   try {
-    commitEndOfRun(gameState.talentData, goalId, runStats, result, Date.now());
+    ({ justAchieved } = commitEndOfRun(gameState.talentData, goalId, runStats, result, Date.now()));
     saveTalentData(gameState.talentData);
   } catch (err) {
     // F2：localStorage quota 或序列化失敗時不中斷結算流程
@@ -363,6 +368,8 @@ function commitGoalRunResult(isVictory: boolean): void {
 
   // 結算後若玩家回到天賦頁，目標卡片 / 紀錄板需反映最新統計
   refreshGoalSelectorIfPresent();
+  // 即使存檔失敗，也顯示本局以 runStats 推導的即時回饋。
+  return { goalId, runStats, justAchieved };
 }
 
 export function checkWaveEnd() {
