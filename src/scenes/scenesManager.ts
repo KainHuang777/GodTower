@@ -27,6 +27,8 @@ import {
   type TalentConnectionState,
   type TalentSealMotif,
 } from '../ui/talentConnections';
+import { renderGoalHint } from '../ui/goalHint';
+import { renderGoalSelector } from '../ui/goalSelector';
 
 let selectedTalentId: TalentId | null = null;
 let talentLineFrame: number | null = null;
@@ -282,6 +284,7 @@ export function switchScene(scene: GameScene) {
         gameState.animFrameId = null;
       }
       refreshMenuTalentInfo();
+      renderGoalHint();
       break;
     case 'LEVEL_SELECT':
       getDomRefs().levelSelectScreenEl.classList.add('active');
@@ -296,6 +299,7 @@ export function switchScene(scene: GameScene) {
     case 'TALENT_SCREEN':
       getDomRefs().talentScreenEl.classList.add('active');
       renderTalentScreen();
+      renderGoalSelector();
       break;
     case 'BATTLE':
       getDomRefs().battleSceneEl.classList.add('active');

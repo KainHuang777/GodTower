@@ -1,0 +1,20 @@
+{
+  "elementResistance": {
+    "startWave": 6,
+    "maxReduction": 0.2,
+    "tiers": [
+      { "minWave": 6, "reduction": 0.1 },
+      { "minWave": 11, "reduction": 0.15 },
+      { "minWave": 16, "reduction": 0.2 }
+    ]
+  },
+  "antiSnowball": {
+    "fullRefundMaxWave": 4,
+    "fullRefundRate": 1,
+    "lowHpCompensation": {
+      "hpThresholdRatio": 0.35,
+      "goldAmount": 12,
+      "maxTriggers": 1
+    }
+  }
+}

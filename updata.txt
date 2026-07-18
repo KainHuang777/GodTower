@@ -1,3 +1,15 @@
+2026-07-18 Implement Next Target (Goal) System & P3 Gate A/B Features
+- [docs/P3_GATE_B_CODEX_HANDOFF.md] [NEW] Handoff Documentation: Added detailed handoff status for the next target system visual and audio assets.
+- [src/goals/*] [NEW] Goals Logic: Added config, types, state, and migration for the new goal/target system.
+- [src/config/goals.json] [NEW] Goals Configuration: Defined 8 initial v1 goals for players.
+- [src/ui/goalSelector.ts] [src/ui/goalHint.ts] [src/ui/goalBoard.ts] [src/ui/ritual.ts] [NEW] Goals UI: Added target selection screen, main menu hints, scorecard renderer, and ritual animation overlays.
+- [src/battle/p3GateA.ts] [src/config/p3GateA.json] [NEW] P3 Gate A Logic: Added elemental resistances, refund mechanics, and life-saving triggers.
+- [src/input/buildPlacement.ts] [NEW] Build Placement: Enhanced shop actions and build/drag placements validation.
+- [src/__tests__/*] [NEW] Unit Tests: Created dedicated test suites for goals evaluation, build placement, and P3 Gate A logic (237/237 tests passing).
+- [talent.ts] [state.ts] [battleManager.ts] [scenesManager.ts] [inputHandler.ts] Core Logic & Scenes: Integrated target selections, migration for TalentSaveData (+7 fields), end-of-run state commits, and opening ritual trigger flows.
+- [README.md] [ROADMAP.md] Docs: Synchronized implementation notes and updated roadmap with P3 Gate B completion and verification.
+- Build verified: npm run build completed successfully. All 237 unit tests passed.
+
 2026-07-16 Complete Talent Meridian Connections & Outer Seals (Phase 2-D/E)
 - [ROADMAP.md] [AGENTS.md] [docs/TALENT_MERIDIAN_PHASE2_PLAN.md] Documentation: Updated progression status to completed for Phase 2-D/E, and added detailed guidelines for Fusion/OpenCode Go external panels.
 - [ui/talentConnections.ts] [NEW] Core Logic: Introduced data-driven connection renderer mapping dependencies from talent prerequisites. Defined 5 inert outer seals, connection state calculations, and adaptive curve path generator.

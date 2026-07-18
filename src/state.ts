@@ -78,6 +78,8 @@ export interface GameState {
   totalDamageDealt: number;
   currentKillStreak: number;
   maxKillStreak: number;
+  /** P3 Gate B：單局合成次數（startBattle 重置、performMerge 完成時 ++） */
+  mergeCount: number;
   grid: number[][];
   currentStyle: 'pixel' | 'highres';
 
@@ -178,15 +180,17 @@ export interface GameState {
       active: boolean;
       timer: number;
       duration: number;
-      t1: { x: number, y: number, typeId: string };
-      t2: { x: number, y: number, typeId: string };
+      t1: { x: number, y: number, typeId: string, investmentCost?: number };
+      t2: { x: number, y: number, typeId: string, investmentCost?: number };
       resultX: number;
       resultY: number;
       resultTypeId: string;
+      mergeCost?: number;
     } | null;
     talentTutorialActive: boolean;
     levelTutorialStep: 'idle' | 'intro' | 'build_wall' | 'build_tower' | 'start_wave' | 'wave_1_active' | 'merge_guide' | 'speed_guide' | 'wave_4_guide' | 'wave_5_guide' | 'completed';
     activeTalentTrack: 'track-base' | 'track-attack' | 'track-element' | 'track-yinyang';
+    lowHpCompensationGrants: number;
 
     // Roguelike 系統狀態
     roguelikeState: RoguelikeState;
@@ -236,6 +240,7 @@ export function createGameState(): GameState {
     totalDamageDealt: 0,
     currentKillStreak: 0,
     maxKillStreak: 0,
+    mergeCount: 0,
     grid: createInitialGrid(80, 40),
     // 原生矩陣像素優先：輪廓與動畫辨識度高於實驗性外置圖像。
     currentStyle: 'pixel',
@@ -310,6 +315,7 @@ export function createGameState(): GameState {
     talentTutorialActive: false,
     levelTutorialStep: 'idle',
     activeTalentTrack: 'track-base',
+    lowHpCompensationGrants: 0,
 
     // Roguelike 系統狀態
     roguelikeState: {

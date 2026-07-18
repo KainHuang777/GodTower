@@ -135,7 +135,7 @@
 |:---|:---|
 | **語言** | TypeScript |
 | **打包工具** | Vite 5 |
-| **測試框架** | Vitest（181 tests，6 files） |
+| **測試框架** | Vitest（197 tests，9 files；以目前工作樹驗證為準） |
 | **渲染** | HTML5 Canvas |
 | **精靈渲染** | OffscreenCanvas 預渲染快取，支援 16x16 與 16x24 2.5D 原生像素動畫與 45 度等角立體光影 |
 | **視覺風格** | 明亮日間暖色山水 + 高密度像素精靈 + 深色描邊與柔和 Glow；夜色、星空、雷雨僅作特殊關卡主題 |
@@ -167,6 +167,41 @@ npm run preview
 ```
 
 開發伺服器啟動後，開啟瀏覽器造訪 `http://localhost:5173`。
+
+## 🤖 OpenCode 專案交接
+
+目前 P3 Gate A 已完成，下一步是 P3 Gate B 的最小垂直切片：
+
+> 下次目標勾選 → 主選單提示 → 跨局完成紀錄。
+
+要改由 OpenCode 接續專案時，請在專案根目錄 `E:\WORK\GodTower` 開啟 OpenCode：
+
+```powershell
+cd E:\WORK\GodTower
+opencode
+```
+
+進入 OpenCode 後，第一個任務應先要求它讀取 `AGENTS.md`、`ROADMAP.md` 與本 README，再檢查目前工作樹，然後執行：
+
+```text
+讀取 AGENTS.md、ROADMAP.md、README.md。P3 Gate A 已完成，請接續規劃並實作 P3 Gate B 最小垂直切片：下次目標勾選、主選單提示、跨局完成紀錄。先檢查目前程式碼與測試，再提出最小資料模型與驗收條件。
+```
+
+OpenCode 的開發伺服器與驗證命令仍在另一個終端機執行：
+
+```powershell
+npm run dev -- --host 127.0.0.1
+npm test
+npm run build
+```
+
+目前已驗證：Vitest 197/197 通過、production build 43 modules 成功；使用者也已確認連續放置 12–15 個岩壁及依序點擊不同塔按鈕正常。
+
+### OpenCode Fusion 注意事項
+
+本專案的 Fusion bridge 只允許去敏感摘要，不得傳送原始碼、`.env`、token、私鑰或 OpenCode 設定。最新一次 GLM 派發回傳 `ok:false`、`NO_FINAL_TEXT`、`verified:false`，Kimi 因 fail-fast 規則未呼叫；因此這一輪沒有可引用的外部模型審查結果。未來只有 wrapper 明確回傳 `verified:true` 且實際模型與白名單一致時，才能宣稱 OpenCode Fusion 成功。
+
+OpenCode 目前應先以專案本身的測試與 build 接手；不要把未驗證的 Fusion 輸出當作程式碼或模型身份證據。
 
 ---
 
@@ -203,7 +238,7 @@ GodTower/
 │   ├── input/              # 輸入處理（inputHandler）
 │   ├── audio/              # 音效系統（audioSystem）
 │   ├── system/             # 系統模組（roguelikeSystem, traitLearning）
-│   └── __tests__/          # Vitest 單元測試（6 files，181 tests）
+│   └── __tests__/          # Vitest 單元測試（9 files，197 tests）
 ├── assets/
 │   └── sprites/towers-v2/  # 72×96 高密度塔精靈（缺失時回退程式化繪製）
 └── docs/

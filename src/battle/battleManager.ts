@@ -9,6 +9,12 @@ import { ThemeId, WeatherId, MAX_WAVES } from '../types';
 import { applyAscensionModifiers } from './difficulty';
 import { BASE_TOWERS, LV2_TOWERS, RECIPE_TOWERS, TowerDef } from '../towers';
 import { grantStartBonus, calcMysteryBoxPrice, showCardPicker, tickWaveBuffs } from '../system/roguelikeSystem';
+import { P3_GATE_A_CONFIG, getElementResistanceRate, getLowHpCompensation } from './p3GateA';
+
+// P3 Gate B：跨局目標系統 — 結算時收集本局統計並寫入長期存檔
+import { commitEndOfRun } from '../goals/state';
+import type { RunStats } from '../goals/types';
+import { refreshGoalSelectorIfPresent } from '../ui/goalSelector';
 
 // 引入渲染與 UI 更新
 import { showFloat, initBgStars } from '../renderer/gameRenderer';
@@ -38,6 +44,8 @@ export function startBattle() {
   gameState.totalDamageDealt = 0;
   gameState.currentKillStreak = 0;
   gameState.maxKillStreak = 0;
+  gameState.mergeCount = 0;
+  gameState.lowHpCompensationGrants = 0;
   gameState.enemies = [];
   gameState.towers = [];
   gameState.bullets = [];
@@ -107,6 +115,11 @@ export function startBattle() {
 export function spawnWave(waveNum: number) {
   gameState.waveTicks = 0; // P2 reset wave tick timer
   const configs = getWaveConfig(waveNum);
+
+  if (gameState.currentMap.id !== 'test_level' && waveNum === P3_GATE_A_CONFIG.elementResistance.startWave) {
+    const resistance = Math.round(getElementResistanceRate(waveNum, false) * 100);
+    showFloat(640, 180, `🛡️ 元素抗性啟動：非克制傷害 -${resistance}%`, '#c8a45d', 15);
+  }
 
   // P2: 機制學習 — 首次遭遇詞條時記錄
   if (gameState.currentMap.id !== 'test_level') {
@@ -278,9 +291,78 @@ export function endBattle(isVictory: boolean) {
     }
   }
 
+  // P3 Gate B：跨局目標結算寫入（F1 test_level/tutorial 阻斷、F2 quota try-catch）
+  commitGoalRunResult(isVictory);
+
   if (gameState.switchScene) {
     gameState.switchScene('GAME_OVER');
   }
+}
+
+/**
+ * P3 Gate B：收集本局 RunStats。
+ * 純讀取 gameState，無副作用；回傳值交給 commitEndOfRun 寫入長期存檔。
+ *
+ * wuxingElementCount：fire/water/wood/metal/earth 去重計數（earth 牆計入，
+ *   與 goals.json five_elements 設計一致；是否過簡留待 v2 調整）。
+ * combatTowerCount：def.damage > 0 的「實戰塔」數量（earth 純牆 damage=0 不計）。
+ * clearTimeMinutes：waveTicks 以 60fps 換算分鐘；未開波時為 0。
+ */
+function buildRunStats(isVictory: boolean): RunStats {
+  const wuxingSet = new Set<string>();
+  let combatTowerCount = 0;
+  for (const t of gameState.towers) {
+    const el = t.def.element;
+    if (el === 'fire' || el === 'water' || el === 'wood' || el === 'metal' || el === 'earth') {
+      wuxingSet.add(el);
+    }
+    if (t.def.damage > 0) combatTowerCount++;
+  }
+  const clearTimeMinutes = gameState.waveTicks > 0 ? gameState.waveTicks / (60 * 60) : 0;
+  return {
+    highestWave: gameState.wave,
+    clearedAllWaves: isVictory ? 1 : 0,
+    isVictory,
+    mergeCount: gameState.mergeCount,
+    wuxingElementCount: wuxingSet.size,
+    combatTowerCount,
+    clearTimeMinutes,
+    ascensionLevel: gameState.ascensionLevel,
+    killCount: gameState.killCount,
+  };
+}
+
+/**
+ * P3 Gate B：結算跨局寫入。
+ *
+ * F1 守則：test_level 與 tutorial 不計入目標統計（容易達成、會污染 goalStats）。
+ * F2 守則：saveTalentData 包 try-catch，捕 QuotaExceededError（localStorage 滿），
+ *         失敗時本局不寫入但流程繼續，避免結算畫面卡住。
+ *
+ * 呼叫時機：endBattle 寫完結算 DOM、在 switchScene('GAME_OVER') 之前。
+ */
+function commitGoalRunResult(isVictory: boolean): void {
+  const mapId = gameState.currentMap?.id;
+  // F1：測試 / 教學關卡不汙染跨局目標統計
+  if (mapId === 'test_level' || mapId === 'tutorial') return;
+
+  const goalId = gameState.talentData.nextGoalId ?? null;
+  if (!goalId) return; // 玩家未勾選下次目標 → 不記錄，但仍可正常結算
+
+  const runStats = buildRunStats(isVictory);
+  const result = isVictory ? 'success' : 'failure';
+  try {
+    commitEndOfRun(gameState.talentData, goalId, runStats, result, Date.now());
+    saveTalentData(gameState.talentData);
+  } catch (err) {
+    // F2：localStorage quota 或序列化失敗時不中斷結算流程
+    if (typeof console !== 'undefined') {
+      console.warn('[goals] commitGoalRunResult save failed:', err);
+    }
+  }
+
+  // 結算後若玩家回到天賦頁，目標卡片 / 紀錄板需反映最新統計
+  refreshGoalSelectorIfPresent();
 }
 
 export function checkWaveEnd() {
@@ -289,11 +371,18 @@ export function checkWaveEnd() {
     gameState.currentKillStreak = 0; // 波次間重置連殺計數
     showFloat(640, 320, '波次防禦成功！', '#10b981');
     
-    // P3 低血量補償：HP < 50% 額外獲得 5g (測試關除外)
+    // P3 Gate A：低血量時每局只發一次救濟，避免故意賣血反覆刷金。
     const maxHP = getBaseHP(gameState.talentData);
-    if (gameState.currentMap.id !== 'test_level' && gameState.hp < maxHP * 0.5) {
-      gameState.gold += 5;
-      showFloat(640, 280, '低血量補償 +5g！', '#fbbf24');
+    const compensation = getLowHpCompensation(
+      gameState.hp,
+      maxHP,
+      gameState.lowHpCompensationGrants,
+      gameState.currentMap.id === 'test_level',
+    );
+    if (compensation > 0) {
+      gameState.gold += compensation;
+      gameState.lowHpCompensationGrants++;
+      showFloat(640, 280, `低血量救濟 +${compensation}g（本局一次）`, '#fbbf24');
     }
     
     // P2 耦合調整：波次獎勵金動態衰減——抵消後期金幣過剩
@@ -352,7 +441,8 @@ export function checkWaveEnd() {
             def: { ...def },
             cooldown: 0,
             recoilY: 0,
-            damageDealt: 0
+            damageDealt: 0,
+            investmentCost: 0,
           });
           gameState.grid[nx][ny] = 1;
           
@@ -467,7 +557,8 @@ export function startPerformanceBenchmark() {
       def: { ...randDef },
       cooldown: 0,
       recoilY: 0,
-      damageDealt: 0
+      damageDealt: 0,
+      investmentCost: 0,
     });
   }
 

@@ -10,6 +10,7 @@ import { drawTowerSprite } from '../sprites';
 import { getWaveConfig, ENEMY_DEFS } from '../enemies';
 import { getElementAccent } from '../theme';
 import { rollMysteryBox } from '../system/roguelikeSystem';
+import { isFullRefundAvailable } from '../battle/p3GateA';
 
 export function updateUI() {
   getDomRefs().hpVal.textContent = gameState.currentMap.id === 'test_level' ? '∞' : Math.floor(gameState.hp).toString();
@@ -18,6 +19,9 @@ export function updateUI() {
   getDomRefs().killVal.textContent = gameState.killCount.toString();
   const maxWaves = gameState.currentMap.id === 'tutorial' ? 5 : MAX_WAVES;
   getDomRefs().btnStartWave.disabled = gameState.isWaveActive || (gameState.currentMap.id !== 'test_level' && gameState.wave >= maxWaves);
+  const fullRefund = isFullRefundAvailable(gameState.wave, gameState.currentMap.id === 'test_level');
+  getDomRefs().btnSell.textContent = fullRefund ? '拆除・全額' : '拆除';
+  getDomRefs().btnSell.title = fullRefund ? '前 4 波拆除防禦塔可全額退款' : '拆除防禦塔並退還部分金幣';
   updateWaveProgress();
   updateLevelTutorial();
   updateRoguelikeHUD();
@@ -330,6 +334,7 @@ export function buildTowerButtons() {
 }
 
 export function refreshToolSelection() {
+  const fullRefund = isFullRefundAvailable(gameState.wave, gameState.currentMap.id === 'test_level');
   const allBtns = getDomRefs().towerButtonsContainer.querySelectorAll('.btn');
   allBtns.forEach(b => {
     b.classList.remove('active');
@@ -375,7 +380,9 @@ export function refreshToolSelection() {
   } else if (gameState.mergeMode) {
     getDomRefs().instructionText.innerHTML = '<span class="merge-hint">🔮 合成模式：點擊一座塔選為材料，再點擊相鄰的塔進行合成</span>';
   } else if (gameState.selectedTool === 'sell') {
-    getDomRefs().instructionText.textContent = '💰 拆除模式：點擊砲台將其拆除並退回部分金幣';
+    getDomRefs().instructionText.textContent = fullRefund
+      ? '💰 拆除模式：前 4 波點擊砲台可全額退款'
+      : '💰 拆除模式：點擊砲台將其拆除並退回部分金幣';
   } else {
     if (gameState.currentMap && gameState.currentMap.id === 'tutorial') {
       getDomRefs().instructionText.innerHTML = '🎓 <span style="color:#fbbf24; font-weight:bold;">教學引導：</span>因橫向長牆阻擋，怪物必須先向右繞過 3 號點入口才進入 1 號點。推薦在右側瓶頸 <span style="color:#38bdf8; font-weight:bold;">(58, 17)</span> 建造攻擊塔，讓怪物在三個尋路階段反覆受擊！';

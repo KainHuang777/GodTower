@@ -16,6 +16,8 @@ import { updateUI, showTooltip, hideTooltip } from '../ui/uiManager';
 import { initWuxingCompass, updateCompassHighlight } from '../ui/wuxingCompass';
 import { initRecipeCodex } from '../ui/recipeCodex';
 import { showCardPicker } from '../system/roguelikeSystem';
+import { BUILD_TOOL_IDS, isBuildTool, shouldCommitTowerDrag } from './buildPlacement';
+import { playOpeningRitual } from '../ui/ritual';
 
 const dragThreshold = 5;
 
@@ -113,6 +115,8 @@ function handlePointerUp() {
 }
 
 export function initInputEvents() {
+  let towerDragStart: Point | null = null;
+
   // 視窗 resize
   window.addEventListener('resize', resizeGameContainer);
 
@@ -249,6 +253,13 @@ export function initInputEvents() {
       return;
     }
 
+    // 建造模式優先於塔檢視。連續築牆時若誤點既有塔，只顯示「已有建物」，
+    // 不應清掉 selectedTool，否則玩家會誤以為岩壁忽然失效。
+    if (isBuildTool(gameState.selectedTool)) {
+      handleBuild(gx, gy);
+      return;
+    }
+
     const clickedTower = gameState.towers.find(t => t.x === gx && t.y === gy);
     if (clickedTower) {
       if (gameState.selectedTower && gameState.selectedTower.id === clickedTower.id) {
@@ -285,16 +296,27 @@ export function initInputEvents() {
     handleSell(gx, gy);
   });
 
-  document.getElementById('btnStartGame')!.addEventListener('click', () => { 
-    playSFX('click'); 
+  document.getElementById('btnStartGame')!.addEventListener('click', () => {
+    playSFX('click');
+    // P3 Gate B：包裝「開始遊戲」於起卦儀式動畫之後；儀式給美術產線，無素材時走 fallback。
+    // 首玩（hasPlayedBefore=false）直接進教學，不延遲新手體驗。
+    const startFlow = () => {
+      if (!gameState.talentData.hasPlayedBefore) {
+        const tutorialMap = MAPS.find(m => m.id === 'tutorial') || MAPS[1];
+        gameState.currentMap = tutorialMap;
+        gameState.levelTutorialStep = 'intro';
+        if (gameState.switchScene) gameState.switchScene('BATTLE');
+      } else {
+        if (gameState.switchScene) gameState.switchScene('LEVEL_SELECT');
+      }
+    };
     if (!gameState.talentData.hasPlayedBefore) {
-      const tutorialMap = MAPS.find(m => m.id === 'tutorial') || MAPS[1];
-      gameState.currentMap = tutorialMap;
-      gameState.levelTutorialStep = 'intro';
-      if (gameState.switchScene) gameState.switchScene('BATTLE');
-    } else {
-      if (gameState.switchScene) gameState.switchScene('LEVEL_SELECT'); 
+      startFlow();
+      return;
     }
+    const goalId = gameState.talentData.nextGoalId ?? null;
+    const ritualEnabled = gameState.talentData.ritualEnabled !== false;
+    playOpeningRitual(goalId, ritualEnabled, () => startFlow());
   });
   document.getElementById('btnBackFromLevel')!.addEventListener('click', () => { 
     playSFX('click'); 
@@ -602,7 +624,7 @@ export function initInputEvents() {
     const target = (e.target as HTMLElement).closest('[data-tool]');
     if (target) {
       const tool = target.getAttribute('data-tool');
-      if (tool && ['earth', 'fire', 'water', 'wood', 'metal', 'yin', 'yang'].includes(tool)) {
+      if (tool && isBuildTool(tool)) {
         gameState.hoveredTowerBtn = tool;
         updateCompassHighlight();
       }
@@ -619,9 +641,10 @@ export function initInputEvents() {
     const target = (e.target as HTMLElement).closest('[data-tool]');
     if (target && e.button === 0) {
       const tool = target.getAttribute('data-tool');
-      if (tool && ['earth', 'fire', 'water', 'wood', 'metal', 'yin', 'yang'].includes(tool)) {
+      if (tool && isBuildTool(tool)) {
         gameState.draggedTowerTypeId = tool;
         gameState.dragMousePos = { x: e.clientX, y: e.clientY };
+        towerDragStart = { x: e.clientX, y: e.clientY };
       }
     }
   });
@@ -642,17 +665,28 @@ export function initInputEvents() {
 
   window.addEventListener('mouseup', (e) => {
     if (gameState.draggedTowerTypeId && e.button === 0) {
-      const rect = getDomRefs().canvas.getBoundingClientRect();
-      const mouseX = (e.clientX - rect.left) * (getDomRefs().canvas.width / rect.width);
-      const mouseY = (e.clientY - rect.top) * (getDomRefs().canvas.height / rect.height);
-      const worldX = (mouseX - gameState.mapOffsetX) / gameState.mapScale;
-      const worldY = (mouseY - gameState.mapOffsetY) / gameState.mapScale;
-      const { gx, gy } = snapToTileCenter(worldX, worldY);
-      handleBuild(gx, gy);
+      const canvas = getDomRefs().canvas;
+      const releasePoint = { x: e.clientX, y: e.clientY };
+      const releasedOnCanvas = e.target === canvas;
+
+      if (shouldCommitTowerDrag(towerDragStart, releasePoint, releasedOnCanvas, dragThreshold)) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+        const worldX = (mouseX - gameState.mapOffsetX) / gameState.mapScale;
+        const worldY = (mouseY - gameState.mapOffsetY) / gameState.mapScale;
+        const { gx, gy } = snapToTileCenter(worldX, worldY);
+
+        gameState.selectedTool = gameState.draggedTowerTypeId;
+        gameState.selectedTower = null;
+        handleBuild(gx, gy);
+      }
+
       gameState.draggedTowerTypeId = null;
       gameState.dragMousePos = null;
       gameState.hoverGridX = null;
       gameState.hoverGridY = null;
+      towerDragStart = null;
     }
   });
 
@@ -686,7 +720,7 @@ export function initInputEvents() {
     // 數字鍵 1-7 快捷選塔
     const numIndex = parseInt(e.key) - 1;
     if (gameState.currentScene === 'BATTLE' && numIndex >= 0 && numIndex < 7) {
-      const tools = ['earth', 'fire', 'water', 'wood', 'metal', 'yin', 'yang'];
+      const tools = BUILD_TOOL_IDS;
       const tool = tools[numIndex];
       if (tool) {
         gameState.mergeMode = false;

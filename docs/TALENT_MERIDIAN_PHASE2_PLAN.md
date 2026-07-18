@@ -1,6 +1,6 @@
 # 天賦經脈頁：概念圖視覺對齊第二階段
 
-> 狀態：P2-A／P2-B／P2-C／P2-D 已完成；P2-E 自動與瀏覽器驗證完成，待 Antigravity 最終視覺驗收
+> 狀態：P2-A～P2-E 已完成；使用者已推進至 P3 Gate A
 > 更新日期：2026-07-16
 > 範圍：只調整天賦頁的顯示名稱、敘事資料、HTML／CSS／SVG 與互動呈現；不改 `TalentId`、數值、前置條件、解鎖門檻或存檔格式。
 
@@ -146,7 +146,7 @@
 - [x] 桌面 1280×720、1366×768、1680×944 實機瀏覽器驗證：圖譜與詳情欄無水平溢位，四枚已開放印章的可見點按範圍約 60px。
 - [x] 橫向 Mobile 896×414、844×390 實機瀏覽器驗證：頁面無水平溢位，僅圖譜 wrapper 可單向橫捲，互動區至少 44px。
 - [x] `prefers-reduced-motion` 停用流光、呼吸與轉場，但仍以文字、輪廓與圖形辨識狀態。
-- [x] Vitest 189/189、production build、圖片成功／失敗 fallback、鍵盤導覽、外印 inert 語意與 reduced-motion 規則已通過；Antigravity 最終視覺驗收待執行。
+- [x] Vitest 189/189、production build、圖片成功／失敗 fallback、鍵盤導覽、外印 inert 語意與 reduced-motion 規則已通過；主管 Judge 已用實際瀏覽器確認桌面／橫向構圖，並將亮黃選中框收斂為低飽和朱砂雙線。使用者已接續下達 P3 Gate A，P2-E Gate 關閉。
 
 ## 5. 驗收條件
 

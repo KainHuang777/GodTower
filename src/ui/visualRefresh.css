@@ -2376,7 +2376,11 @@ input:focus-visible {
     2px 3px 0 rgba(62,40,27,0.72);
 }
 
-.talent-atlas-v2 .talent-card:focus-visible { outline: 0; }
+.talent-atlas-v2 .talent-card.selected,
+.talent-atlas-v2 .talent-card:focus-visible {
+  outline: 3px double rgba(109, 48, 40, 0.86) !important;
+  outline-offset: 2px;
+}
 
 @keyframes talent-seal-breathe {
   0%, 100% { filter: brightness(1); }

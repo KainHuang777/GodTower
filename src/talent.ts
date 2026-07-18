@@ -4,6 +4,9 @@
 
 import { currentSaveStorage } from './system/platform';
 import type { Element } from './towers';
+import { ensureGoalFields, reconcileGoalStats } from './goals/migrate';
+import { getGoalConfigVersion } from './goals/config';
+import { createEmptyBoardSnapshot } from './goals/types';
 
 const STORAGE_KEY = 'td_talent_data';
 const LEGACY_STORAGE_KEYS = ['checkpoint_maze_td_talent'] as const;
@@ -112,6 +115,22 @@ export interface TalentSaveData {
   totalDamageDealt?: number;      // 累計總傷害
   resetCount?: number;            // 天賦重置次數
   seenTraits?: { armor?: boolean; regen?: boolean; split?: boolean }; // P2: 已見過的怪物詞條
+
+  // --- P3 Gate B：下次目標系統（全 optional，舊存檔透過 ensureGoalFields 補預設） ---
+  /** 玩家勾選的下次挑戰目標 id；null 表示未選 */
+  nextGoalId?: string | null;
+  /** 目標設定檔版本戳；與 GOAL_CONFIG.version 不同時觸發 reconcileGoalStats */
+  nextGoalVersion?: string;
+  /** 各目標跨局統計；key = GoalId */
+  goalStats?: Record<string, import('./goals/types').GoalStats>;
+  /** 本輪新增的波次門檻里程碑（與既有 milestones 區隔：里程碑成就是另一軌） */
+  goalMilestones?: number[];
+  /** 紀錄板最近一次渲染快照 */
+  lastBoardSnapshot?: import('./goals/types').BoardSnapshot;
+  /** 主選單上次顯示的目標 id，避免動畫重播 */
+  mainMenuSeenGoalId?: string | null;
+  /** 起卦儀式動畫開關；預設 true */
+  ritualEnabled?: boolean;
 }
 
 /**
@@ -152,12 +171,19 @@ export function loadTalentData(): TalentSaveData {
         if (typeof parsed.totalDamageDealt !== 'number') parsed.totalDamageDealt = 0;
         if (typeof parsed.resetCount !== 'number') parsed.resetCount = 0;
         if (!parsed.seenTraits || typeof parsed.seenTraits !== 'object') parsed.seenTraits = {};
+
+        // P3 Gate B：補上目標系統欄位，並驗證失效目標 id
+        ensureGoalFields(parsed as TalentSaveData);
+        // 版本戳不同時清理 goalStats 中已刪除的目標 id
+        if ((parsed as TalentSaveData).nextGoalVersion !== getGoalConfigVersion()) {
+          reconcileGoalStats(parsed as TalentSaveData);
+        }
         return parsed as TalentSaveData;
       }
     } catch { /* 單一 key 損毀時繼續嘗試舊 key */ }
   }
 
-  return {
+  const fresh: TalentSaveData = {
     totalTalentPoints: 0,
     spentTalentPoints: 0,
     talentLevels: {} as Record<TalentId, number>,
@@ -168,7 +194,15 @@ export function loadTalentData(): TalentSaveData {
     achievementCount: 0,
     totalDamageDealt: 0,
     resetCount: 0,
+    nextGoalId: null,
+    nextGoalVersion: getGoalConfigVersion(),
+    goalStats: {},
+    goalMilestones: [],
+    lastBoardSnapshot: createEmptyBoardSnapshot(),
+    mainMenuSeenGoalId: null,
+    ritualEnabled: true,
   };
+  return fresh;
 }
 
 /** 儲存天賦資料到 platform */

@@ -11,6 +11,7 @@ import { Tower } from '../types';
 // 引入 UI 與渲染更新
 import { updateUI } from '../ui/uiManager';
 import { showFloat } from '../renderer/gameRenderer';
+import { getGateARefund } from './p3GateA';
 
 export function handleBuild(x: number, y: number) {
   if (gameState.grid[x][y] !== 0) { 
@@ -73,7 +74,17 @@ export function handleBuild(x: number, y: number) {
     }
   }
   
-  gameState.towers.push({ id: gameState.nextTowerId++, x, y, typeId: def.id, def: { ...def, cost }, cooldown: 0, recoilY: 0, damageDealt: 0 });
+  gameState.towers.push({
+    id: gameState.nextTowerId++,
+    x,
+    y,
+    typeId: def.id,
+    def: { ...def, cost },
+    cooldown: 0,
+    recoilY: 0,
+    damageDealt: 0,
+    investmentCost: isFree || gameState.currentMap.id === 'test_level' ? 0 : cost,
+  });
   if (gameState.currentMap.id !== 'test_level' && !isFree) gameState.gold -= cost;
   updateUI();
   
@@ -109,7 +120,12 @@ export function handleSell(x: number, y: number) {
   const idx = gameState.towers.findIndex(t => t.x === x && t.y === y);
   if (idx === -1) return;
   const tower = gameState.towers[idx];
-  const refund = (gameState.currentMap.id !== 'test_level' && gameState.wave <= 4) ? tower.def.cost : getSellPrice(tower.def);
+  const refund = getGateARefund(
+    gameState.wave,
+    tower.investmentCost ?? tower.def.cost,
+    getSellPrice(tower.def),
+    gameState.currentMap.id === 'test_level',
+  );
   gameState.gold += refund;
   gameState.towers.splice(idx, 1);
   gameState.grid[x][y] = 0;
@@ -213,11 +229,12 @@ export function performMerge(tower1: Tower, tower2: Tower, resultId: TowerTypeId
     active: true,
     timer: 0,
     duration: 45,
-    t1: { x: tower1.x, y: tower1.y, typeId: tower1.typeId },
-    t2: { x: tower2.x, y: tower2.y, typeId: tower2.typeId },
+    t1: { x: tower1.x, y: tower1.y, typeId: tower1.typeId, investmentCost: tower1.investmentCost ?? tower1.def.cost },
+    t2: { x: tower2.x, y: tower2.y, typeId: tower2.typeId, investmentCost: tower2.investmentCost ?? tower2.def.cost },
     resultX: tower1.x,
     resultY: tower1.y,
-    resultTypeId: resultId
+    resultTypeId: resultId,
+    mergeCost,
   };
 
   // 先把這兩座防禦塔從 gameState.towers 中移除，以免動畫期間牠們繼續攻擊或重複被選中
@@ -276,10 +293,14 @@ export function updateMergeAnimation() {
         def: { ...resultDef },
         cooldown: 0,
         damageDealt: 0,
-        recoilY: 0
+        recoilY: 0,
+        investmentCost: (anim.t1.investmentCost ?? 0) + (anim.t2.investmentCost ?? 0) + (anim.mergeCost ?? 0),
       };
       gameState.towers.push(newTower);
       gameState.grid[anim.resultX][anim.resultY] = 1;
+
+      // P3 Gate B：合成完成時計入單局合成次數（供 synthesis_master / 五行輪轉等目標判定）
+      gameState.mergeCount++;
 
       // === 實作五行共鳴合成退款 ===
       if (gameState.roguelikeState.nextMergeCostPct < 1.0) {

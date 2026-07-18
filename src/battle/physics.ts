@@ -15,6 +15,7 @@ import { Point, Enemy } from '../types';
 import { updateUI } from '../ui/uiManager';
 import { showFloat } from '../renderer/gameRenderer';
 import { triggerCounterGlow } from '../ui/wuxingCompass';
+import { applyElementResistance } from './p3GateA';
 
 export function updatePhysics() {
   if (gameState.isWaveActive) {
@@ -104,13 +105,7 @@ export function updatePhysics() {
         if (e.dotElement === 'yin' && e.element === 'yang') isCounter = true;
         if (e.dotElement === 'yang' && e.element === 'yin') isCounter = true;
         
-        if (!isCounter) {
-          let resistPct = 0;
-          if (gameState.wave <= 10) resistPct = 0.10;
-          else if (gameState.wave <= 15) resistPct = 0.15;
-          else resistPct = 0.20;
-          dotDmg = Math.max(1, Math.floor(dotDmg * (1 - resistPct)));
-        }
+        dotDmg = applyElementResistance(dotDmg, gameState.wave, isCounter);
       }
       e.hp -= dotDmg;
       gameState.totalDamageDealt += dotDmg;
@@ -363,13 +358,7 @@ export function updatePhysics() {
       if (b.element === 'yin' && b.targetEnemy.element === 'yang') isCounter = true;
       if (b.element === 'yang' && b.targetEnemy.element === 'yin') isCounter = true;
       
-      if (gameState.wave >= 6 && !isCounter && !b.trueDamage) {
-        let resistPct = 0;
-        if (gameState.wave <= 10) resistPct = 0.10;
-        else if (gameState.wave <= 15) resistPct = 0.15;
-        else resistPct = 0.20;
-        dmg = Math.floor(dmg * (1 - resistPct));
-      }
+      dmg = applyElementResistance(dmg, gameState.wave, isCounter, Boolean(b.trueDamage));
 
       // Work B 速攻指令：分裂怪分裂前 +30% 傷害
       if (gameState.roguelikeState.splitBurstActive && b.targetEnemy.split && b.targetEnemy.hp < b.targetEnemy.maxHp * 0.35 && !b.targetEnemy.hasSplit) {

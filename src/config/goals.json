@@ -1,0 +1,107 @@
+{
+  "version": "1.0.0",
+  "goals": [
+    {
+      "id": "reach_wave_15",
+      "label": "坚守至第 15 波",
+      "description": "在任一局中存活至第 15 波以上。",
+      "emoji": "🌊",
+      "category": "survival",
+      "completion": {
+        "key": "highestWave",
+        "operator": "gte",
+        "value": 15
+      }
+    },
+    {
+      "id": "clear_20_boss",
+      "label": "擊潰最終 Boss",
+      "description": "通過第 20 波並完成本局防禦。",
+      "emoji": "👹",
+      "category": "ascension",
+      "completion": {
+        "key": "clearedAllWaves",
+        "operator": "eq",
+        "value": 1,
+        "requiresVictory": true
+      },
+      "unlock": { "minRunsCompleted": 1 }
+    },
+    {
+      "id": "synthesis_master",
+      "label": "合成大師",
+      "description": "單局累計成功合成 8 次以上。",
+      "emoji": "⚗️",
+      "category": "synthesis",
+      "completion": {
+        "key": "mergeCount",
+        "operator": "gte",
+        "value": 8
+      }
+    },
+    {
+      "id": "five_elements",
+      "label": "五行輪轉",
+      "description": "單局中至少各建造一座 fire/water/wood/metal/earth 元素塔。",
+      "emoji": "☯️",
+      "category": "element",
+      "completion": {
+        "key": "wuxingElementCount",
+        "operator": "gte",
+        "value": 5
+      }
+    },
+    {
+      "id": "minimalist",
+      "label": "極簡主義",
+      "description": "通關時場上「實戰塔」（damage>0）數量不超過 6 座。",
+      "emoji": "📐",
+      "category": "restriction",
+      "completion": {
+        "key": "combatTowerCount",
+        "operator": "lte",
+        "value": 6,
+        "requiresVictory": true
+      }
+    },
+    {
+      "id": "speed_clear",
+      "label": "疾風挑戰",
+      "description": "於 5 分鐘內通關本局。",
+      "emoji": "💨",
+      "category": "speed",
+      "completion": {
+        "key": "clearTimeMinutes",
+        "operator": "lte",
+        "value": 5,
+        "requiresVictory": true
+      }
+    },
+    {
+      "id": "asc2_clear",
+      "label": "無瑕·Asc2",
+      "description": "於 Ascension 2 以上通關本局。",
+      "emoji": "🏅",
+      "category": "ascension",
+      "completion": {
+        "key": "clearedAllWaves",
+        "operator": "eq",
+        "value": 1,
+        "requiresVictory": true
+      },
+      "unlock": { "minAscension": 2 }
+    },
+    {
+      "id": "boss_slayer",
+      "label": "百怪斬首",
+      "description": "單局擊殺數達 100 以上。",
+      "emoji": "⚔️",
+      "category": "combat",
+      "completion": {
+        "key": "killCount",
+        "operator": "gte",
+        "value": 100
+      }
+    }
+  ]
+}

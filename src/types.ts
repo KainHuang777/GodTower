@@ -50,6 +50,8 @@ export interface Tower {
   cooldown: number;
   recoilY: number;
   damageDealt: number; // P2 tracking for total damage dealt by this tower
+  /** 本局實際投入成本；用於前四波全額退款，免費塔為 0。 */
+  investmentCost?: number;
 }
 
 export interface Bullet {

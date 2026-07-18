@@ -1057,6 +1057,219 @@
       border-style: solid;
       border-color: transparent transparent var(--gold) transparent;
     }
+
+    /* ===== P3 Gate B：下次目標系統 (placeholder CSS) ===== */
+
+    /* 主選單：開始遊戲上方目標提示 */
+    .goal-hint-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 12px 0;
+      padding: 8px 12px;
+      border: 1px dashed rgba(251, 191, 36, 0.4);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.5);
+      font-size: 0.85rem;
+      color: var(--text-muted, #94a3b8);
+      animation: goal-hint-fade-in 0.3s ease;
+    }
+    .goal-hint-bar.goal-hint-active { border-style: solid; border-color: rgba(251, 191, 36, 0.7); color: var(--gold); }
+    .goal-hint-bar.goal-hint-completed { border-color: rgba(74, 222, 128, 0.6); color: #4ade80; }
+    .goal-hint-bar.goal-hint-fresh { animation: goal-hint-pop 0.6s ease; }
+    .goal-hint-emoji { font-size: 1.1rem; }
+    .goal-hint-label { font-weight: 600; }
+    .goal-hint-completed-tag { color: #4ade80; font-size: 0.78rem; }
+    .goal-hint-sub { margin-left: auto; font-size: 0.75rem; opacity: 0.7; text-align: right; max-width: 50%; }
+    .goal-hint-empty { font-style: italic; opacity: 0.7; }
+    @keyframes goal-hint-fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; } }
+    @keyframes goal-hint-pop { 0% { transform: scale(0.96); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+
+    /* 天賦頁：目標面板 */
+    .goal-panel {
+      max-width: 1100px;
+      margin: 12px auto 16px;
+      padding: 14px 18px;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.55);
+    }
+    .goal-panel-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .goal-tab {
+      padding: 6px 14px; border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: transparent; color: var(--text-muted, #94a3b8);
+      cursor: pointer; font-size: 0.9rem;
+    }
+    .goal-tab.active { border-color: var(--gold); color: var(--gold); background: rgba(251, 191, 36, 0.08); }
+
+    .goal-select-title { font-size: 1.1rem; color: var(--gold); font-weight: 700; }
+    .goal-select-hint { font-size: 0.78rem; color: var(--text-muted, #94a3b8); margin-top: 2px; }
+    .goal-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-top: 12px; }
+    .goal-card {
+      display: block; text-align: left;
+      padding: 10px 12px; border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(30, 41, 59, 0.6);
+      color: var(--text, #e2e8f0);
+      cursor: pointer; font-family: inherit;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .goal-card:hover:not(:disabled) { border-color: var(--gold); background: rgba(30, 41, 59, 0.9); }
+    .goal-card-selected { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.25) inset; }
+    .goal-card-completed { border-color: rgba(74, 222, 128, 0.5); }
+    .goal-card-locked { opacity: 0.55; cursor: not-allowed; }
+    .goal-card-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .goal-card-emoji { font-size: 1.1rem; }
+    .goal-card-label { font-weight: 600; }
+    .goal-card-current {
+      font-size: 0.7rem; padding: 1px 6px; border-radius: 4px;
+      background: var(--gold); color: #1f2937;
+    }
+    .goal-card-tag { font-size: 0.72rem; color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.5); border-radius: 4px; padding: 0 4px; }
+    .goal-card-desc { font-size: 0.78rem; color: var(--text-muted, #94a3b8); margin-top: 4px; }
+    .goal-card-locked-note { font-size: 0.72rem; color: #f59e0b; margin-top: 4px; }
+    .goal-select-footer { margin-top: 10px; font-size: 0.72rem; color: var(--text-muted, #94a3b8); text-align: right; opacity: 0.6; }
+
+    /* 紀錄板 */
+    .goal-board-empty { text-align: center; padding: 20px; color: var(--text-muted, #94a3b8); }
+    .goal-board-placeholder { font-size: 1.1rem; }
+    .goal-board-hint { font-size: 0.78rem; margin-top: 6px; opacity: 0.8; }
+    .goal-board-card {
+      padding: 12px 14px; border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .goal-board-completed { border-color: rgba(74, 222, 128, 0.5); }
+    .goal-board-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 1rem; }
+    .goal-board-emoji { font-size: 1.2rem; }
+    .goal-board-label { font-weight: 700; color: var(--gold); }
+    .goal-board-tag { font-size: 0.74rem; color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.5); border-radius: 4px; padding: 0 4px; }
+    .goal-board-fresh { font-size: 0.74rem; color: var(--gold); background: rgba(251, 191, 36, 0.15); padding: 1px 6px; border-radius: 4px; animation: goal-hint-pop 0.6s ease; }
+    .goal-board-desc { margin-top: 4px; font-size: 0.8rem; color: var(--text-muted, #94a3b8); }
+    .goal-board-stats { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+    .goal-stat-row { display: flex; justify-content: space-between; font-size: 0.82rem; padding: 3px 0; border-bottom: 1px dashed rgba(148, 163, 184, 0.15); }
+    .goal-stat-label { color: var(--text-muted, #94a3b8); }
+    .goal-stat-value { font-weight: 600; }
+    .goal-result-success { color: #4ade80; }
+    .goal-result-failure { color: var(--text-muted, #94a3b8); }
+    .goal-result-abandoned { color: var(--text-muted, #94a3b8); opacity: 0.7; }
+    .goal-result-none { color: var(--text-muted, #94a3b8); }
+
+    /* 起卦儀式 overlay */
+    .ritual-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      animation: ritual-fade-in 0.4s ease;
+    }
+    .ritual-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.85); }
+    .ritual-stage {
+      position: relative; z-index: 1;
+      min-width: 280px; min-height: 120px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .ritual-placeholder, .ritual-fallback-text {
+      font-size: 1.1rem; color: var(--gold, #fbbf24);
+      letter-spacing: 0.2em; text-align: center;
+      animation: ritual-pulse 1.4s ease-in-out infinite;
+    }
+    .ritual-fallback-text { margin-top: 8px; }
+    .ritual-skip-btn {
+      position: fixed; right: 24px; bottom: 24px; z-index: 2;
+      padding: 8px 16px; border-radius: 6px;
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      background: rgba(15, 23, 42, 0.7); color: var(--gold, #fbbf24);
+      cursor: pointer; font-size: 0.85rem;
+    }
+    .ritual-skip-btn:hover { background: rgba(30, 41, 59, 0.9); }
+    @keyframes ritual-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes ritual-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+    /* Codex art pass: paper, bronze and vermilion goal UI. */
+    .goal-hint-bar {
+      position: relative; gap: 10px; min-height: 55px; padding: 7px 12px 7px 8px;
+      overflow: hidden; border: 1px solid rgba(200, 158, 84, .62); border-radius: 3px;
+      background: linear-gradient(100deg, rgba(46, 35, 26, .94), rgba(77, 56, 38, .87));
+      box-shadow: 0 2px 0 rgba(20, 12, 7, .48), inset 0 0 0 2px rgba(255, 232, 169, .06);
+      color: #f6e8c5;
+    }
+    .goal-hint-bar::after { content: ''; position: absolute; inset: 4px; pointer-events: none; border-top: 1px solid rgba(248,214,137,.16); border-bottom: 1px solid rgba(41,26,15,.48); }
+    .goal-hint-bar.goal-hint-active { border-color: rgba(224, 180, 83, .9); }
+    .goal-hint-bar.goal-hint-completed { border-color: rgba(155,204,119,.8); background: linear-gradient(100deg, rgba(31,52,37,.95), rgba(52,76,48,.9)); }
+    .goal-hint-bar.goal-hint-persistent { border-color: rgba(219,119,64,.9); }
+    .goal-hint-bar.goal-hint-fresh { animation: goal-hint-fresh .7s cubic-bezier(.2,.8,.25,1) both; }
+    .goal-hint-marker { position: relative; z-index: 1; display: grid; flex: 0 0 40px; width: 40px; height: 40px; place-items: center; border: 1px solid #d7ae65; border-radius: 50%; background: radial-gradient(circle, #f6df9b 0 31%, #7d4431 34% 39%, #e3bd72 42% 48%, #39281e 51%); box-shadow: inset 0 0 0 2px rgba(68,41,23,.85), 0 1px 3px rgba(0,0,0,.45); font-size: 1rem; color: #3e291c; }
+    .goal-hint-copy { position: relative; z-index: 1; display: grid; gap: 1px; min-width: 0; }
+    .goal-hint-eyebrow { color: #d7b978; font-size: .62rem; font-weight: 800; letter-spacing: .18em; }
+    .goal-hint-label { color: #fff0c6; font-weight: 800; }
+    .goal-hint-completed-tag { position: relative; z-index: 1; color: #ddf2b4; font-size: .72rem; font-weight: 800; white-space: nowrap; }
+    .goal-hint-sub { position: relative; z-index: 1; color: #ead7ad; }
+    .goal-hint-empty { position: relative; z-index: 1; color: #d8c5a0; }
+    @keyframes goal-hint-fresh { 0% { opacity: 0; transform: translateY(-7px) scale(.97); } 55% { transform: translateY(1px) scale(1.015); } 100% { opacity: 1; transform: none; } }
+
+    .goal-panel { position: relative; box-sizing: border-box; width: min(100%, 1100px); padding: 16px 18px 14px; overflow: hidden; border: 2px solid #76583b; border-radius: 4px; background: linear-gradient(135deg, rgba(242,223,167,.98), rgba(220,190,127,.94)); box-shadow: 0 3px 0 #3d291b, inset 0 0 0 2px rgba(255,247,211,.55), inset 0 0 42px rgba(93,56,27,.17); color: #4b3020; }
+    .goal-panel::before, .goal-panel::after { position: absolute; color: rgba(94,55,30,.25); content: '☷'; font-size: 1.1rem; line-height: 1; }
+    .goal-panel::before { top: 6px; left: 8px; } .goal-panel::after { right: 8px; bottom: 6px; transform: rotate(180deg); }
+    .goal-panel-tabs, .goal-panel-body { position: relative; z-index: 1; }
+    .goal-panel-tabs { gap: 7px; border-bottom: 1px solid rgba(103,68,36,.35); }
+    .goal-tab { min-height: 34px; padding: 6px 16px 7px; border: 1px solid transparent; border-bottom: 0; border-radius: 4px 4px 0 0; color: #735238; font-weight: 800; letter-spacing: .08em; }
+    .goal-tab::before { margin-right: 6px; color: #a44b38; content: '◆'; font-size: .62rem; }
+    .goal-tab:hover { background: rgba(255,246,211,.4); color: #4a2e20; }
+    .goal-tab.active { position: relative; top: 1px; border-color: #87623d; background: #f4e2ae; color: #7a3329; box-shadow: inset 0 2px 0 #fff0c1; }
+    .goal-select-title { color: #6e3029; font-weight: 900; letter-spacing: .09em; }
+    .goal-select-title::before { margin-right: 8px; color: #ab493a; content: '下次一局'; font-size: .7rem; letter-spacing: .12em; vertical-align: 1px; }
+    .goal-select-hint { color: #765b40; }
+    .goal-card { position: relative; min-height: 106px; overflow: hidden; border-color: rgba(114,77,43,.62); border-radius: 3px; background: linear-gradient(145deg, rgba(255,246,211,.82), rgba(231,204,145,.77)); box-shadow: 0 2px 0 rgba(92,58,30,.45), inset 0 0 0 1px rgba(255,255,255,.38); color: #4c3020; transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+    .goal-card::before { position: absolute; top: 6px; right: 7px; color: rgba(113,67,39,.16); content: '☰'; font-size: 1.55rem; line-height: 1; }
+    .goal-card:hover:not(:disabled), .goal-card:focus-visible { z-index: 1; border-color: #a64938; background: linear-gradient(145deg, #fff1be, #e6bd70); box-shadow: 0 4px 0 rgba(92,58,30,.48), inset 0 0 0 1px rgba(255,255,255,.62); outline: none; transform: translateY(-2px); }
+    .goal-card-selected { border: 2px solid #a94836; padding: 9px 10px; background: linear-gradient(145deg, #fff1be, #e6bd70); box-shadow: 0 3px 0 #70402b, inset 0 0 0 2px rgba(255,247,209,.72); }
+    .goal-card-selected::after { position: absolute; top: -1px; right: -1px; padding: 3px 6px; border-radius: 0 2px 0 4px; background: #a94836; color: #fff0cb; content: '已擇'; font-size: .62rem; font-weight: 900; letter-spacing: .12em; }
+    .goal-card-completed { border-color: #718c52; background: linear-gradient(145deg, #f5edc5, #cbd79e); }
+    .goal-card-locked { background: linear-gradient(145deg, #d8caab, #b8a887); color: #6f6253; filter: saturate(.55); opacity: .74; }
+    .goal-card-head { position: relative; z-index: 1; gap: 8px; flex-wrap: nowrap; }
+    .goal-card-seal, .goal-board-seal { display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; border: 1px solid #8c4f31; border-radius: 50%; background: #ecd18e; box-shadow: inset 0 0 0 2px rgba(255,246,211,.6), inset 0 0 0 4px rgba(117,60,37,.35); font-size: .95rem; }
+    .goal-card-copy { display: grid; min-width: 0; } .goal-card-label { overflow: hidden; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+    .goal-card-category { color: #8f6544; font-size: .59rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .goal-card-state { display: flex; gap: 4px; margin-left: auto; } .goal-card-current, .goal-card-tag { padding: 2px 4px; border: 1px solid currentColor; border-radius: 2px; font-size: .63rem; font-weight: 800; line-height: 1.1; white-space: nowrap; }
+    .goal-card-current { color: #963c31; background: transparent; } .goal-card-tag { color: #4f753f; }
+    .goal-card-desc { position: relative; z-index: 1; color: #65472f; line-height: 1.42; } .goal-card-locked-note { position: relative; z-index: 1; color: #8e5530; }
+    .goal-select-footer { color: #8b6c4c; }
+
+    .goal-board-empty { border: 1px dashed rgba(113,75,42,.55); color: #765a3f; }
+    .goal-board-placeholder { color: #6d362c; font-weight: 800; }
+    .goal-board-card { position: relative; padding: 14px; border-color: #87603b; border-radius: 3px; background: repeating-linear-gradient(to bottom, rgba(255,250,222,.72) 0, rgba(255,250,222,.72) 26px, rgba(115,75,41,.12) 27px, rgba(255,250,222,.72) 28px); box-shadow: inset 3px 0 rgba(150,68,49,.64), 0 2px 0 rgba(85,54,29,.34); }
+    .goal-board-completed { border-color: #6e8b4d; box-shadow: inset 3px 0 #71934c, 0 2px 0 rgba(85,54,29,.34); }
+    .goal-board-head { gap: 8px; flex-wrap: nowrap; } .goal-board-label { color: #653129; font-weight: 900; letter-spacing: .04em; }
+    .goal-board-badges { display: flex; gap: 5px; margin-left: auto; } .goal-board-tag, .goal-board-fresh { padding: 3px 5px; border: 1px solid currentColor; border-radius: 2px; font-size: .68rem; font-weight: 800; white-space: nowrap; }
+    .goal-board-tag { color: #51743e; } .goal-board-fresh { color: #9a3c30; background: rgba(184,74,56,.08); animation: ritual-seal-in .5s ease both; }
+    .goal-board-desc { margin: 8px 0 6px 42px; color: #72543a; } .goal-board-stats { border-top: 1px solid rgba(114,77,43,.32); }
+    .goal-stat-row { padding: 6px 2px; border-bottom: 1px dotted rgba(114,77,43,.32); } .goal-stat-label { color: #796049; } .goal-stat-value { color: #553326; font-weight: 900; }
+    .goal-result-success { color: #55793d; } .goal-result-failure { color: #8e5534; } .goal-result-abandoned, .goal-result-none { color: #827563; }
+
+    /* No external image dependency: CSS draws the opening five-element formation. */
+    .ritual-overlay { display: grid; place-items: center; } .ritual-backdrop { background: radial-gradient(circle at center, rgba(38,44,47,.46), rgba(7,13,17,.96) 68%); }
+    .ritual-stage { display: grid; min-width: min(92vw, 600px); min-height: min(92vw, 600px); place-items: center; }
+    .wuxing-ritual-art { position: relative; width: min(90vw, 495px); aspect-ratio: 1; animation: ritual-art-arrive .45s ease-out both; }
+    .ritual-orbit { position: absolute; inset: 0; border: 1px solid rgba(229,194,113,.7); border-radius: 50%; } .ritual-orbit::before, .ritual-orbit::after { position: absolute; top: 50%; left: 50%; width: 100%; height: 1px; background: rgba(229,194,113,.43); content: ''; transform: translate(-50%,-50%); } .ritual-orbit::after { transform: translate(-50%,-50%) rotate(90deg); }
+    .ritual-orbit-outer { box-shadow: 0 0 32px rgba(209,173,94,.2), inset 0 0 24px rgba(209,173,94,.15); } .ritual-orbit-inner { inset: 13%; border-color: rgba(163,79,54,.8); animation: ritual-turn 4.6s linear infinite reverse; }
+    .ritual-orbit-inner i { position: absolute; top: -3px; left: 50%; width: 16px; height: 5px; border-top: 2px solid #c99e58; border-bottom: 1px solid #c99e58; transform-origin: 0 clamp(66px, 18vw, 92px); } .ritual-orbit-inner i:nth-child(2) { transform: rotate(45deg); } .ritual-orbit-inner i:nth-child(3) { transform: rotate(90deg); } .ritual-orbit-inner i:nth-child(4) { transform: rotate(135deg); } .ritual-orbit-inner i:nth-child(5) { transform: rotate(180deg); } .ritual-orbit-inner i:nth-child(6) { transform: rotate(225deg); } .ritual-orbit-inner i:nth-child(7) { transform: rotate(270deg); } .ritual-orbit-inner i:nth-child(8) { transform: rotate(315deg); }
+    /* 五個元素的中心正好落在外圓邊界；由左上開始每點相差 72°。 */
+    .ritual-element { position: absolute; top: var(--ritual-y); left: var(--ritual-x); display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid currentColor; border-radius: 50%; background: #121a1e; box-shadow: 0 0 10px currentColor; font-size: 1rem; font-weight: 900; opacity: 0; transform: translate(-50%, -50%); animation: ritual-element-reveal .48s cubic-bezier(.16,.82,.26,1) both; }
+    .ritual-wood { --ritual-x: 20.611%; --ritual-y: 9.549%; color: #95c66d; animation-delay: .12s; }
+    .ritual-fire { --ritual-x: 79.389%; --ritual-y: 9.549%; color: #ed8a58; animation-delay: .38s; }
+    .ritual-earth { --ritual-x: 97.553%; --ritual-y: 65.451%; color: #e5bc65; animation-delay: .64s; }
+    .ritual-metal { --ritual-x: 50%; --ritual-y: 100%; color: #d9e4dd; animation-delay: .9s; }
+    .ritual-water { --ritual-x: 2.447%; --ritual-y: 65.451%; color: #6db5d4; animation-delay: 1.16s; }
+    .ritual-taiji { position: absolute; top: 50%; left: 50%; width: 31%; aspect-ratio: 1; overflow: hidden; border: 2px solid #d7b269; border-radius: 50%; background: linear-gradient(90deg, #ede1bb 50%, #2e3536 50%); box-shadow: 0 0 0 7px rgba(184,142,70,.15), 0 0 28px rgba(234,201,116,.58); transform: translate(-50%,-50%); animation: ritual-taiji-pulse 1.15s ease-in-out infinite alternate; } .ritual-taiji::before, .ritual-taiji::after { position: absolute; left: 25%; width: 50%; aspect-ratio: 1; border-radius: 50%; content: ''; } .ritual-taiji::before { top: 0; background: #ede1bb; } .ritual-taiji::after { bottom: 0; background: #2e3536; } .ritual-taiji span, .ritual-taiji i { position: absolute; z-index: 1; left: 42%; width: 16%; aspect-ratio: 1; border-radius: 50%; } .ritual-taiji span { top: 17%; background: #2e3536; } .ritual-taiji i { bottom: 17%; background: #ede1bb; }
+    .ritual-seal { position: absolute; left: 50%; z-index: 2; padding: 4px 9px; border: 1px solid rgba(215,178,105,.78); color: #e9cd8a; font-size: .82rem; font-weight: 900; letter-spacing: .4em; transform: translateX(-50%); } .ritual-seal-top { top: -2%; } .ritual-seal-bottom { bottom: -2%; }
+    .ritual-invocation, .ritual-caption { position: absolute; left: 50%; z-index: 3; color: #f5dda0; text-shadow: 0 2px 10px #000; transform: translateX(-50%); white-space: nowrap; } .ritual-invocation { top: 43%; font-size: 1.34rem; font-weight: 900; letter-spacing: .42em; text-indent: .42em; animation: ritual-invocation .58s 1.48s ease both; } .ritual-caption { top: 57%; color: #c3a86e; font-size: .78rem; letter-spacing: .32em; text-indent: .32em; animation: ritual-caption-in .35s 1.75s ease both; }
+    .ritual-skip-btn { border-color: rgba(222,181,92,.7); border-radius: 2px; background: rgba(20,28,30,.82); color: #f1d797; font-family: inherit; letter-spacing: .12em; } .ritual-skip-btn:hover, .ritual-skip-btn:focus-visible { border-color: #fff0ba; background: rgba(66,48,29,.96); outline: none; }
+    @keyframes ritual-art-arrive { from { opacity: 0; transform: scale(.78); } to { opacity: 1; transform: scale(1); } } @keyframes ritual-turn { to { transform: rotate(360deg); } } @keyframes ritual-taiji-pulse { from { filter: brightness(.9); transform: translate(-50%,-50%) scale(.94); } to { filter: brightness(1.2); transform: translate(-50%,-50%) scale(1.06); } } @keyframes ritual-element-reveal { from { top: 50%; left: 50%; opacity: 0; filter: brightness(2.3); transform: translate(-50%, -50%) scale(.2); } 72% { opacity: 1; transform: translate(-50%, -50%) scale(1.13); } to { top: var(--ritual-y); left: var(--ritual-x); opacity: 1; filter: brightness(1); transform: translate(-50%, -50%) scale(1); } } @keyframes ritual-invocation { from { opacity: 0; letter-spacing: .8em; } to { opacity: 1; letter-spacing: .42em; } } @keyframes ritual-caption-in { from { opacity: 0; transform: translate(-50%, 5px); } to { opacity: 1; transform: translate(-50%, 0); } } @keyframes ritual-seal-in { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: scale(1); } }
+    @media (max-width: 600px) { .goal-hint-sub { display: none; } .goal-panel { padding: 12px 10px; } .goal-card-grid { grid-template-columns: 1fr; } .goal-tab { flex: 1 1 0; padding-inline: 8px; } .goal-board-desc { margin-left: 0; } .ritual-skip-btn { right: 14px; bottom: 14px; } }
+    @media (prefers-reduced-motion: reduce) { .goal-hint-bar, .goal-hint-bar.goal-hint-fresh, .goal-board-fresh, .wuxing-ritual-art, .ritual-orbit-outer, .ritual-orbit-inner, .ritual-taiji, .ritual-invocation { animation: none !important; } }
   </style>
   <link rel="stylesheet" href="/src/ui/visualRefresh.css">
 </head>
