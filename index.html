@@ -157,6 +157,171 @@
       gap: 20px;
       backdrop-filter: blur(4px);
     }
+    .collection-tab-panel {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      padding: 16px 20px;
+      background: rgba(30, 41, 59, 0.45);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      backdrop-filter: blur(4px);
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .collection-tab-panel.active {
+      display: flex;
+    }
+    .collection-section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      margin: 0 0 10px 0;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .collection-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .collection-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border-color);
+      transition: border-color 0.2s;
+    }
+    .collection-card.unlocked {
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+    .collection-card.locked {
+      opacity: 0.55;
+    }
+    .collection-icon-frame { display: grid; flex: 0 0 36px; width: 36px; height: 36px; place-items: center; }
+    .collection-icon { width: 32px; height: 32px; filter: drop-shadow(0 1px 0 rgba(255,255,255,.16)); }
+    .collection-icon-locked { filter: grayscale(1) opacity(.42); }
+    .collection-card-body {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .collection-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+    }
+    .collection-name.unknown {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .collection-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .collection-meta.completion {
+      color: #10b981;
+    }
+    .collection-meta.progress {
+      color: #f59e0b;
+    }
+    .collection-desc {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin: 2px 0 0 0;
+      line-height: 1.3;
+    }
+    .collection-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .collection-stats span {
+      white-space: nowrap;
+    }
+
+    /* === MORE 圖鑑：東方紙本／青銅風格 === */
+    .talent-atlas-v2 .collection-tab-panel {
+      box-sizing: border-box;
+      width: min(100%, 1040px);
+      max-height: min(66vh, 650px);
+      padding: 14px;
+      overflow-y: auto;
+      border: 2px solid #735237;
+      border-radius: 3px;
+      background:
+        linear-gradient(135deg, rgba(247, 233, 187, .98), rgba(221, 190, 126, .96)),
+        repeating-linear-gradient(0deg, transparent 0 24px, rgba(112, 73, 39, .07) 25px 26px);
+      box-shadow: 0 3px 0 #3e291b, inset 0 0 0 2px rgba(255, 248, 218, .7), inset 0 0 36px rgba(92, 55, 27, .14);
+      color: #513323;
+      scrollbar-color: #87613b #e8ce90;
+    }
+    .talent-atlas-v2 .collection-tab-layout { display: grid; gap: 14px; }
+    .talent-atlas-v2 .collection-section { position: relative; padding: 12px 10px 8px; border: 1px solid rgba(114, 76, 40, .48); background: rgba(255, 247, 215, .38); }
+    .talent-atlas-v2 .collection-section::before { position: absolute; top: 7px; right: 9px; color: rgba(117, 66, 41, .16); content: '☷'; font-size: 1.25rem; }
+    .talent-atlas-v2 .collection-section-title {
+      position: relative; display: inline-block; min-width: 116px; margin: -22px 0 10px -4px; padding: 7px 15px;
+      border: 1px solid #6a4028; border-radius: 2px;
+      background: linear-gradient(#765038, #4e3222);
+      box-shadow: 0 2px 0 #2d1b12, inset 0 1px 0 rgba(255, 224, 148, .26);
+      color: #f8df9e; font-size: .94rem; font-weight: 900; letter-spacing: .16em; text-align: center;
+    }
+    .talent-atlas-v2 .collection-section-title::before { margin-right: 6px; color: #d9b166; content: '◆'; font-size: .6rem; vertical-align: 1px; }
+    .talent-atlas-v2 .collection-grid { grid-template-columns: repeat(auto-fill, minmax(226px, 1fr)); gap: 9px; margin: 0; }
+    .talent-atlas-v2 .collection-card {
+      position: relative; min-height: 67px; padding: 9px; overflow: hidden;
+      border: 1px solid #93704b; border-radius: 2px;
+      background: linear-gradient(145deg, rgba(255, 248, 218, .92), rgba(231, 204, 147, .86));
+      box-shadow: 0 2px 0 rgba(87, 53, 28, .42), inset 0 0 0 1px rgba(255, 255, 255, .48);
+      color: #513323; transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+    .talent-atlas-v2 .collection-card::after { position: absolute; top: 5px; right: 7px; color: rgba(105, 61, 36, .14); content: '☰'; font-size: 1.3rem; line-height: 1; }
+    .talent-atlas-v2 .collection-card.unlocked:hover, .talent-atlas-v2 .collection-card.achievement-card:hover { z-index: 1; border-color: #a44736; box-shadow: 0 4px 0 rgba(87, 53, 28, .46), inset 0 0 0 1px rgba(255, 255, 255, .72); transform: translateY(-2px); }
+    .talent-atlas-v2 .collection-card.locked { border-style: dashed; background: linear-gradient(145deg, #d9c8a5, #b8a586); color: #726351; filter: saturate(.55); opacity: .82; }
+    .talent-atlas-v2 .collection-card.achievement-card.done { border-color: #758d4c; background: linear-gradient(145deg, #f5edc7, #cbd79e); box-shadow: inset 3px 0 #71934c, 0 2px 0 rgba(87, 53, 28, .42); }
+    .talent-atlas-v2 .collection-card.achievement-card.pending { border-color: #a97743; }
+    .talent-atlas-v2 .collection-icon-frame { position: relative; z-index: 1; flex-basis: 38px; width: 38px; height: 38px; border: 1px solid #8b5132; border-radius: 50%; background: #edd28f; box-shadow: inset 0 0 0 2px rgba(255, 247, 214, .65), inset 0 0 0 4px rgba(112, 59, 36, .3); }
+    .talent-atlas-v2 .collection-card.locked .collection-icon-frame { border-color: #82715e; background: #c7b795; }
+    .talent-atlas-v2 .collection-icon { width: 27px; height: 27px; }
+    .talent-atlas-v2 .collection-card-body { position: relative; z-index: 1; gap: 2px; }
+    .talent-atlas-v2 .collection-name { color: #593426; font-size: .88rem; font-weight: 900; letter-spacing: .03em; }
+    .talent-atlas-v2 .collection-name.unknown { color: #806e58; }
+    .talent-atlas-v2 .collection-meta { color: #856246; font-size: .7rem; font-weight: 700; }
+    .talent-atlas-v2 .collection-meta.completion { color: #54763f; }
+    .talent-atlas-v2 .collection-meta.progress { color: #a95536; }
+    .talent-atlas-v2 .collection-desc { color: #76563c; font-size: .69rem; line-height: 1.4; }
+    .talent-atlas-v2 .collection-stats { justify-content: center; gap: 8px 14px; padding: 9px 12px; border: 1px solid #85613e; background: rgba(83, 51, 30, .9); box-shadow: inset 0 1px 0 rgba(255, 229, 159, .17); color: #f1d99c; font-size: .74rem; }
+    .talent-atlas-v2 .collection-stats span { position: relative; padding-left: 10px; }
+    .talent-atlas-v2 .collection-stats span::before { position: absolute; left: 0; color: #cf9b51; content: '◆'; font-size: .5rem; top: .27rem; }
+    .talent-atlas-v2 .collection-progress-row { display: grid; grid-template-columns: 64px minmax(90px, 1fr) 76px; align-items: center; gap: 8px; width: 100%; }
+    .talent-atlas-v2 .collection-progress-label { color: #f5d99a; font-weight: 900; white-space: nowrap; }
+    .talent-atlas-v2 .collection-progress-track { height: 12px; overflow: hidden; border: 1px solid #c89b4e; border-radius: 1px; background: #281b14; box-shadow: inset 0 1px 3px rgba(0,0,0,.55); }
+    .talent-atlas-v2 .collection-progress-track > span { display: block; height: 100%; padding: 0; transition: width .35s ease; }
+    .talent-atlas-v2 .collection-progress-track > span::before { content: none; }
+    .talent-atlas-v2 .bestiary-progress > span { background: linear-gradient(90deg, #f2c14e 0%, #69b84a 28%, #4ca7d8 52%, #ee6638 76%, #b77a45 100%); }
+    .talent-atlas-v2 .achievement-progress.bronze > span { background: linear-gradient(90deg, #a86c3e, #d79b59); }
+    .talent-atlas-v2 .achievement-progress.silver > span { background: linear-gradient(90deg, #9dabb6, #e6eef1); }
+    .talent-atlas-v2 .achievement-progress.gold > span { background: linear-gradient(90deg, #c28c2d, #ffe48a); }
+    .talent-atlas-v2 .collection-progress-value { padding-left: 0; color: #f3dca5; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+    .talent-atlas-v2 .collection-progress-value::before { content: none; }
+    .talent-atlas-v2 .collection-stat-summary { display: flex; justify-content: center; gap: 18px; width: 100%; color: #d9c193; font-size: .7rem; }
+    @media (max-width: 700px) {
+      .talent-atlas-v2 .collection-tab-panel { max-height: 58vh; padding: 12px 8px; }
+      .talent-atlas-v2 .collection-grid { grid-template-columns: 1fr; }
+      .talent-atlas-v2 .collection-section { padding-inline: 7px; }
+      .talent-atlas-v2 .collection-progress-row { grid-template-columns: 62px minmax(62px, 1fr) 67px; gap: 5px; font-size: .68rem; }
+      .talent-atlas-v2 .collection-stat-summary { gap: 10px; }
+    }
     .track-label {
       writing-mode: vertical-lr;
       text-orientation: mixed;
@@ -1295,6 +1460,21 @@
 </head>
 <body>
 
+  <!-- 共用 code-native UI icon sprite：不依賴系統 emoji 或外置圖片 -->
+  <svg class="ui-symbol-sprite" aria-hidden="true" focusable="false">
+    <symbol id="ui-icon-banner" viewBox="0 0 24 24"><path d="M5 21V4m1 1h11l-2.5 3L17 11H6"/><path d="M3 21h6"/></symbol>
+    <symbol id="ui-icon-taiji" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a4.5 4.5 0 0 1 0 9 4.5 4.5 0 0 0 0 9"/><circle cx="12" cy="7.5" r="1" class="ui-icon-fill"/><circle cx="12" cy="16.5" r="1"/></symbol>
+    <symbol id="ui-icon-scroll" viewBox="0 0 24 24"><path d="M7 4h11v14H7a3 3 0 0 1 0-6h11"/><path d="M7 4a3 3 0 0 0 0 6h8M10 8h5m-5 7h5"/></symbol>
+    <symbol id="ui-icon-heart" viewBox="0 0 24 24"><path d="M12 20S4 15.2 4 9.4C4 5.7 8.6 4 12 7.4 15.4 4 20 5.7 20 9.4 20 15.2 12 20 12 20Z" class="ui-icon-fill"/></symbol>
+    <symbol id="ui-icon-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 9.2c.7-.9 1.7-1.2 3-1.2 1.7 0 3 .7 3 2 0 3-6 1-6 4 0 1.3 1.3 2 3 2 1.3 0 2.4-.4 3-1.2M12 6v12"/></symbol>
+    <symbol id="ui-icon-wave" viewBox="0 0 24 24"><path d="M4 16c2.2-3 4.4-3 6.6 0s4.4 3 6.6 0 4.4-3 6.6 0"/><path d="M4 10c2.2-3 4.4-3 6.6 0s4.4 3 6.6 0 4.4-3 6.6 0"/></symbol>
+    <symbol id="ui-icon-blade" viewBox="0 0 24 24"><path d="m5 4 12 12m2 3-3-3m3-12L7 16m-2 3 3-3"/><path d="M4 4h4L4 8Zm16 0h-4l4 4Z" class="ui-icon-fill"/></symbol>
+    <symbol id="ui-icon-eye" viewBox="0 0 24 24"><path d="M3 12s3.5-5 9-5 9 5 9 5-3.5 5-9 5-9-5-9-5Z"/><circle cx="12" cy="12" r="2.5" class="ui-icon-fill"/></symbol>
+    <symbol id="ui-icon-merge" viewBox="0 0 24 24"><circle cx="6" cy="7" r="2.5"/><circle cx="18" cy="7" r="2.5"/><circle cx="12" cy="18" r="3"/><path d="m8 9 2.6 5.2M16 9l-2.6 5.2"/></symbol>
+    <symbol id="ui-icon-hammer" viewBox="0 0 24 24"><path d="m4 19 9-9m-2-5 4-2 6 6-2 4Z"/><path d="m3 18 3 3"/></symbol>
+    <symbol id="ui-icon-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" class="ui-icon-fill"/><circle cx="12" cy="12" r="1.5" class="ui-icon-fill"/><circle cx="19" cy="12" r="1.5" class="ui-icon-fill"/></symbol>
+  </svg>
+
   <!-- ===== 浮動背景音樂開關 (Phase 4) ===== -->
   <button id="btnToggleMusic" aria-label="切換音樂" title="切換音樂">♪</button>
 
@@ -1305,10 +1485,10 @@
     <div class="menu-subtitle">佈陣・相生・破陣</div>
     <div id="gameVersion">V0.50</div>
     <div class="menu-buttons">
-      <button id="btnStartGame" class="menu-btn primary">開始遊戲</button>
-      <button id="btnTalent" class="menu-btn">五行經脈</button>
+      <button id="btnStartGame" class="menu-btn primary menu-command-btn"><span class="menu-btn-icon"><svg class="ui-icon"><use href="#ui-icon-banner"></use></svg></span><span>開始遊戲</span></button>
+      <button id="btnTalent" class="menu-btn menu-command-btn"><span class="menu-btn-icon"><svg class="ui-icon"><use href="#ui-icon-taiji"></use></svg></span><span>五行經脈</span></button>
       <button id="btnStore" class="menu-btn" disabled>商店</button>
-      <button id="btnReleaseNotes" class="menu-btn menu-btn-secondary">遊戲資訊</button>
+      <button id="btnReleaseNotes" class="menu-btn menu-btn-secondary menu-command-btn"><span class="menu-btn-icon"><svg class="ui-icon"><use href="#ui-icon-scroll"></use></svg></span><span>遊戲資訊</span></button>
       <div id="menuTalentInfo" class="menu-talent-info"></div>
     </div>
   </div>
@@ -1316,7 +1496,10 @@
   <!-- ===== 場景 1.5: 關卡選擇 ===== -->
   <div id="levelSelectScreen" class="scene">
     <div class="level-header">
-      <h2>🗺️ 選擇戰鬥關卡</h2>
+      <div class="level-heading-copy">
+        <h2><svg class="ui-icon"><use href="#ui-icon-scroll"></use></svg> 選擇戰鬥關卡</h2>
+        <p>先讀路線，再決定火力核心。折返越多，同一座塔的價值越高。</p>
+      </div>
       <div style="display:flex; gap:8px;">
         <button id="btnCreateMap" class="menu-btn" style="padding: 8px 16px; font-size: 0.9rem; background: #4f46e5; border-color: #6366f1; display: none;">🛠️ 自建地圖</button>
         <button id="btnBackFromLevel" class="menu-btn" style="padding: 8px 16px; font-size: 0.9rem;">← 返回主選單</button>
@@ -1417,6 +1600,7 @@
       <button id="talentTabAttack" class="talent-nav-btn" data-track="track-attack" role="tab" aria-controls="track-attack" aria-selected="false" tabindex="-1">氣血</button>
       <button id="talentTabElement" class="talent-nav-btn" data-track="track-element" role="tab" aria-controls="track-element" aria-selected="false" tabindex="-1">五行</button>
       <button id="talentTabYinyang" class="talent-nav-btn" data-track="track-yinyang" role="tab" aria-controls="track-yinyang" aria-selected="false" tabindex="-1">陰陽</button>
+      <button id="talentTabCollection" class="talent-nav-btn" data-track="collection" role="tab" aria-controls="tab-collection" aria-selected="false" tabindex="-1">圖鑑</button>
     </div>
     <div id="talentStoryGuide" class="talent-story-guide" aria-live="polite">
       先從任督二脈穩固基地與資源；累積天賦點後，其他經脈會逐步開放。
@@ -1559,6 +1743,10 @@
           </div>
         </div>
 
+        <!-- 圖鑑＋成就面板 (collection system P0) -->
+        <div id="tab-collection" class="collection-tab-panel" role="tabpanel" aria-labelledby="talentTabCollection" style="display:none">
+        </div>
+
         <!-- Track 4: 陰陽合化 -->
         <div id="track-yinyang" class="talent-track" role="tabpanel" aria-labelledby="talentTabYinyang">
           <div class="track-label"><span>陰陽</span><strong>陰陽合化</strong><small>兩儀歸太極</small></div>
@@ -1624,28 +1812,32 @@
           </div>
         </div>
         <div class="stats" style="display: flex; align-items: center; gap: 20px;">
-          <div class="stat-item" style="display: flex; flex-direction: column; align-items: center;">
-            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">生命</span>
-            <span id="hpVal" class="stat-val-hp" style="font-size: 1.6rem; font-weight: 800; line-height: 1.2;">20</span>
+          <div class="stat-item hud-stat-badge hud-stat-hp" style="display: flex; flex-direction: column; align-items: center;">
+            <svg class="ui-icon hud-stat-icon" aria-hidden="true"><use href="#ui-icon-heart"></use></svg>
+            <span class="hud-stat-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">生命</span>
+            <span id="hpVal" class="stat-val-hp hud-stat-value" style="font-size: 1.6rem; font-weight: 800; line-height: 1.2;">20</span>
           </div>
-          <div class="stat-item" style="display: flex; flex-direction: column; align-items: center;">
-            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">金幣</span>
-            <span id="goldVal" class="stat-val-gold" style="font-size: 1.6rem; font-weight: 800; line-height: 1.2;">60</span>
+          <div class="stat-item hud-stat-badge hud-stat-gold" style="display: flex; flex-direction: column; align-items: center;">
+            <svg class="ui-icon hud-stat-icon" aria-hidden="true"><use href="#ui-icon-coin"></use></svg>
+            <span class="hud-stat-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">金幣</span>
+            <span id="goldVal" class="stat-val-gold hud-stat-value" style="font-size: 1.6rem; font-weight: 800; line-height: 1.2;">60</span>
           </div>
           <!-- 波次進度環 -->
-          <div class="wave-ring-container" style="position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; margin: 0 4px;">
+          <div class="wave-ring-container hud-stat-badge hud-stat-wave" style="position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; margin: 0 4px;">
+            <svg class="ui-icon hud-stat-icon" aria-hidden="true"><use href="#ui-icon-wave"></use></svg>
             <svg width="56" height="56" viewBox="0 0 36 36" style="transform: rotate(-90deg);">
               <circle cx="18" cy="18" r="16" fill="none" stroke="#1e293b" stroke-width="3.5" />
               <circle id="waveRingFill" cx="18" cy="18" r="16" fill="none" stroke="#10b981" stroke-width="3.5" stroke-dasharray="100" stroke-dashoffset="100" stroke-linecap="round" style="transition: stroke-dashoffset 0.3s ease; stroke: #10b981;" />
             </svg>
             <div style="position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-              <span id="waveVal" style="font-size: 1.2rem; font-weight: 800; color: #10b981;">0</span>
-              <span style="font-size: 0.5rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em;">波次</span>
+              <span id="waveVal" class="hud-stat-value" style="font-size: 1.2rem; font-weight: 800; color: #10b981;">0</span>
+              <span class="hud-stat-label" style="font-size: 0.5rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em;">波次</span>
             </div>
           </div>
-          <div class="stat-item" style="display: flex; flex-direction: column; align-items: center;">
-            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">擊殺</span>
-            <span id="killVal" class="stat-val-wave" style="font-size: 1.4rem; font-weight: 800; line-height: 1.2; color: #a5b4fc;">0</span>
+          <div class="stat-item hud-stat-badge hud-stat-kill" style="display: flex; flex-direction: column; align-items: center;">
+            <svg class="ui-icon hud-stat-icon" aria-hidden="true"><use href="#ui-icon-blade"></use></svg>
+            <span class="hud-stat-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">擊殺</span>
+            <span id="killVal" class="stat-val-wave hud-stat-value" style="font-size: 1.4rem; font-weight: 800; line-height: 1.2; color: #a5b4fc;">0</span>
           </div>
           <div id="hudGoalProgress" hidden style="max-width: 210px; padding: 6px 9px; border: 1px solid rgba(226,183,92,.55); background: rgba(83,57,31,.62); color: #f5d98e; font-size: .72rem; font-weight: 800; line-height: 1.25; text-align: center;"></div>
         </div>
@@ -1667,9 +1859,9 @@
           
           <!-- 滑鼠操作模式切換組 -->
           <div class="mouse-modes">
-            <button id="btnInspect" class="btn active" title="空閒、檢視防禦塔或拖曳地圖">檢視</button>
-            <button id="btnMerge" class="btn btn-merge" data-tool="merge" title="選取兩座防禦塔合成">合成</button>
-            <button id="btnSell" class="btn" data-tool="sell" title="拆除防禦塔並退還金幣">拆除</button>
+            <button id="btnInspect" class="btn active hud-control-btn" title="空閒、檢視防禦塔或拖曳地圖"><svg class="ui-icon" aria-hidden="true"><use href="#ui-icon-eye"></use></svg><span>檢視</span></button>
+            <button id="btnMerge" class="btn btn-merge hud-control-btn" data-tool="merge" title="選取兩座防禦塔合成"><svg class="ui-icon" aria-hidden="true"><use href="#ui-icon-merge"></use></svg><span>合成</span></button>
+            <button id="btnSell" class="btn hud-control-btn" data-tool="sell" title="拆除防禦塔並退還金幣"><svg class="ui-icon" aria-hidden="true"><use href="#ui-icon-hammer"></use></svg><span id="btnSellLabel">拆除</span></button>
           </div>
         </div>
 
@@ -1694,8 +1886,8 @@
           <!-- 常用遊戲控制 -->
           <div class="game-actions-primary">
             <button id="btnSpeed" class="btn" style="min-width:80px;">1×</button>
-            <button id="btnCodex" class="btn">圖鑑</button>
-            <button id="btnUtilityMenu" class="btn" aria-expanded="false" aria-controls="utilityDrawer">更多</button>
+            <button id="btnCodex" class="btn hud-control-btn"><svg class="ui-icon" aria-hidden="true"><use href="#ui-icon-scroll"></use></svg><span>圖鑑</span></button>
+            <button id="btnUtilityMenu" class="btn hud-control-btn" aria-expanded="false" aria-controls="utilityDrawer"><svg class="ui-icon" aria-hidden="true"><use href="#ui-icon-more"></use></svg><span>更多</span></button>
           </div>
 
           <!-- 低頻功能抽屜 -->
@@ -1707,7 +1899,7 @@
 
           <!-- 開始下一波主操作按鈕 -->
           <div class="main-action">
-            <button id="btnStartWave" class="btn btn-action btn-wave-large">下一波</button>
+            <button id="btnStartWave" class="btn btn-action btn-wave-large hud-wave-command"><svg class="ui-icon" aria-hidden="true"><use href="#ui-icon-banner"></use></svg><span>下一波</span></button>
           </div>
         </div>
       </div>

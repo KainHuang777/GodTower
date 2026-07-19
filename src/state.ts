@@ -137,6 +137,8 @@ export interface GameState {
   isBenchmarking: boolean;
   benchStartTime: number;
   benchFrames: number[];
+  /** F6：真實戰鬥起始時間（endBattle 時計算 clearTimeMinutes），以 performance.now() 賦值 */
+  battleRealStart: number;
   benchDrawCalls: number[];
 
   // 跨模組回呼函式
@@ -291,6 +293,7 @@ export function createGameState(): GameState {
     isBenchmarking: false,
     benchStartTime: 0,
     benchFrames: [],
+    battleRealStart: 0,
     benchDrawCalls: [],
 
     // Juice & Range Visualization

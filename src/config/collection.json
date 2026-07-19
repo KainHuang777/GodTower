@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "bestiary": [
+    { "id": "snake", "category": "enemy", "label": "小蛇", "element": "wood", "lore": "木氣所化，遊走於草莽之間，性敏而體弱。", "spriteType": "snake" },
+    { "id": "fly", "category": "enemy", "label": "小蒼蠅", "element": "metal", "lore": "金氣凝形，振翅疾行，雖渺小卻不可輕忽。", "spriteType": "fly" },
+    { "id": "salamander", "category": "enemy", "label": "火蜥蜴", "element": "fire", "lore": "火氣所孕，吐焰而行，灼熱難當。", "spriteType": "salamander" },
+    { "id": "water_spirit", "category": "enemy", "label": "水靈", "element": "water", "lore": "水氣化靈，流轉無常，以柔克剛。", "spriteType": "water_spirit" },
+    { "id": "golem", "category": "enemy", "label": "石傀儡", "element": "earth", "lore": "厚土凝形，步步沉重，非烈火不能破其堅。", "spriteType": "golem" },
+    { "id": "beetle", "category": "enemy", "label": "金甲蟲", "element": "metal", "lore": "金氣附甲，堅不可摧，緩步前行如鐵壁。", "spriteType": "beetle" },
+    { "id": "boss_dragon", "category": "enemy", "label": "龍影", "element": "fire", "lore": "火之精魄，每五劫一現。翼展遮天，非五行合力不能制。", "spriteType": "boss_dragon" },
+    { "id": "fire", "category": "tower", "label": "烈焰塔", "element": "fire", "lore": "火行陣器，焚盡來犯之敵。烈焰所至，寸草不生。", "spriteType": "fire" },
+    { "id": "water", "category": "tower", "label": "冰凍塔", "element": "water", "lore": "水行陣器，寒氣逼人，凍結萬物於無形。", "spriteType": "water" },
+    { "id": "wood", "category": "tower", "label": "纏繞塔", "element": "wood", "lore": "木行陣器，藤蔓纏身，困敵於步步荊棘。", "spriteType": "wood" },
+    { "id": "earth", "category": "tower", "label": "岩壁塔", "element": "earth", "lore": "土行陣器，厚實如山，築牆引路以困妖邪。", "spriteType": "earth" },
+    { "id": "metal", "category": "tower", "label": "鏡刃塔", "element": "metal", "lore": "金行陣器，鋒芒畢露，斬妖除魔如破竹。", "spriteType": "metal" },
+    { "id": "yin", "category": "tower", "label": "暗影塔", "element": "yin", "lore": "陰儀之器，藏影於暗，以幽深之力侵蝕敵魂。", "spriteType": "yin" },
+    { "id": "yang", "category": "tower", "label": "聖光塔", "element": "yang", "lore": "陽儀之器，光明普照，以浩然之氣驅散邪祟。", "spriteType": "yang" }
+  ],
+  "achievements": [
+    { "id": "first_blood", "label": "初試鋒芒", "description": "首次擊殺任意怪物", "tier": "bronze", "condition": { "key": "totalKills", "op": "gte", "value": 1 } },
+    { "id": "first_merge", "label": "初悟合成", "description": "首次進行合成", "tier": "bronze", "condition": { "key": "totalMerges", "op": "gte", "value": 1 } },
+    { "id": "wave_5", "label": "五波不退", "description": "存活至第 5 波", "tier": "bronze", "condition": { "key": "highestWave", "op": "gte", "value": 5 } },
+    { "id": "wave_10", "label": "十波不搖", "description": "存活至第 10 波", "tier": "bronze", "condition": { "key": "highestWave", "op": "gte", "value": 10 } },
+    { "id": "first_boss_kill", "label": "屠龍初試", "description": "首次擊殺 Boss", "tier": "bronze", "condition": { "key": "bossKills", "op": "gte", "value": 1 } },
+    { "id": "first_death", "label": "敗軍之將", "description": "首次基地被攻破", "tier": "bronze", "condition": { "key": "totalDefeats", "op": "gte", "value": 1 } },
+    { "id": "kill_50", "label": "五十斬", "description": "累計擊殺 50 隻怪物", "tier": "bronze", "condition": { "key": "totalKills", "op": "gte", "value": 50 } },
+    { "id": "talent_first", "label": "初修道果", "description": "首次投資天賦點", "tier": "bronze", "condition": { "key": "talentPointsSpent", "op": "gte", "value": 1 } }
+  ]
+}

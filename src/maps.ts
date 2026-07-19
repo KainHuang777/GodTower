@@ -4,6 +4,25 @@
 
 import { currentSaveStorage } from './system/platform';
 import type { Point } from './types';
+import type { TowerTypeId } from './towers';
+
+export interface InitialTowerConfig {
+  typeId: TowerTypeId;
+  x: number;
+  y: number;
+  locked?: boolean;
+}
+
+export interface MapPresentation {
+  motif: 'showcase' | 'zigzag' | 'hexagram' | 'valley' | 'gorge' | 'ruins' | 'custom';
+  featureTags: string[];
+  strategy: string;
+  focusPoint?: Point;
+  expectedAttackWindows?: number;
+  previewAccent?: string;
+  /** 固定關卡的視覺點綴；不改變 grid、碰撞或尋路。 */
+  terrainProps?: Array<{ x: number; y: number; atlasCell: number }>;
+}
 
 export interface MapConfig {
   id: string;
@@ -13,7 +32,14 @@ export interface MapConfig {
   spawnPoint: Point;
   basePoint: Point;
   waypoints: Point[];
+  /** 路線錨點可很密；此欄只決定畫面上要顯示哪些檢查點。 */
+  visibleWaypointIndices?: number[];
   obstacles: Point[]; // 預設天然地形阻擋的網格點
+  initialTowers?: InitialTowerConfig[];
+  tutorialHints?: {
+    wallTiles: Point[];
+  };
+  presentation?: MapPresentation;
   dimensions?: {
     cols: number;
     rows: number;
@@ -32,6 +58,60 @@ function generateRectPoints(x1: number, y1: number, x2: number, y2: number): Poi
   }
   return pts;
 }
+
+/**
+ * 將視覺折線轉成短距離正交錨點，讓四方向 A* 呈現穩定的像素階梯斜線。
+ * stride=2 仍保留每兩格之間的小幅改道空間，避免把整條道路鎖死。
+ */
+function generateOrthogonalAnchors(vertices: Point[], stride = 2): Point[] {
+  const anchors: Point[] = [];
+  for (let segmentIndex = 1; segmentIndex < vertices.length; segmentIndex++) {
+    const start = vertices[segmentIndex - 1];
+    const end = vertices[segmentIndex];
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    const stepX = Math.sign(dx);
+    const stepY = Math.sign(dy);
+    let movedX = 0;
+    let movedY = 0;
+    let x = start.x;
+    let y = start.y;
+    let stepCount = 0;
+
+    while (x !== end.x || y !== end.y) {
+      const nextXProgress = movedX < absX ? (movedX + 1) / Math.max(1, absX) : Infinity;
+      const nextYProgress = movedY < absY ? (movedY + 1) / Math.max(1, absY) : Infinity;
+      if (nextXProgress <= nextYProgress) {
+        x += stepX;
+        movedX++;
+      } else {
+        y += stepY;
+        movedY++;
+      }
+      stepCount++;
+      if (stepCount % stride === 0 || (x === end.x && y === end.y)) anchors.push({ x, y });
+    }
+  }
+  return anchors;
+}
+
+const TUTORIAL_ROUTE_VERTICES: Point[] = [
+  { x: 0, y: 5 },
+  { x: 4, y: 2 },
+  { x: 16, y: 2 },
+  { x: 4, y: 7 },
+  { x: 16, y: 7 },
+  { x: 4, y: 2 },
+  { x: 19, y: 5 },
+];
+const TUTORIAL_WAYPOINTS = generateOrthogonalAnchors(TUTORIAL_ROUTE_VERTICES)
+  .slice(0, -1)
+  .filter(point => point.x !== 10 || point.y !== 5);
+const TUTORIAL_VISIBLE_WAYPOINT_INDICES = TUTORIAL_ROUTE_VERTICES.slice(1, -1)
+  .map(vertex => TUTORIAL_WAYPOINTS.findIndex(point => point.x === vertex.x && point.y === vertex.y))
+  .filter((index, position, indices) => index >= 0 && indices.indexOf(index) === position);
 
 // 產生困難關卡的散落古代石柱 (避開路徑附近的起點、終點與檢查點)
 function generateHardObstacles(): Point[] {
@@ -84,36 +164,82 @@ export const MAPS: MapConfig[] = [
       { x: 15, y: 2 }
     ],
     obstacles: [],
+    presentation: {
+      motif: 'showcase',
+      featureTags: ['演武測試', '無限資源'],
+      strategy: '自由生成敵人與砲台，專注觀察動畫與數值。',
+      previewAccent: '#8b5cf6',
+    },
     dimensions: { cols: 20, rows: 10, tileSize: 64, overview: true }
   },
-  // 1. 教學關卡（低繞路負擔：先學合成與隨機技能，再逐步學迷宮）
+  // 1. 教學關卡（之字折返：中央贈塔可重複覆蓋多段道路）
   {
     id: 'tutorial',
-    name: '【教學】清風試煉場',
+    name: '【教學】清風折廊',
     difficulty: '教學',
-    description: '教學關卡：全圖固定顯示的短 S 型試煉場，依序認識攻擊塔、連續岩壁、加速、隨機技能、空中敵人與 Boss。完整迷宮策略於後續關卡逐步開放。',
+    description: '之字折返的全圖試煉場。開場贈送中央烈焰塔，讓同一座塔能反覆覆蓋數段道路，再依序學習岩壁改道、合成與波次控制。',
     spawnPoint: { x: 0, y: 5 },
     basePoint: { x: 19, y: 5 },
-    waypoints: [
-      { x: 6, y: 3 },
-      { x: 13, y: 7 }
-    ],
+    waypoints: TUTORIAL_WAYPOINTS,
+    visibleWaypointIndices: TUTORIAL_VISIBLE_WAYPOINT_INDICES,
     obstacles: [],
+    initialTowers: [{ typeId: 'fire', x: 10, y: 5, locked: true }],
+    tutorialHints: {
+      wallTiles: [{ x: 9, y: 2 }, { x: 10, y: 2 }, { x: 11, y: 2 }],
+    },
+    presentation: {
+      motif: 'zigzag',
+      featureTags: ['之字折返', '中央贈塔', '一次改道'],
+      strategy: '贈送的烈焰塔位於折返中央，可對同一批敵人形成多段火力覆蓋。',
+      focusPoint: { x: 10, y: 5 },
+      expectedAttackWindows: 5,
+      previewAccent: '#c75b35',
+      terrainProps: [
+        { x: 1, y: 1, atlasCell: 1 }, { x: 18, y: 1, atlasCell: 2 },
+        { x: 2, y: 8, atlasCell: 3 }, { x: 17, y: 8, atlasCell: 15 },
+      ],
+    },
     dimensions: { cols: 20, rows: 10, tileSize: 64, overview: true }
   },
   
-  // 2. 簡單關卡 (經典平原，原版配置)
+  // 2. 簡單關卡（六芒星：中心陣眼反覆進出射程）
   {
     id: 'easy',
-    name: '【簡單】九曲河谷',
+    name: '【簡單】六合星陣',
     difficulty: '簡單',
-    description: '明亮河谷中的五段彎曲古道。道路以圓角連續方式呈現，保留開闊建造空間，適合熟悉五行塔與迷宮改道。',
-    spawnPoint: { x: 0, y: 26 },
-    basePoint: { x: 79, y: 15 },
+    description: '兩道三角路線交織成六芒星。將烈焰塔放在中央陣眼，可讓同一隻地面怪反覆離開並進入射程，形成六段火力窗口。',
+    spawnPoint: { x: 20, y: 0 },
+    basePoint: { x: 0, y: 6 },
     waypoints: [
-      { x: 12, y: 17 }, { x: 26, y: 29 }, { x: 40, y: 11 }, { x: 54, y: 26 }, { x: 68, y: 9 }
+      { x: 20, y: 2 }, { x: 21, y: 4 }, { x: 22, y: 6 },
+      { x: 24, y: 9 }, { x: 25, y: 11 }, { x: 26, y: 13 }, { x: 27, y: 14 },
+      { x: 25, y: 14 }, { x: 23, y: 14 }, { x: 21, y: 14 },
+      { x: 19, y: 14 }, { x: 17, y: 14 }, { x: 15, y: 14 }, { x: 13, y: 14 },
+      { x: 14, y: 12 }, { x: 15, y: 10 }, { x: 17, y: 9 },
+      { x: 18, y: 5 }, { x: 19, y: 3 }, { x: 20, y: 2 },
+      { x: 18, y: 3 }, { x: 16, y: 4 }, { x: 14, y: 5 }, { x: 13, y: 6 },
+      { x: 15, y: 6 }, { x: 17, y: 6 }, { x: 19, y: 6 },
+      { x: 21, y: 6 }, { x: 23, y: 6 }, { x: 25, y: 6 }, { x: 27, y: 6 },
+      { x: 26, y: 8 }, { x: 25, y: 10 }, { x: 24, y: 12 },
+      { x: 22, y: 15 }, { x: 21, y: 17 }, { x: 20, y: 18 },
+      { x: 19, y: 16 }, { x: 18, y: 14 }, { x: 17, y: 12 },
+      { x: 15, y: 9 }, { x: 14, y: 7 }, { x: 13, y: 6 },
     ],
-    obstacles: []
+    visibleWaypointIndices: [0, 6, 13, 23, 30, 36],
+    obstacles: [],
+    presentation: {
+      motif: 'hexagram',
+      featureTags: ['六芒折返', '中央陣眼', '六段火力'],
+      strategy: '推薦在 (20, 10) 放置射程 4 的烈焰塔；地面怪會六度進出射程。',
+      focusPoint: { x: 20, y: 10 },
+      expectedAttackWindows: 6,
+      previewAccent: '#9a6a28',
+      terrainProps: [
+        { x: 5, y: 3, atlasCell: 1 }, { x: 34, y: 3, atlasCell: 2 },
+        { x: 5, y: 16, atlasCell: 3 }, { x: 34, y: 16, atlasCell: 15 },
+      ],
+    },
+    dimensions: { cols: 40, rows: 20, tileSize: 32, overview: true }
   },
   
   // 3. 中等關卡 (山脈雙峽谷)

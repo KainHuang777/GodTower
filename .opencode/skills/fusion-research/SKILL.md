@@ -53,7 +53,7 @@ OpenRouter Fusion 研究報告指出 Judge 偏差會造成 10~25 分的絕對分
 3. 不存在 或 過期：繼續執行 Step 0.2~0.4
 
 ### Step 0.2 — 環境偵測（不讀取 provider 的 apiKey）
-1. 讀取 `opencode.json` 的 `agent` 區塊 → 列舉所有 `fusion-*` agent 名稱（**不讀取 `provider` 的 apiKey/bearerToken**）
+1. 讀取 `opencode.jsonc` 的 `agent` 區塊 → 列舉所有 `fusion-*` agent 名稱（**不讀取 `provider` 的 apiKey/bearerToken**）
 2. 檢查 `.agents/skills/` 目錄是否存在
 3. 判定環境：
    - `fusion-*` agents ≥ 3 且多數 model 為 `opencode-go/*` → **opencode-multi**（使用本檔案）
@@ -88,11 +88,11 @@ OpenRouter Fusion 研究報告指出 Judge 偏差會造成 10~25 分的絕對分
 
 ### Step 0.5.1 — 解析 Combo 並驗證存在性
 
-讀取 `opencode.json` 的 `agent` 區塊，將選定 combo 的每個 panel agent 名稱解析為實際 `model` ID。
+讀取 `opencode.jsonc` 的 `agent` 區塊，將選定 combo 的每個 panel agent 名稱解析為實際 `model` ID。
 
-- 任何 agent 名稱在 `opencode.json` 中不存在 → 🚫 **BLOCK：AGENT_NOT_FOUND**
-  - 訊息：「`{agent_id}` 未在 opencode.json 註冊。請檢查配置或執行 `fusion reset` 重新偵測。」
-  - 選項：[A] 自動從套餐移除該 panel / [M] 手動修復 opencode.json / [X] 中止
+- 任何 agent 名稱在 `opencode.jsonc` 中不存在 → 🚫 **BLOCK：AGENT_NOT_FOUND**
+  - 訊息：「`{agent_id}` 未在 opencode.jsonc 註冊。請檢查配置或執行 `fusion reset` 重新偵測。」
+  - 選項：[A] 自動從套餐移除該 panel / [M] 手動修復 opencode.jsonc / [X] 中止
 
 ### Step 0.5.2 — Provider 可用性檢查
 
@@ -103,6 +103,7 @@ OpenRouter Fusion 研究報告指出 Judge 偏差會造成 10~25 分的絕對分
 | `opencode-go/` | opencode-go | 內建，自動通過（opencode 自身提供） |
 | `google/` | Google Gemini | 檢查 `provider.google.options.apiKey` 非空 |
 | `thirdparty/` | 第三方 API | 檢查 `provider.thirdparty.options.apiKey` 與 `baseURL` 非空 |
+| `antigravity/` | Antigravity CLI (agy) | 用 `bash: agy --version` 或 `powershell: Get-Command agy` 檢查本地 `agy` 命令可用 |
 
 - 所需 provider 未配置 → 🔴 **ERROR：PROVIDER_CREDENTIAL_MISSING**
   - 受影響 panel：列出所有依賴缺失 provider 的 agent
@@ -135,7 +136,17 @@ OpenRouter Fusion 研究報告指出 Judge 偏差會造成 10~25 分的絕對分
 - 重複的 agent_id → 🟡 **WARN：DUPLICATE_PANEL**（自動去重，繼續執行）
 - opencode-multi 環境下所有 panel 同一家族 → 🟡 **WARN：INSUFFICIENT_DIVERSITY**（提示但允許繼續）
 
-### Step 0.5.5 — 整合結果
+### Step 0.5.5 — General Agent 誤用檢查
+
+`opencode.jsonc` 中的 `general` agent **沒有 model 欄位**，若被選用為 subagent_type，會**靜默繼承主對話模型**（目前為 DeepSeek V4 Pro），導致：
+- Judge Bias 衝突（Judge + Panel 同家族）
+- 架構多樣性喪失（退化成同模型 ×2）
+
+- 若任何 panel agent 被錯誤映射為 `general` 或 `subagent_type: "general"` → 🟡 **WARN：GENERAL_AGENT_FALLBACK**
+  - 訊息：「`general` subagent 無指定模型，將繼承主對話模型（DeepSeek V4 Pro），可能違反 Judge Bias 規則。」
+  - 選項：[A] 自動替換為可用 fusion agent（如 fusion-kimi/fusion-qwen 等） / [M] 手動選擇替換 / [C] 略過（風險自負）
+
+### Step 0.5.6 — 整合結果
 
 所有檢查通過（或使用者已處理完所有 BLOCK/ERROR）後：
 - 更新 `.fusion/fusion-state.json`，記錄 `preflight.last_ok_at`
@@ -189,11 +200,33 @@ Analyze the user's question and craft panel-specific prompts:
 
 ### Phase 2: Panel Dispatch (Parallel)
 
-**AUTO MODE** — if fusion agents are configured in opencode.json:
+> ⛔ **CRITICAL：嚴禁使用 `subagent_type: "general"`**
+> 
+> `opencode.jsonc` 中的 `general` agent（第 119 行）**沒有 model 欄位**，會靜默繼承主對話模型（DeepSeek V4 Pro）。這會：
+> 1. 違反 Judge Bias 規則（Judge 與 Panel 同屬 DeepSeek 家族 → 10~25 分偏差）
+> 2. 喪失多模型架構多樣性（退化成 Self-Fusion 而非真·多模型）
+> 
+> **替代方案**（依當前 Combo Tier 選擇）：
+
+| 若你正要使用 `general` 當... | 應改用 | 原因 |
+|---|---|---|
+| 技術深度 Panel | `fusion-kimi` 或 `fusion-deepseek` | 都有獨立架構，Kimi 無 Bias、DeepSeek 標記衝突 |
+| 綜合分析 Panel | `fusion-qwen` | Qwen3.7+ 不同家族，綜合能力佳，成本低 |
+| 創意/逆向 Panel | `fusion-glm` | GLM-5.2 中文理解強，與 Judge(DeepSeek) 不同架構 |
+| 低成本 Panel | `fusion-budget-mimo` 或 `fusion-budget-ds` | MiMo 不同家族首選；DS Flash⚠️ 同家族但 Budget tier 可容忍 |
+| 多樣性 Panel | `fusion-gemini`（需 Google API key）或 `fusion-skyunion`（需第三方API） | 引入 Google/Anthropic 架構多樣性 |
+
+> **若所有 fusion agent 均無法使用**：降級為單模型直接回答，或改用 `.agents/skills/` 的 Self-Fusion 模式。
+
+**AUTO MODE** — if fusion agents are configured in opencode.jsonc:
 - Launch 2-3 panel subagents IN PARALLEL via the `task` tool
 - Available agent types: `fusion-deepseek`, `fusion-kimi`, `fusion-qwen`, `fusion-glm`, `fusion-gemini`, `fusion-skyunion`, `fusion-sonnet`, `fusion-budget-ds`, `fusion-budget-mimo`
-- Each agent has a different opencode-go model pre-assigned
+- Each agent has a different model pre-assigned
 - Use `task` tool with `subagent_type` matching the agent name
+- **例外**：model 前綴為 `antigravity/` 的 panel（目前僅 `fusion-gemini`）**不可**使用 `task` 工具，因為它會嘗試以該前綴尋找不存在的外部 provider，導致失敗。改用具備 `agy` 的 `bash` 橋接腳本：
+  - Windows PowerShell: `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/fusion-gemini-bridge.ps1" -Question "panel prompt"`
+  - Bash: `bash scripts/fusion-gemini-bridge.sh "panel prompt"`
+  - 橋接腳本輸出即為該 panel 回應，與其他 `task` 回應並列進行 Judge 綜合
 
 **MANUAL MODE** — if fusion agents are NOT configured:
 - Inform the user clearly:
@@ -265,7 +298,7 @@ After producing the final answer, briefly self-evaluate:
 | `fusion-kimi` | opencode-go/kimi-k2.7-code | Code architecture, logic flow | $0.95/$4.00 per 1M | ✅ All judges |
 | `fusion-qwen` | opencode-go/qwen3.7-plus | Comprehensive analysis, broad context | $0.40/$1.60 per 1M | ✅ All judges |
 | `fusion-glm` | opencode-go/glm-5.2 | Creative thinking, alternative angles | $1.40/$4.40 per 1M | ✅ All judges |
-| `fusion-gemini` | google/gemini-3.5-flash | Google diversity, alternative framing | Free tier (API key) | ✅ All judges |
+| `fusion-gemini` | antigravity/gemini-3.5-flash | Google diversity, alternative framing | Antigravity CLI subscription | ✅ All judges |
 | `fusion-skyunion` | claude-haiku-4-5-20251001 (第三方API) | Anthropic diversity (Haiku, fast) | Via 第三方API | ✅ All judges |
 | `fusion-sonnet` | claude-sonnet-5 (第三方API) | Anthropic flagship, deep contextual reasoning | Via 第三方API | ✅ All judges |
 | `fusion-budget-ds` | opencode-go/deepseek-v4-flash | Fast budget analysis | $0.14/$0.28 per 1M | ⚠️ Conflicts if Judge = DeepSeek |
@@ -295,7 +328,7 @@ question(): 「本次 Fusion 分析等級？」
 | Tier | 名稱 | Panel 數 | 模型組合 | 架構多樣性 | 每輪成本 | 適用場景 |
 |:----:|------|:--------:|---------|:---------:|---------|---------|
 | 💰 | **Economy** | 2 | `fusion-kimi` + `fusion-budget-mimo` | Moonshot + MiMo | ~$1.09/$4.28 per 1M | 快速原型驗證、初步方向探索 |
-| ⭐ | **Standard** | 4~5 | `fusion-kimi` + `fusion-qwen` + `fusion-glm` + `fusion-gemini` + `fusion-skyunion` | Moonshot / Alibaba / Zhipu / Google / Anthropic | ~$1.35/$5.60 + Free + 第三方API | 日常研究分析、架構決策（預設） |
+| ⭐ | **Standard** | 4~5 | `fusion-kimi` + `fusion-qwen` + `fusion-glm` + `fusion-gemini` + `fusion-skyunion` | Moonshot / Alibaba / Zhipu / Google / Anthropic | ~$1.35/$5.60 + Antigravity CLI + 第三方API | 日常研究分析、架構決策（預設） |
 | 🏆 | **Premium** | 5~6 | Standard + `fusion-sonnet` | Standard + Anthropic 旗艦視角 | 依用量（Sonnet 額外成本） | 關鍵決策、需要最深推理 |
 
 > **Economy** 使用 Moonshot (Kimi) + MiMo 兩種不同架構，最低成本仍保持盲點互補。
@@ -326,3 +359,22 @@ AI (with this skill loaded):
 - Not suitable as a coding model replacement — use for research/architecture only
 - If only 1 panel succeeds, still produce analysis noting the failure
 - Always cite which model said what in the synthesis
+
+### Antigravity CLI Bridge (`fusion-gemini`)
+
+`fusion-gemini` 改走本地 Antigravity CLI (`agy`)，原因：
+- Google API free tier 在 OpenCode 多模型環境下頻繁限流、異常（見 README 開發規則第 3 條）
+- `agy -p` 使用官方 Antigravity 客戶端 + 你的 Gemini 訂閱額度，穩定性較高
+
+前置需求：
+1. 安裝 Antigravity CLI：
+   - Windows: `Invoke-RestMethod -Uri https://antigravity.google/cli/install.ps1 | Invoke-Expression`
+   - macOS: `brew install --cask antigravity-cli`
+   - Linux: `curl -fsSL https://antigravity.google/cli/install.sh | bash`
+2. 安裝後重啟終端機，執行 `agy login` 登入 Google 帳號
+3. 不要設定 `GEMINI_API_KEY`，否則會改走 API 計費而非訂閱額度
+
+整合方式：
+- `fusion-gemini` 的 model 設為 `antigravity/gemini-3.5-flash`（標記用，非真實 provider）
+- Phase 2 派發時，對 `antigravity/` 前綴 panel 使用 `bash` 呼叫橋接腳本，而非 `task`
+- 橋接腳本在乾淨 temp 目錄執行 `agy -p`，避免專案 `AGENTS.md` 干擾純研究查詢

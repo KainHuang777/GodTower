@@ -29,6 +29,7 @@ import {
 } from '../ui/talentConnections';
 import { renderGoalHint } from '../ui/goalHint';
 import { renderGoalSelector } from '../ui/goalSelector';
+import { renderMapPreview } from '../ui/mapPreview';
 
 let selectedTalentId: TalentId | null = null;
 let talentLineFrame: number | null = null;
@@ -263,6 +264,10 @@ function handleTalentCardKeydown(event: KeyboardEvent, card: HTMLElement): void 
 export function switchScene(scene: GameScene) {
   if (scene !== 'TALENT_SCREEN') stopTalentLineObservation();
   gameState.currentScene = scene;
+  if (scene !== 'BATTLE') {
+    const tutorialPanel = document.getElementById('levelTutorialPanel');
+    if (tutorialPanel?.style) tutorialPanel.style.display = 'none';
+  }
   getDomRefs().mainMenuEl.classList.remove('active');
   getDomRefs().levelSelectScreenEl.classList.remove('active');
   getDomRefs().mapEditorSceneEl.classList.remove('active');
@@ -352,17 +357,27 @@ export function renderLevelSelectScreen() {
     else if (map.difficulty === '測試') badgeClass = 'badge-test';
     
     const isCustom = map.difficulty === '自訂';
+    const tags = map.presentation?.featureTags ?? [
+      `${map.waypoints.length} 個路線節點`,
+      map.obstacles.length > 0 ? `${map.obstacles.length} 處地形` : '開放地形',
+    ];
+    const strategy = map.presentation?.strategy ?? '觀察路線節點，利用防禦塔逐步延長敵人的行進距離。';
+    const visibleCheckpoints = map.visibleWaypointIndices?.length ?? map.waypoints.length;
+    const expectedWindows = map.presentation?.expectedAttackWindows;
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', `進入${map.name}`);
     card.innerHTML = `
-      <span class="level-badge ${badgeClass}">${map.difficulty}</span>
-      <div class="level-title">${map.name}</div>
-      <div class="level-desc">${map.description}</div>
-      <div class="level-info">
-        📍 起點: (${map.spawnPoint.x}, ${map.spawnPoint.y}) &nbsp;&nbsp; 
-        🏠 終點: (${map.basePoint.x}, ${map.basePoint.y}) <br>
-        🏁 檢查點: ${map.waypoints.length} 個 &nbsp;&nbsp;
-        ⛰️ 障礙物: ${map.obstacles.length} 個
+      <div class="level-preview-panel">${renderMapPreview(map)}</div>
+      <div class="level-card-copy">
+        <span class="level-badge ${badgeClass}">${map.difficulty}</span>
+        <div class="level-title">${map.name}</div>
+        <div class="level-tags">${tags.map(tag => `<span>${tag}</span>`).join('')}</div>
+        <div class="level-desc">${map.description}</div>
+        <div class="level-strategy"><b>推薦戰法</b>${strategy}</div>
+        <div class="level-info">檢查點 ${visibleCheckpoints} 個${expectedWindows ? `・預期火力窗口 ${expectedWindows} 段` : ''}</div>
+        ${isCustom ? '<div class="level-card-actions"><button class="btn-delete" data-delete-map="true">刪除地圖</button></div>' : ''}
       </div>
-      ${isCustom ? '<div class="level-card-actions"><button class="btn-delete" data-delete-map="' + map.id + '">🗑️ 刪除</button></div>' : ''}
     `;
     
     card.addEventListener('click', (e) => {
@@ -371,6 +386,11 @@ export function renderLevelSelectScreen() {
       playSFX('click');
       gameState.currentMap = map;
       switchScene('BATTLE');
+    });
+    card.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      card.click();
     });
 
     // 自訂地圖的刪除按鈕
@@ -417,6 +437,15 @@ export function renderTalentScreen() {
   navBtns.forEach(btn => {
     const trackId = btn.getAttribute('data-track') as TalentTrackId | null;
     if (!trackId) return;
+
+    // 圖鑑分頁不透過天賦經脈系統處理
+    if ((trackId as string) === 'collection') {
+      btn.classList.toggle('active', false);
+      btn.setAttribute('aria-selected', 'false');
+      btn.removeAttribute('aria-disabled');
+      (btn as HTMLButtonElement).tabIndex = -1;
+      return;
+    }
 
     const tids = TALENT_TRACK_TALENTS[trackId];
     let currentLevelSum = 0;
@@ -475,6 +504,23 @@ export function renderTalentScreen() {
       htmlTrack.style.display = 'none';
     }
   });
+
+  // 圖鑑面板切回天賦時隱藏
+  try {
+    const collectionPanel = document.getElementById('tab-collection');
+    if (collectionPanel) {
+      collectionPanel.style.display = 'none';
+      collectionPanel.classList.remove('active');
+    }
+  } catch (_collectionErr) {
+    // 測試環境無對應 DOM 元件時安全略過
+  }
+
+  // 圖鑑分頁會暫時收起連線圖層；回到經脈時再由後續排程重新繪製。
+  const talentSvg = document.getElementById('talentSvg') as SVGSVGElement | null;
+  if (talentSvg && typeof talentSvg.removeAttribute === 'function') {
+    talentSvg.removeAttribute('hidden');
+  }
 
   const activeTrack = document.getElementById(gameState.activeTalentTrack);
   if (!selectedTalentId || !activeTrack?.querySelector(`[data-id="${selectedTalentId}"]`)) {

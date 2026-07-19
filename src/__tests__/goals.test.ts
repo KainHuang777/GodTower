@@ -333,6 +333,7 @@ describe('ensureGoalFields & reconcileGoalStats', () => {
     expect(raw.lastBoardSnapshot).toEqual(createEmptyBoardSnapshot());
     expect(raw.mainMenuSeenGoalId).toBeNull();
     expect(raw.ritualEnabled).toBe(true);
+    expect(raw.formalRunsCompleted).toBe(0);
   });
 
   it('ensureGoalFields preserves existing values', () => {
@@ -349,6 +350,7 @@ describe('ensureGoalFields & reconcileGoalStats', () => {
     expect(raw.nextGoalId).toBe('reach_wave_15');
     expect(raw.goalStats).toBe(existingStats);
     expect(raw.ritualEnabled).toBe(false);
+    expect(raw.formalRunsCompleted).toBe(0);
   });
 
   it('ensureGoalFields nullifies nextGoalId pointing to removed goal', () => {
@@ -405,5 +407,16 @@ describe('ensureGoalFields & reconcileGoalStats', () => {
     const cleaned = reconcileGoalStats(raw);
     expect(cleaned).toBe(false);
     expect(raw.nextGoalVersion).toBe(getGoalConfigVersion());
+  });
+
+  it('ensureGoalFields preserves existing formalRunsCompleted', () => {
+    const raw = ({
+      totalTalentPoints: 5,
+      spentTalentPoints: 2,
+      talentLevels: { fortress_1: 1 },
+      formalRunsCompleted: 3,
+    } as unknown) as TalentSaveData;
+    ensureGoalFields(raw);
+    expect(raw.formalRunsCompleted).toBe(3);
   });
 });

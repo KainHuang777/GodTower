@@ -8,6 +8,7 @@ import { astarFind, validatePlacement, updateAllEnemyPaths } from './pathfinding
 import { createSplatterParticles, createDeathParticles, updateParticles, createElementalHitParticles } from '../renderer/particles';
 import { playSFX } from '../audio/audioSystem';
 import { checkWaveEnd, endBattle } from './battleManager';
+import { recordKill } from '../collection/state';
 import { ENEMY_DEFS, EnemyTypeId, getEnemyCollisionRadius, getWaveConfig } from '../enemies';
 import { Point, Enemy } from '../types';
 
@@ -121,6 +122,7 @@ export function updatePhysics() {
         const award = Math.max(1, Math.floor(e.goldAward * goldMult));
         gameState.gold += award;
         gameState.killCount++;
+        recordKill(gameState.talentData, e.type, e.type === 'boss_dragon');
         gameState.currentKillStreak++;
         if (gameState.currentKillStreak > gameState.maxKillStreak) gameState.maxKillStreak = gameState.currentKillStreak;
         showFloat(e.x, e.y, `+${award}g`, '#f59e0b');
@@ -494,6 +496,7 @@ export function updatePhysics() {
           const award = Math.max(1, Math.floor(b.targetEnemy.goldAward * goldMult));
           gameState.gold += award;
           gameState.killCount++;
+          recordKill(gameState.talentData, b.targetEnemy.type, b.targetEnemy.type === 'boss_dragon');
           gameState.currentKillStreak++;
           if (gameState.currentKillStreak > gameState.maxKillStreak) gameState.maxKillStreak = gameState.currentKillStreak;
           showFloat(b.targetEnemy.x, b.targetEnemy.y, `+${award}g`, '#f59e0b');
@@ -515,6 +518,7 @@ export function updatePhysics() {
           const award = Math.max(1, Math.floor(gameState.enemies[j].goldAward * goldMult));
           gameState.gold += award;
           gameState.killCount++;
+          recordKill(gameState.talentData, gameState.enemies[j].type, gameState.enemies[j].type === 'boss_dragon');
           showFloat(gameState.enemies[j].x, gameState.enemies[j].y, `+${award}g`, '#f59e0b');
           const pColor = ENEMY_DEFS[gameState.enemies[j].type]?.colorPrimary ?? '#facc15';
           createDeathParticles(gameState.particles, gameState.TILE_SIZE, gameState.enemies[j].x, gameState.enemies[j].y, pColor);

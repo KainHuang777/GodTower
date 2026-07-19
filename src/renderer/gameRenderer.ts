@@ -211,19 +211,47 @@ export function renderGame() {
 
   // 地圖預設障礙物已與地磚一起預渲染至 tile cache，避免逐幀掃描整張網格。
 
-  // 在教學關卡繪製推薦建造位置的高亮提示
+  // 在教學關卡標示地圖資料宣告的火力核心。
   if (gameState.currentMap && gameState.currentMap.id === 'tutorial') {
+    const focus = gameState.currentMap.presentation?.focusPoint;
+    if (focus) {
+      ctx.save();
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      const rx = focus.x * gameState.TILE_SIZE;
+      const ry = focus.y * gameState.TILE_SIZE;
+      ctx.strokeRect(rx, ry, gameState.TILE_SIZE, gameState.TILE_SIZE);
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('贈送塔・火力核心', rx - 18, ry - 4);
+      ctx.restore();
+    }
+  }
+
+  // 正式關卡的「陣眼」只在尚未建塔時顯示，讓玩家能直接找到推薦火力核心。
+  const strategicFocus = gameState.currentMap.presentation?.focusPoint;
+  if (gameState.currentMap.id !== 'tutorial' && strategicFocus
+    && !gameState.towers.some(tower => tower.x === strategicFocus.x && tower.y === strategicFocus.y)) {
+    const focusSize = gameState.TILE_SIZE;
+    const focusX = strategicFocus.x * focusSize;
+    const focusY = strategicFocus.y * focusSize;
+    const focusPulse = 0.45 + Math.abs(Math.sin(Date.now() / 500)) * 0.35;
     ctx.save();
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 4]);
-    const rx = 48 * gameState.TILE_SIZE;
-    const ry = 22 * gameState.TILE_SIZE;
-    ctx.strokeRect(rx, ry, gameState.TILE_SIZE, gameState.TILE_SIZE);
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('💡 推薦建造點', rx - 18, ry - 4);
+    ctx.globalAlpha = focusPulse;
+    ctx.fillStyle = '#f4d77d';
+    ctx.fillRect(focusX + 2, focusY + 2, focusSize - 4, focusSize - 4);
+    ctx.globalAlpha = 0.92;
+    ctx.strokeStyle = '#8b5a2b';
+    ctx.lineWidth = Math.max(2, focusSize / 12);
+    ctx.setLineDash([focusSize / 5, focusSize / 7]);
+    ctx.strokeRect(focusX + 2, focusY + 2, focusSize - 4, focusSize - 4);
+    ctx.fillStyle = '#4a2d1c';
+    ctx.font = `900 ${Math.max(9, Math.round(focusSize * 0.34))}px "Noto Sans TC", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('陣眼', focusX + focusSize / 2, focusY - 3);
     ctx.restore();
   }
 
@@ -247,11 +275,15 @@ export function renderGame() {
   ctx.fillRect(gameState.BASE_POINT.x * gameState.TILE_SIZE, gameState.BASE_POINT.y * gameState.TILE_SIZE, gameState.TILE_SIZE, gameState.TILE_SIZE);
 
   // 檢查點
-  gameState.WAYPOINTS.forEach((wp, idx) => {
+  const visibleWaypointIndices = gameState.currentMap.visibleWaypointIndices
+    ?? gameState.WAYPOINTS.map((_, index) => index);
+  visibleWaypointIndices.forEach((waypointIndex, displayIndex) => {
+    const wp = gameState.WAYPOINTS[waypointIndex];
+    if (!wp) return;
     const wpScale = gameState.TILE_SIZE / 16;
     const cx = wp.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
     const cy = wp.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2;
-    const pulse = 0.86 + Math.sin(Date.now() / 400 + idx) * 0.10;
+    const pulse = 0.86 + Math.sin(Date.now() / 400 + displayIndex) * 0.10;
     ctx.save();
     // 地面法陣：外光圈、石製分段環與中央編號印記，避免暫代向量圓點感。
     ctx.beginPath();
@@ -278,7 +310,7 @@ export function renderGame() {
     ctx.fillStyle = '#3A251B';
     ctx.font = `900 ${Math.round(10 * wpScale)}px ${'"Noto Sans TC", "Microsoft JhengHei", sans-serif'}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText((idx + 1).toString(), cx, cy + 0.5 * wpScale);
+    ctx.fillText((displayIndex + 1).toString(), cx, cy + 0.5 * wpScale);
     ctx.restore();
   });
 
@@ -310,7 +342,13 @@ export function renderGame() {
       Math.abs(other.x - t.x) <= 1 && Math.abs(other.y - t.y) <= 1
     );
     // 相鄰塔縮至約 40px 視覺寬度，保留合成功能並留出可辨識的前後景。
-    const towerScale = (gameState.TILE_SIZE / 16) * (isEarthWall ? 1 : nearbyTower ? 1.48 : 1.75);
+    // Lv1 塔收回單格石台範圍，讓道路／敵人／陣形都保持可讀；升級塔才保留較大的剪影。
+    const visualFootprint = isEarthWall
+      ? 1
+      : t.def.level > 1
+        ? nearbyTower ? 1.28 : 1.42
+        : nearbyTower ? 1.06 : 1.20;
+    const towerScale = (gameState.TILE_SIZE / 16) * visualFootprint;
     const towerOverflow = (16 * towerScale - gameState.TILE_SIZE) / 2;
     const wallMask = isEarthWall
       ? (gameState.towers.some(other => other.typeId === 'earth' && other.x === t.x && other.y === t.y - 1) ? 1 : 0)
@@ -414,9 +452,7 @@ export function renderGame() {
   // 教學關卡：build_wall 步驟高亮推薦建塔區域
   if (gameState.currentMap.id === 'tutorial' && gameState.levelTutorialStep === 'build_wall') {
     // 全圖教室只示範一次小幅改道，避免教學被拖曳與長距離繞路打斷。
-    const HINT_TILES = [
-      { x: 9, y: 3 }, { x: 10, y: 3 }, { x: 11, y: 3 },
-    ];
+    const HINT_TILES = gameState.currentMap.tutorialHints?.wallTiles ?? [];
     const ts = gameState.TILE_SIZE;
     const pulse = 0.55 + 0.45 * Math.abs(Math.sin(Date.now() / 400)); // 脈衝透明度
     ctx.save();

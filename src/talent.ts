@@ -7,6 +7,7 @@ import type { Element } from './towers';
 import { ensureGoalFields, reconcileGoalStats } from './goals/migrate';
 import { getGoalConfigVersion } from './goals/config';
 import { createEmptyBoardSnapshot } from './goals/types';
+import { ensureCollectionFields } from './collection/migrate';
 
 const STORAGE_KEY = 'td_talent_data';
 const LEGACY_STORAGE_KEYS = ['checkpoint_maze_td_talent'] as const;
@@ -114,6 +115,8 @@ export interface TalentSaveData {
   achievementCount?: number;      // 成就完成次數（雙軌用）
   totalDamageDealt?: number;      // 累計總傷害
   resetCount?: number;            // 天賦重置次數
+  /** F10：正式關卡通關次數（非 test_level/tutorial），用於目標解鎖條件計算 */
+  formalRunsCompleted?: number;
   seenTraits?: { armor?: boolean; regen?: boolean; split?: boolean }; // P2: 已見過的怪物詞條
 
   // --- P3 Gate B：下次目標系統（全 optional，舊存檔透過 ensureGoalFields 補預設） ---
@@ -131,6 +134,11 @@ export interface TalentSaveData {
   mainMenuSeenGoalId?: string | null;
   /** 起卦儀式動畫開關；預設 true */
   ritualEnabled?: boolean;
+
+  // --- 圖鑑＋成就系統（P0 Codex） ---
+  collectionBestiary?: { enemies: Record<string, boolean>; towers: Record<string, boolean>; traits: Record<string, boolean> };
+  collectionProgress?: { totalKills: number; totalMerges: number; totalVictories: number; highestWave: number; bossKills: number; totalDefeats: number; recipesDiscovered: number };
+  collectionCompleted?: string[];
 }
 
 /**
@@ -174,6 +182,8 @@ export function loadTalentData(): TalentSaveData {
 
         // P3 Gate B：補上目標系統欄位，並驗證失效目標 id
         ensureGoalFields(parsed as TalentSaveData);
+        // 圖鑑＋成就系統：補上 collection 相關欄位
+        ensureCollectionFields(parsed as TalentSaveData);
         // 版本戳不同時清理 goalStats 中已刪除的目標 id
         if ((parsed as TalentSaveData).nextGoalVersion !== getGoalConfigVersion()) {
           reconcileGoalStats(parsed as TalentSaveData);
@@ -194,6 +204,7 @@ export function loadTalentData(): TalentSaveData {
     achievementCount: 0,
     totalDamageDealt: 0,
     resetCount: 0,
+    formalRunsCompleted: 0,
     nextGoalId: null,
     nextGoalVersion: getGoalConfigVersion(),
     goalStats: {},
@@ -201,6 +212,9 @@ export function loadTalentData(): TalentSaveData {
     lastBoardSnapshot: createEmptyBoardSnapshot(),
     mainMenuSeenGoalId: null,
     ritualEnabled: true,
+    collectionBestiary: { enemies: {}, towers: {}, traits: {} },
+    collectionProgress: { totalKills: 0, totalMerges: 0, totalVictories: 0, highestWave: 0, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0 },
+    collectionCompleted: [],
   };
   return fresh;
 }

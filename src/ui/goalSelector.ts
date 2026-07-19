@@ -95,8 +95,8 @@ function renderSelectTab(container: HTMLElement): void {
   const data = gameState.talentData;
   const currentGoalId = data.nextGoalId ?? null;
   const ascensionLevel = gameState.ascensionLevel ?? 0;
-  // runsCompleted 由 personalBest≥20 或其他計算；本輪簡化為「是否曾通過最終波」
-  const runsCompleted = (data.personalBest ?? 0) >= 20 ? 1 : 0;
+  // F10：改用正式通關次數計數器
+  const runsCompleted = data.formalRunsCompleted ?? 0;
 
   const header = document.createElement('div');
   header.className = 'goal-select-header';

@@ -22,6 +22,16 @@
   --pixel-shadow: #352117;
   --focus: #ffe26a;
   --ui-font: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+  --ui-surface-paper: #fff3c4;
+  --ui-surface-parchment: #f2dfa7;
+  --ui-surface-bronze: #a96f3c;
+  --ui-surface-jade: #397d78;
+  --ui-ink: #3a251b;
+  --ui-outline: 4px solid var(--ui-ink);
+  --ui-shadow-sm: 3px 3px 0 rgba(58, 37, 27, 0.82);
+  --ui-shadow-md: 5px 5px 0 rgba(58, 37, 27, 0.86);
+  --ui-control-min: 48px;
+  --ui-control-primary: 56px;
 }
 
 html,
@@ -1044,6 +1054,7 @@ input:focus-visible {
 #battleScene .main-action .btn {
   height: 100%;
 }
+.talent-atlas-v2 .talent-lines-svg[hidden] { display: none; }
 
 #battleScene .btn-wave-large {
   min-width: 160px;
@@ -2829,4 +2840,445 @@ input:focus-visible {
   .talent-atlas-v2 .talent-seal-art,
   .talent-atlas-v2 .talent-detail-seal-art,
   .talent-atlas-v2 .talent-outer-seal-art { animation: none !important; transition: none !important; }
+}
+
+/* ==========================================================
+ * P1 optional core UI pass — shared foundation, menu, battle HUD
+ * ========================================================== */
+
+.ui-symbol-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ui-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ui-icon-fill {
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* Main menu command shrine: the existing mountain artwork remains the hero. */
+#mainMenu .menu-buttons {
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  width: min(410px, 84vw);
+  min-width: 0;
+  padding: 30px 14px 14px;
+  border: var(--ui-outline);
+  background:
+    linear-gradient(rgba(255, 243, 196, 0.92), rgba(226, 185, 111, 0.92)),
+    repeating-linear-gradient(90deg, transparent 0 31px, rgba(90, 56, 38, 0.08) 32px 33px);
+  box-shadow: var(--ui-shadow-md);
+}
+
+#mainMenu .menu-buttons::before {
+  content: "守塔令";
+  position: absolute;
+  z-index: 2;
+  top: -17px;
+  left: 50%;
+  min-width: 108px;
+  padding: 5px 14px 6px;
+  transform: translateX(-50%);
+  border: 3px solid var(--ui-ink);
+  background: #6e442b;
+  color: #f8df9e;
+  box-shadow: 3px 3px 0 var(--ui-ink);
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-align: center;
+}
+
+#mainMenu .menu-buttons::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 6px;
+  border: 1px solid rgba(90, 56, 38, 0.45);
+  pointer-events: none;
+}
+
+#mainMenu .menu-command-btn {
+  display: grid !important;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  align-items: center;
+  padding: 6px 10px !important;
+  text-align: center;
+}
+
+#mainMenu .menu-command-btn > span:last-child {
+  grid-column: 2;
+}
+
+#mainMenu .menu-btn-icon {
+  grid-column: 1;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 2px solid currentColor;
+  background: rgba(58, 37, 27, 0.17);
+  box-shadow: inset 0 0 0 2px rgba(255, 243, 196, 0.15);
+}
+
+#mainMenu .menu-btn-icon .ui-icon { width: 24px; height: 24px; }
+#mainMenu #btnStartGame .menu-btn-icon { background: #f2c14e; color: #5a3826; }
+#mainMenu #btnTalent .menu-btn-icon { background: #d8c98e; color: #4f3a62; }
+#mainMenu #btnReleaseNotes .menu-btn-icon { background: #bfe3c0; color: #315f5a; }
+
+#mainMenu .menu-talent-info {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 0;
+  box-shadow: none;
+}
+
+/* HUD badges use one reusable structure: icon, label, large numeric value. */
+#battleScene .hud-stat-badge {
+  --hud-accent: #8c6a3e;
+  position: relative;
+  display: grid !important;
+  grid-template-columns: 30px auto;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  row-gap: 1px;
+  min-width: 126px;
+  min-height: 58px;
+  padding: 6px 12px 7px 10px;
+  overflow: hidden;
+  border: var(--ui-outline) !important;
+  background: var(--ui-surface-paper) !important;
+  box-shadow: var(--ui-shadow-sm) !important;
+}
+
+#battleScene .hud-stat-badge::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  background: var(--hud-accent);
+}
+
+#battleScene .hud-stat-icon {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  align-self: center;
+  width: 27px;
+  height: 27px;
+  color: var(--hud-accent);
+  filter: drop-shadow(1px 1px 0 rgba(58, 37, 27, 0.28));
+}
+
+#battleScene .hud-stat-label,
+#battleScene .stat-item .hud-stat-label,
+#battleScene .wave-ring-container .hud-stat-label {
+  grid-column: 2;
+  align-self: end;
+  color: #69513d !important;
+  font-size: 0.72rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+#battleScene .hud-stat-value,
+#battleScene .stat-item .hud-stat-value,
+#battleScene .wave-ring-container .hud-stat-value {
+  grid-column: 2;
+  align-self: start;
+  font-size: 1.55rem !important;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+#battleScene .hud-stat-hp { --hud-accent: #d9473f; }
+#battleScene .hud-stat-gold { --hud-accent: #c28c2d; }
+#battleScene .hud-stat-wave { --hud-accent: #397d78; }
+#battleScene .hud-stat-kill { --hud-accent: #6656a8; }
+
+#battleScene .wave-ring-container > .hud-stat-icon { display: block !important; }
+#battleScene .wave-ring-container > div {
+  display: grid !important;
+  grid-column: 2;
+  grid-row: 1 / 3;
+  grid-template-rows: auto auto;
+  gap: 1px !important;
+  align-self: center;
+}
+
+#battleScene .wave-ring-container > div .hud-stat-label { order: initial; }
+#battleScene .wave-ring-container > div .hud-stat-value { order: initial; }
+
+#battleScene .hud-control-btn {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  line-height: 1;
+}
+
+#battleScene .hud-control-btn .ui-icon {
+  width: 25px;
+  height: 25px;
+  opacity: 0.94;
+}
+
+#battleScene .hud-wave-command {
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  letter-spacing: 0.12em;
+}
+
+#battleScene .hud-wave-command .ui-icon {
+  width: 29px;
+  height: 29px;
+  color: #ffe49b;
+}
+
+#battleScene .hud-wave-command:disabled .ui-icon,
+#battleScene .hud-control-btn:disabled .ui-icon { opacity: 0.5; }
+
+@media (max-width: 820px), (max-height: 520px) {
+  #mainMenu .menu-buttons { width: min(360px, 78vw); padding: 25px 10px 10px; gap: 7px; }
+  #mainMenu .menu-buttons::before { top: -14px; padding-block: 3px 4px; }
+  #mainMenu .menu-command-btn { grid-template-columns: 40px minmax(0, 1fr) 40px; min-height: 48px; }
+  #mainMenu .menu-btn-icon { width: 30px; height: 30px; }
+  #mainMenu .menu-btn-icon .ui-icon { width: 20px; height: 20px; }
+
+  #battleScene .hud-stat-badge {
+    grid-template-columns: 24px auto;
+    min-width: 104px;
+    min-height: 50px;
+    padding: 5px 8px 6px;
+  }
+  #battleScene .hud-stat-icon { width: 22px; height: 22px; }
+  #battleScene .hud-stat-value,
+  #battleScene .stat-item .hud-stat-value,
+  #battleScene .wave-ring-container .hud-stat-value { font-size: 1.3rem !important; }
+  #battleScene .hud-control-btn { gap: 2px; }
+  #battleScene .hud-control-btn .ui-icon { width: 20px; height: 20px; }
+  #battleScene .hud-wave-command .ui-icon { width: 24px; height: 24px; }
+}
+
+/* Short landscape screens use a command-console layout instead of clipping
+ * the vertically stacked title and buttons. */
+@media (max-height: 520px) and (min-width: 680px) {
+  #mainMenu {
+    display: grid !important;
+    grid-template-columns: minmax(260px, 0.85fr) minmax(350px, 1fr);
+    grid-template-rows: auto auto auto;
+    align-content: center;
+    justify-content: center;
+    column-gap: 24px;
+    row-gap: 8px;
+    padding: 12px 56px 12px 24px !important;
+  }
+
+  #mainMenu .menu-world-mark { display: none; }
+  #mainMenu .menu-title {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: end;
+    margin: 0;
+    padding: 8px 12px 10px;
+    font-size: clamp(2rem, 5vw, 2.7rem) !important;
+    text-align: center;
+  }
+  #mainMenu .menu-subtitle {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: center;
+    margin: 0 !important;
+  }
+  #mainMenu #gameVersion {
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: center;
+  }
+  #mainMenu .menu-buttons {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    align-self: center;
+    width: min(100%, 400px);
+    padding: 24px 10px 10px;
+    gap: 6px;
+  }
+  #mainMenu .menu-buttons::before { top: -13px; padding-block: 3px 4px; }
+  #mainMenu .goal-hint-bar { min-height: 45px; margin-bottom: 3px; padding-block: 4px; }
+  #mainMenu .goal-hint-marker { flex-basis: 34px; width: 34px; height: 34px; }
+  #mainMenu .goal-hint-sub { display: none; }
+  #mainMenu .menu-buttons .menu-btn { min-height: 44px; }
+  #mainMenu .menu-talent-info { padding-block: 4px; font-size: 0.86rem !important; }
+}
+
+/* ==========================================================
+ * Level select — parchment route atlas
+ * ========================================================== */
+#levelSelectScreen .level-header {
+  gap: 18px;
+}
+
+#levelSelectScreen .level-heading-copy {
+  min-width: 0;
+}
+
+#levelSelectScreen .level-heading-copy h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+#levelSelectScreen .level-heading-copy h2 .ui-icon {
+  width: 30px;
+  height: 30px;
+  color: #7a4a26;
+}
+
+#levelSelectScreen .level-heading-copy p {
+  margin: 5px 0 0;
+  color: #6c5237;
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+#levelSelectScreen .level-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+}
+
+#levelSelectScreen .level-card {
+  display: grid !important;
+  grid-template-columns: minmax(180px, 43%) minmax(0, 1fr);
+  gap: 14px !important;
+  min-height: 238px;
+  padding: 14px !important;
+  outline: none;
+}
+
+#levelSelectScreen .level-card:hover,
+#levelSelectScreen .level-card:focus-visible {
+  transform: translate(-2px, -2px);
+  border-color: #9a622d !important;
+  box-shadow: 8px 8px 0 #3a251b !important;
+}
+
+#levelSelectScreen .level-preview-panel {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border: 3px solid #68442b;
+  background: #d9c487;
+  box-shadow: inset 0 0 0 2px rgba(255, 244, 191, 0.52);
+}
+
+#levelSelectScreen .level-route-preview {
+  display: block;
+  width: 100%;
+  min-height: 150px;
+  image-rendering: pixelated;
+}
+
+#levelSelectScreen .level-card-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+#levelSelectScreen .level-card .level-badge {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  border-radius: 0 !important;
+  transform: rotate(3deg);
+}
+
+#levelSelectScreen .level-card .level-title {
+  padding-right: 58px;
+  font-family: var(--ui-heading-font);
+  font-size: 1.08rem;
+  line-height: 1.35;
+}
+
+#levelSelectScreen .level-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+#levelSelectScreen .level-tags span {
+  padding: 2px 6px;
+  border: 1px solid #9b7448;
+  background: rgba(199, 157, 84, 0.18);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+#levelSelectScreen .level-card .level-desc {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  margin: 0;
+}
+
+#levelSelectScreen .level-strategy {
+  width: 100%;
+  padding: 7px 8px;
+  border-left: 3px solid #9a622d;
+  background: rgba(224, 190, 112, 0.28);
+  color: #5b3d28 !important;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+#levelSelectScreen .level-strategy b {
+  display: block;
+  margin-bottom: 2px;
+  color: #8b3d27;
+  letter-spacing: 0.08em;
+}
+
+#levelSelectScreen .level-card .level-info {
+  width: 100%;
+  margin-top: auto;
+}
+
+@media (max-width: 980px) {
+  #levelSelectScreen .level-grid { grid-template-columns: 1fr !important; }
+  #levelSelectScreen .level-card { grid-template-columns: minmax(210px, 38%) minmax(0, 1fr); }
+}
+
+@media (max-width: 620px) {
+  #levelSelectScreen { padding: 14px !important; }
+  #levelSelectScreen .level-header { align-items: flex-start; flex-direction: column; }
+  #levelSelectScreen .level-card { grid-template-columns: 1fr; }
+  #levelSelectScreen .level-route-preview { min-height: 122px; }
 }

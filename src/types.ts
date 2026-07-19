@@ -52,6 +52,8 @@ export interface Tower {
   damageDealt: number; // P2 tracking for total damage dealt by this tower
   /** 本局實際投入成本；用於前四波全額退款，免費塔為 0。 */
   investmentCost?: number;
+  /** 教學贈塔可參與合成，但在完成引導前不可拆除。 */
+  locked?: boolean;
 }
 
 export interface Bullet {

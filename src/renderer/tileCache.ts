@@ -3,6 +3,8 @@
 import { gameState } from '../state';
 import { drawTile } from '../sprites';
 import { drawObstacle } from './drawObstacle';
+import { buildRouteMasks, drawChineseRoadTile } from './tileAutotile';
+import { drawMeadowBase, drawRoadAutotileTile, drawTerrainProp, getAtlasRoadDirtPattern, getChineseTerrainAssets } from './terrainAssets';
 
 let tileCacheCanvas: HTMLCanvasElement | null = null;
 
@@ -42,54 +44,76 @@ export function updateTileCacheCanvas() {
 
   const ctx = tileCacheCanvas.getContext('2d');
   if (!ctx) return;
+  ctx.imageSmoothingEnabled = false;
 
   const { bgFillStyle, gridStrokeStyle } = getThemeColors(gameState.currentTheme);
+  const terrainAssets = gameState.currentTheme === 'chinese'
+    ? getChineseTerrainAssets(updateTileCacheCanvas)
+    : null;
+  const roadDirtPattern = gameState.currentTheme === 'chinese'
+    ? getAtlasRoadDirtPattern(ctx, terrainAssets?.atlas ?? null)
+    : null;
 
   // 1. 繪製背景色
   ctx.fillStyle = bgFillStyle;
   ctx.fillRect(0, 0, width, height);
+  if (terrainAssets?.meadowBase) {
+    drawMeadowBase(ctx, terrainAssets.meadowBase, width, height);
+  }
 
-  // 2. 繪製平鋪地板與路徑 Tile
+  // 2. 未載入高細節草地時才使用原生像素地板；確保資產失敗也能正常遊玩。
+  const routeMasks = gameState.currentTheme === 'chinese'
+    ? buildRouteMasks(gameState.cachedFullPath)
+    : new Map<string, number>();
   for (let x = 0; x < gameState.COLS; x++) {
     for (let y = 0; y < gameState.ROWS; y++) {
       const isPath = gameState.cachedPathTiles.has(`${x},${y}`);
-      drawTile(ctx, gameState.currentTheme, gameState.currentTheme === 'chinese' ? false : isPath, x * gameState.TILE_SIZE, y * gameState.TILE_SIZE, gameState.TILE_SIZE / 16, x, y);
+      if (gameState.currentTheme !== 'chinese' || !terrainAssets?.meadowBase) {
+        drawTile(ctx, gameState.currentTheme, gameState.currentTheme === 'chinese' ? false : isPath, x * gameState.TILE_SIZE, y * gameState.TILE_SIZE, gameState.TILE_SIZE / 16, x, y);
+      }
       if (gameState.currentTheme !== 'chinese' && gameState.grid[x][y] === 2) {
         drawObstacle(ctx, x * gameState.TILE_SIZE, y * gameState.TILE_SIZE, gameState.currentTheme, gameState.TILE_SIZE);
       }
     }
   }
 
-  // 中式標準關卡使用連續圓角道路。尋路仍是整數網格，只有視覺跨格平滑。
-  if (gameState.currentTheme === 'chinese' && gameState.cachedFullPath.length > 1) {
-    const points = gameState.cachedFullPath;
-    const T = gameState.TILE_SIZE;
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(points[0].x * T + T / 2, points[0].y * T + T / 2);
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x * T + T / 2, points[i].y * T + T / 2);
+  if (gameState.currentTheme === 'chinese' && terrainAssets?.atlas) {
+    for (const prop of gameState.currentMap.presentation?.terrainProps ?? []) {
+      if (!gameState.cachedPathTiles.has(`${prop.x},${prop.y}`)) {
+        drawTerrainProp(ctx, terrainAssets.atlas, prop.atlasCell, prop.x * gameState.TILE_SIZE, prop.y * gameState.TILE_SIZE, gameState.TILE_SIZE);
+      }
     }
-    // 寬闊暖土路：草邊 → 深土邊緣 → 明亮中央，視覺密度與塔身同步提升。
-    ctx.strokeStyle = '#70934F';
-    ctx.lineWidth = T * 1.20;
-    ctx.stroke();
-    ctx.strokeStyle = '#8A603D';
-    ctx.lineWidth = T * 1.08;
-    ctx.stroke();
-    ctx.strokeStyle = '#C99B61';
-    ctx.lineWidth = T * 0.92;
-    ctx.stroke();
-    ctx.strokeStyle = '#E4C487';
-    ctx.lineWidth = T * 0.70;
-    ctx.stroke();
-    ctx.setLineDash([T * 0.14, T * 0.42]);
-    ctx.strokeStyle = 'rgba(104, 70, 40, 0.28)';
-    ctx.lineWidth = Math.max(1, T * 0.06);
-    ctx.stroke();
-    ctx.restore();
+  }
+
+  // 3. 道路永遠由目前的有序路徑重組。專用 autotile 的每個出口都在固定中心線，
+  //    因此直線、轉角與岔路可以直接無縫拼接。
+  if (gameState.currentTheme === 'chinese') {
+    for (let x = 0; x < gameState.COLS; x++) {
+      for (let y = 0; y < gameState.ROWS; y++) {
+        if (!gameState.cachedPathTiles.has(`${x},${y}`)) continue;
+        const mask = routeMasks.get(`${x},${y}`) ?? 0;
+        const usedRoadAtlas = drawRoadAutotileTile(
+          ctx,
+          terrainAssets?.roadAtlas ?? null,
+          x * gameState.TILE_SIZE,
+          y * gameState.TILE_SIZE,
+          gameState.TILE_SIZE,
+          mask,
+        );
+        if (!usedRoadAtlas) {
+          drawChineseRoadTile(
+            ctx,
+            x * gameState.TILE_SIZE,
+            y * gameState.TILE_SIZE,
+            gameState.TILE_SIZE,
+            mask,
+            x,
+            y,
+            roadDirtPattern,
+          );
+        }
+      }
+    }
   }
 
   // 道路完成後再放置天然地形，確保灌木與山石有完整輪廓。
@@ -103,7 +127,7 @@ export function updateTileCacheCanvas() {
     }
   }
 
-  // 3. 非標準日間主題保留網格；中式關卡以連續地景呈現，建造時另有游標格提示。
+  // 4. 非標準日間主題保留網格；中式關卡以連續地景呈現，建造時另有游標格提示。
   if (gameState.currentTheme !== 'chinese') {
     ctx.strokeStyle = gridStrokeStyle;
     ctx.lineWidth = 0.5;

@@ -1,3 +1,14 @@
+2026-07-19 Implement Collection System & Visual UI Refresh (Phase P1 Extension)
+- [docs/NEXT_CODEX_HANDOFF.md] [NEW] Handoff Documentation: Added detailed handoff items for collection system and visual refresh assets.
+- [src/collection/*] [src/config/collection.json] [NEW] Collection Logic & Config: Added state management, criteria evaluation, and metadata config for the Bestiary and achievements.
+- [src/ui/collectionIcons.ts] [src/ui/collectionTab.ts] [NEW] Collection UI: Implemented SVG icons for elements/monsters and structured the new ancient book-style bestiary/achievements tabs.
+- [src/renderer/tileAutotile.ts] [src/renderer/terrainAssets.ts] [src/battle/mapSetup.ts] [NEW] Autotiling & Map Terrain: Built a 16-tile autotile roadmap system, configured high-detail grassy textures, terrain decorations, and scaling offsets for towers.
+- [src/maps.ts] Core Maps: Added structured level nodes, level selectors, and hand-tuned maps (Qingfeng Gallery, Liuhe Star Array) with custom terrain grids.
+- [src/renderer/gameRenderer.ts] [src/renderer/tileCache.ts] [src/scenes/scenesManager.ts] Renderer: Overhauled battlefield display, terrain tile sprites rendering with autotile support, and custom layout routing graphics.
+- [src/ui/visualRefresh.css] UI Style: Added theme classes for paper atlas pages, bronze borders, progress bars, and Wuxing gradients.
+- [src/__tests__/*] [NEW] Unit Tests: Created test suites for bestiary unlocks, map configuration structures, and autotile indexing (278/278 tests passing).
+- Build verified: npm run build completed successfully. All 278 unit tests passed.
+
 2026-07-18 Complete Remaining Codex Tasks for Next Target System (Phase 3 Gate B)
 - [docs/P3_GATE_B_CODEX_HANDOFF.md] Documentation: Updated handoff checklists marking all 9 items as fully completed.
 - [src/ui/goalIcons.ts] [NEW] Core UI: Implemented code-native scaleable SVG icons for all 8 goals, replacing simple emojis with a unified theme.

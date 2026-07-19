@@ -30,6 +30,7 @@ export function ensureGoalFields(data: TalentSaveData): void {
   data.lastBoardSnapshot ??= createEmptyBoardSnapshot();
   data.mainMenuSeenGoalId ??= null;
   data.ritualEnabled ??= true;
+  data.formalRunsCompleted ??= 0;
 
   // 清掉指向已刪目標的 nextGoalId
   data.nextGoalId = validateGoalId(data.nextGoalId);

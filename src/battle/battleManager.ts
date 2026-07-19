@@ -17,6 +17,8 @@ import type { RunStats } from '../goals/types';
 import { refreshGoalSelectorIfPresent } from '../ui/goalSelector';
 import { renderGoalRunResult } from '../ui/goalRunResult';
 import type { GoalRunFeedbackContext } from '../ui/goalRunResult';
+import { updateEndOfRunStats, evaluateAchievements } from '../collection/state';
+import { createInitialTowers } from './mapSetup';
 
 // 引入渲染與 UI 更新
 import { showFloat, initBgStars } from '../renderer/gameRenderer';
@@ -81,6 +83,17 @@ export function startBattle() {
     }
   }
 
+  // 地圖資料化的開場贈塔：在第一次路徑快取前建立，且不扣除開局金幣。
+  const initialSetup = createInitialTowers(
+    gameState.currentMap,
+    gameState.grid,
+    gameState.COLS,
+    gameState.ROWS,
+    gameState.nextTowerId,
+  );
+  gameState.towers.push(...initialSetup.towers);
+  gameState.nextTowerId = initialSetup.nextTowerId;
+
   // 初始化星空背景與天氣粒子
   initBgStars();
   gameState.weatherParticles = [];
@@ -112,6 +125,9 @@ export function startBattle() {
   if ((gameState as any).gameLoop) {
     (gameState as any).gameLoop();
   }
+
+  // F6：記錄真實戰鬥起始時間（含波間等待），用於 clearTimeMinutes 計算
+  gameState.battleRealStart = performance.now();
 }
 
 export function spawnWave(waveNum: number) {
@@ -298,6 +314,9 @@ export function endBattle(isVictory: boolean) {
   const goalRunFeedback = commitGoalRunResult(isVictory);
   renderGoalRunResult(goalRunFeedback);
 
+  // 圖鑑＋成就系統：結算時更新跨局統計並檢查成就解鎖
+  commitCollectionEndOfRun(isVictory);
+
   if (gameState.switchScene) {
     gameState.switchScene('GAME_OVER');
   }
@@ -310,7 +329,8 @@ export function endBattle(isVictory: boolean) {
  * wuxingElementCount：fire/water/wood/metal/earth 去重計數（earth 牆計入，
  *   與 goals.json five_elements 設計一致；是否過簡留待 v2 調整）。
  * combatTowerCount：def.damage > 0 的「實戰塔」數量（earth 純牆 damage=0 不計）。
- * clearTimeMinutes：waveTicks 以 60fps 換算分鐘；未開波時為 0。
+ * clearTimeMinutes：以 battleRealStart 計算的真實時間（含波間等待），而非 waveTicks。
+ *   未開波放棄時為 0。
  */
 function buildRunStats(isVictory: boolean): RunStats {
   const wuxingSet = new Set<string>();
@@ -322,7 +342,7 @@ function buildRunStats(isVictory: boolean): RunStats {
     }
     if (t.def.damage > 0) combatTowerCount++;
   }
-  const clearTimeMinutes = gameState.waveTicks > 0 ? gameState.waveTicks / (60 * 60) : 0;
+  const clearTimeMinutes = gameState.battleRealStart > 0 ? (performance.now() - gameState.battleRealStart) / 60000 : 0;
   return {
     highestWave: gameState.wave,
     clearedAllWaves: isVictory ? 1 : 0,
@@ -353,11 +373,20 @@ function commitGoalRunResult(isVictory: boolean): GoalRunFeedbackContext | null 
   const goalId = gameState.talentData.nextGoalId ?? null;
   if (!goalId) return null; // 玩家未勾選下次目標 → 不記錄，但仍可正常結算
 
+  // F7：合成動畫中斷時補計 mergeCount（若動畫進行中且未完成）
+  if (gameState.mergeAnimation?.active && gameState.mergeAnimation.timer < gameState.mergeAnimation.duration) {
+    gameState.mergeCount++;
+  }
+
   const runStats = buildRunStats(isVictory);
   const result = isVictory ? 'success' : 'failure';
   let justAchieved = false;
   try {
     ({ justAchieved } = commitEndOfRun(gameState.talentData, goalId, runStats, result, Date.now()));
+    // F10：正式關卡（非 test_level/tutorial）且通關時遞增
+    if (isVictory) {
+      gameState.talentData.formalRunsCompleted = (gameState.talentData.formalRunsCompleted ?? 0) + 1;
+    }
     saveTalentData(gameState.talentData);
   } catch (err) {
     // F2：localStorage quota 或序列化失敗時不中斷結算流程
@@ -655,6 +684,16 @@ export function endPerformanceBenchmark() {
   
   updateUI();
   showFloat(gameState.COLS * gameState.TILE_SIZE / 2, gameState.ROWS * gameState.TILE_SIZE / 2, '⚡ 壓測結束，已還原原遊戲現場', '#10b981', 16);
+}
+
+function commitCollectionEndOfRun(isVictory: boolean): void {
+  const mapId = gameState.currentMap?.id;
+  if (mapId === 'test_level' || mapId === 'tutorial') return;
+  updateEndOfRunStats(gameState.talentData, isVictory, gameState.wave);
+  const newlyAchieved = evaluateAchievements(gameState.talentData);
+  if (newlyAchieved.length > 0 || isVictory) {
+    saveTalentData(gameState.talentData);
+  }
 }
 
 // 註冊 callback 到 gameState

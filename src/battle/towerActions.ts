@@ -3,6 +3,7 @@
 import { gameState } from '../state';
 import { getTowerDef, getSameMergeResult, getCrossRecipeResult, getSellPrice, getSameMergeCost, getCrossMergeCost, TowerTypeId } from '../towers';
 import { getWallCost } from '../talent';
+import { markTowerCrafted, addMerge } from '../collection/state';
 import { validatePlacement, updateAllEnemyPaths } from './pathfinding';
 import { playSFX } from '../audio/audioSystem';
 import { createMergeParticles } from '../renderer/particles';
@@ -120,6 +121,10 @@ export function handleSell(x: number, y: number) {
   const idx = gameState.towers.findIndex(t => t.x === x && t.y === y);
   if (idx === -1) return;
   const tower = gameState.towers[idx];
+  if (tower.locked) {
+    showFloat(x * gameState.TILE_SIZE + 8, y * gameState.TILE_SIZE, '教學贈塔請先保留', '#f59e0b', 15);
+    return;
+  }
   const refund = getGateARefund(
     gameState.wave,
     tower.investmentCost ?? tower.def.cost,
@@ -301,6 +306,8 @@ export function updateMergeAnimation() {
 
       // P3 Gate B：合成完成時計入單局合成次數（供 synthesis_master / 五行輪轉等目標判定）
       gameState.mergeCount++;
+      markTowerCrafted(gameState.talentData, anim.resultTypeId);
+      addMerge(gameState.talentData);
 
       // === 實作五行共鳴合成退款 ===
       if (gameState.roguelikeState.nextMergeCostPct < 1.0) {

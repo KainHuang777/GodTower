@@ -15,6 +15,7 @@ import { updateTileCacheCanvas } from '../renderer/tileCache';
 import { updateUI, showTooltip, hideTooltip } from '../ui/uiManager';
 import { initWuxingCompass, updateCompassHighlight } from '../ui/wuxingCompass';
 import { initRecipeCodex } from '../ui/recipeCodex';
+import { renderCollectionTab } from '../ui/collectionTab';
 import { showCardPicker } from '../system/roguelikeSystem';
 import { BUILD_TOOL_IDS, isBuildTool, shouldCommitTowerDrag } from './buildPlacement';
 import { playOpeningRitual } from '../ui/ritual';
@@ -358,6 +359,25 @@ export function initInputEvents() {
       
       playSFX('click');
       const trackId = btn.getAttribute('data-track');
+      if (trackId === 'collection') {
+        document.querySelectorAll('.talent-track').forEach(el => (el as HTMLElement).style.display = 'none');
+        // 連線 SVG 與各經脈同屬天賦圖譜；切到圖鑑時一併清空並隱藏，
+        // 避免已繪製的曲線覆蓋圖鑑卡片。
+        const talentSvg = document.getElementById('talentSvg') as SVGSVGElement | null;
+        if (talentSvg) {
+          talentSvg.setAttribute('hidden', '');
+          talentSvg.replaceChildren();
+        }
+        const panel = document.getElementById('tab-collection');
+        if (panel) {
+          panel.style.display = 'flex';
+          panel.classList.add('active');
+        }
+        document.querySelectorAll('.talent-nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderCollectionTab();
+        return;
+      }
       if (trackId) {
         gameState.activeTalentTrack = trackId as any;
         if (gameState.renderTalentScreen) {
@@ -752,9 +772,9 @@ export function initInputEvents() {
     nextBtn.addEventListener('click', () => {
       playSFX('click');
       if (gameState.levelTutorialStep === 'intro') {
-        gameState.levelTutorialStep = 'build_tower';
-        // 先讓玩家理解攻擊塔，再用岩壁示範小幅改道。
-        gameState.selectedTool = 'fire';
+        gameState.levelTutorialStep = 'build_wall';
+        // 中央烈焰塔已由地圖贈送；第一個操作改為用岩壁觀察路線重組。
+        gameState.selectedTool = 'earth';
         gameState.mergeMode = false;
         if (gameState.refreshToolSelection) {
           gameState.refreshToolSelection();

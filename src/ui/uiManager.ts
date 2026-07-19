@@ -21,7 +21,9 @@ export function updateUI() {
   const maxWaves = gameState.currentMap.id === 'tutorial' ? 5 : MAX_WAVES;
   getDomRefs().btnStartWave.disabled = gameState.isWaveActive || (gameState.currentMap.id !== 'test_level' && gameState.wave >= maxWaves);
   const fullRefund = isFullRefundAvailable(gameState.wave, gameState.currentMap.id === 'test_level');
-  getDomRefs().btnSell.textContent = fullRefund ? '拆除・全額' : '拆除';
+  const sellLabel = document.getElementById('btnSellLabel');
+  if (sellLabel) sellLabel.textContent = fullRefund ? '拆除・全額' : '拆除';
+  else getDomRefs().btnSell.textContent = fullRefund ? '拆除・全額' : '拆除';
   getDomRefs().btnSell.title = fullRefund ? '前 4 波拆除防禦塔可全額退款' : '拆除防禦塔並退還部分金幣';
   updateWaveProgress();
   updateLevelTutorial();
@@ -422,7 +424,7 @@ export function refreshToolSelection() {
       : '💰 拆除模式：點擊砲台將其拆除並退回部分金幣';
   } else {
     if (gameState.currentMap && gameState.currentMap.id === 'tutorial') {
-      getDomRefs().instructionText.innerHTML = '🎓 <span style="color:#fbbf24; font-weight:bold;">教學引導：</span>因橫向長牆阻擋，怪物必須先向右繞過 3 號點入口才進入 1 號點。推薦在右側瓶頸 <span style="color:#38bdf8; font-weight:bold;">(58, 17)</span> 建造攻擊塔，讓怪物在三個尋路階段反覆受擊！';
+      getDomRefs().instructionText.innerHTML = '🎓 <span style="color:#fbbf24; font-weight:bold;">教學引導：</span>中央 <span style="color:#f97316; font-weight:bold;">(10, 5)</span> 已贈送烈焰塔；之字折廊會讓怪物多次回到它的火力範圍。';
     } else {
       getDomRefs().instructionText.innerHTML = '選擇砲台後點擊地圖擺放。怪物依序碰觸 <span style="color:#f59e0b">❶❷❸❹❺</span> 檢查點再抵達基地。用砲台築迷宮！';
     }
@@ -439,7 +441,7 @@ export function updateLevelTutorial() {
 
   if (!panel || !textEl || !nextBtn) return;
 
-  if (gameState.currentMap.id !== 'tutorial' || gameState.levelTutorialStep === 'idle' || gameState.levelTutorialStep === 'completed') {
+  if (gameState.currentScene !== 'BATTLE' || gameState.currentMap.id !== 'tutorial' || gameState.levelTutorialStep === 'idle' || gameState.levelTutorialStep === 'completed') {
     panel.style.display = 'none';
     return;
   }
@@ -449,18 +451,18 @@ export function updateLevelTutorial() {
   switch (gameState.levelTutorialStep) {
     case 'intro':
       textEl.innerHTML = `💡 <b>歡迎來到五行迷宮塔防！</b><br>
-      怪物從<span style="color:#4ade80;"> 左中起點 </span>出發，通過兩個 <span style="color:#f59e0b;">❶❷</span> 標記點，最後到達<span style="color:#f87171;"> 右中終點 </span>。<br>
-      這是一張固定顯示全圖的試煉場，不需要拖曳鏡頭。<br>
-      <span style="color:#f59e0b;"><b>本關會帶你完成：</b>放塔、放牆、加速、隨機技能、對空怪、Boss 與天賦引導。</span>`;
+      怪物會沿像素階梯穿越之字折廊，最後抵達右側基地。<br>
+      中央已贈送一座 <span style="color:#f97316;"><b>烈焰塔</b></span>；道路多次回到它的射程，這就是高火力位置。<br>
+      <span style="color:#f59e0b;"><b>本關會帶你完成：</b>岩壁改道、合成、加速、隨機技能、對空怪與 Boss。</span>`;
       nextBtn.textContent = '我知道了 (下一步)';
       nextBtn.style.display = 'block';
       break;
 
     case 'build_wall':
-      textEl.innerHTML = `🧱 <b>教學步驟 2/8：建造連續岩壁</b><br>
-      接著選擇【⛰️ 岩壁塔】，在藍色提示格放下一段牆。<br>
+      textEl.innerHTML = `🧱 <b>教學步驟 1/7：用岩壁調整路線</b><br>
+      選擇【⛰️ 岩壁塔】，在藍色提示格放下一段牆。<br>
       <span style="color:#38bdf8;"><b>作用：</b>岩壁不攻擊，但會迫使地面敵人小幅改道；相鄰岩壁會連成完整牆面。</span><br>
-      <span style="color:#94a3b8; font-size:0.85em;">複雜繞路會留到後續關卡，本關只教一次清楚的改道。</span>`;
+      <span style="color:#94a3b8; font-size:0.85em;">道路會立即重新組合；中央贈塔仍能覆蓋多個折返段。</span>`;
       nextBtn.style.display = 'none';
       break;
 
@@ -473,14 +475,14 @@ export function updateLevelTutorial() {
       break;
 
     case 'start_wave':
-      textEl.innerHTML = `⚔️ <b>教學步驟 3/8：迎擊第一波！</b><br>
+      textEl.innerHTML = `⚔️ <b>教學步驟 2/7：迎擊第一波！</b><br>
       防線已就緒，準備迎戰！<br>
       請點擊下方控制列的【⚔️ 下一波】按鈕，開始第一波怪物的進攻！`;
       nextBtn.style.display = 'none';
       break;
 
     case 'merge_guide':
-      textEl.innerHTML = `🔮 <b>教學步驟 4/8：合併升級防禦塔</b><br>
+      textEl.innerHTML = `🔮 <b>教學步驟 3/7：合併升級防禦塔</b><br>
       第一波防禦成功！現在系統在相鄰位置免費贈送了第二座【🔥 烈焰塔】。<br>
       請點擊下方的【🔮 合成】按鈕，然後<b>依序點擊這兩座烈焰塔</b>來進行合成！<br>
       <span style="color:#a78bfa; font-weight:bold;">💡 效果：兩座 Lv1 烈焰塔會融合成一座強大的 Lv2 烈焰塔，傷害與範圍全面提升！</span>`;
@@ -488,21 +490,21 @@ export function updateLevelTutorial() {
       break;
 
     case 'speed_guide':
-      textEl.innerHTML = `⚡ <b>教學步驟 5/8：利用加速按鈕</b><br>
+      textEl.innerHTML = `⚡ <b>教學步驟 4/7：利用加速按鈕</b><br>
       合成成功！你現在擁有了威力更強的【🔥 烈焰塔 Lv2】。<br>
       戰鬥過程可能有些漫長，請點擊下方的【⚡ 1x】按鈕，將遊戲速度提升為 <span style="color:#fb923c; font-weight:bold;">2x</span> 或 <span style="color:#facc15; font-weight:bold;">3x</span>！`;
       nextBtn.style.display = 'none';
       break;
 
     case 'wave_4_guide':
-      textEl.innerHTML = `🪽 <b>教學步驟 7/8：辨認空中敵人</b><br>
+      textEl.innerHTML = `🪽 <b>教學步驟 6/7：辨認空中敵人</b><br>
       下一波會出現飛行怪。牠們不受岩壁改道影響，會沿檢查點直接飛向基地。<br>
       <span style="color:#38bdf8; font-weight:bold;">先確認攻擊塔能覆蓋道路中央，再點擊【⚔️ 下一波】。</span>`;
       nextBtn.style.display = 'none';
       break;
 
     case 'wave_5_guide':
-      textEl.innerHTML = `🐲 <b>教學步驟 8/8：最終 Boss 考驗！</b><br>
+      textEl.innerHTML = `🐲 <b>教學步驟 7/7：最終 Boss 考驗！</b><br>
       準備迎接最終防線！第 5 波將會出現強大的 <span style="color:#f43f5e; font-weight:bold;">陽龍 Boss 🐲</span>！<br>
       Boss 的血量高且有特殊技能，請做好準備，點擊【⚔️ 下一波】迎戰 Boss！<br>
       <span style="color:#38bdf8;">（通關第 5 波後，即可解鎖完整天賦樹並獲得天賦點！）</span>`;
