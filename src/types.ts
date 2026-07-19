@@ -9,6 +9,8 @@ export interface Point { x: number; y: number; }
 
 export type GameScene = 'MAIN_MENU' | 'LEVEL_SELECT' | 'MAP_EDITOR' | 'TALENT_SCREEN' | 'BATTLE' | 'GAME_OVER';
 
+export type DifficultyLevel = 'easy' | 'normal' | 'hard';
+
 export type EditorTool = 'spawn' | 'base' | 'waypoint' | 'obstacle' | 'eraser';
 
 export interface Enemy {

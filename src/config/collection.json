@@ -24,6 +24,18 @@
     { "id": "first_boss_kill", "label": "屠龍初試", "description": "首次擊殺 Boss", "tier": "bronze", "condition": { "key": "bossKills", "op": "gte", "value": 1 } },
     { "id": "first_death", "label": "敗軍之將", "description": "首次基地被攻破", "tier": "bronze", "condition": { "key": "totalDefeats", "op": "gte", "value": 1 } },
     { "id": "kill_50", "label": "五十斬", "description": "累計擊殺 50 隻怪物", "tier": "bronze", "condition": { "key": "totalKills", "op": "gte", "value": 50 } },
-    { "id": "talent_first", "label": "初修道果", "description": "首次投資天賦點", "tier": "bronze", "condition": { "key": "talentPointsSpent", "op": "gte", "value": 1 } }
+    { "id": "talent_first", "label": "初修道果", "description": "首次投資天賦點", "tier": "bronze", "condition": { "key": "talentPointsSpent", "op": "gte", "value": 1 } },
+    { "id": "kill_500", "label": "五百斬", "description": "累計擊殺 500 隻怪物", "tier": "silver", "condition": { "key": "totalKills", "op": "gte", "value": 500 } },
+    { "id": "merge_30", "label": "合成大師", "description": "累計合成 30 次", "tier": "silver", "condition": { "key": "totalMerges", "op": "gte", "value": 30 } },
+    { "id": "boss_10", "label": "龍影獵人", "description": "累計擊殺 10 隻 Boss", "tier": "silver", "condition": { "key": "bossKills", "op": "gte", "value": 10 } },
+    { "id": "wave_15", "label": "十五波屹立", "description": "存活至第 15 波", "tier": "silver", "condition": { "key": "highestWave", "op": "gte", "value": 15 } },
+    { "id": "wave_20_clear", "label": "通關先驅", "description": "成功通關第 20 波", "tier": "silver", "condition": { "key": "highestWave", "op": "gte", "value": 20, "requiresVictory": true } },
+    { "id": "taiji_first", "label": "太極初現", "description": "首次合成太極塔", "tier": "silver", "condition": { "key": "totalTaijiMerges", "op": "gte", "value": 1 } },
+    { "id": "all_recipes", "label": "萬象森羅", "description": "發現全部 6 種合成配方", "tier": "silver", "condition": { "key": "recipesDiscovered", "op": "gte", "value": 6 } },
+    { "id": "asc5_clear", "label": "登峰造極", "description": "在 Ascension 5 以上通關", "tier": "silver", "condition": { "key": "highestAscension", "op": "gte", "value": 5, "requiresVictory": true } },
+    { "id": "no_wall_clear", "label": "無牆之境", "description": "不使用岩壁塔通關一次", "tier": "silver", "condition": { "key": "noWallCompletions", "op": "gte", "value": 1 } },
+    { "id": "single_element_clear", "label": "一氣純陽", "description": "僅用單一元素塔通關一次", "tier": "silver", "condition": { "key": "singleElementCompletions", "op": "gte", "value": 1 } },
+    { "id": "perfect_5", "label": "滴水不漏", "description": "單局連續 5 波無怪到達基地", "tier": "silver", "condition": { "key": "maxConsecutivePerfectWaves", "op": "gte", "value": 5 } },
+    { "id": "full_tower_lv2", "label": "七曜齊昇", "description": "解鎖全部 7 種 Lv2 塔", "tier": "silver", "condition": { "key": "lv2TowersUnlocked", "op": "gte", "value": 7 } }
   ]
 }

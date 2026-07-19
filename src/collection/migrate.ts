@@ -22,11 +22,16 @@ export function ensureCollectionFields(data: TalentSaveData): void {
   }
 
   if (!data.collectionProgress || typeof data.collectionProgress !== 'object') {
-    data.collectionProgress = { totalKills: 0, totalMerges: 0, totalVictories: 0, highestWave: 0, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0 };
+    data.collectionProgress = { totalKills: 0, totalMerges: 0, totalVictories: 0, highestWave: 0, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0, highestAscension: 0, totalTaijiMerges: 0, noWallCompletions: 0, singleElementCompletions: 0, maxConsecutivePerfectWaves: 0 };
   } else {
     if (typeof data.collectionProgress.bossKills !== 'number') data.collectionProgress.bossKills = 0;
     if (typeof data.collectionProgress.totalDefeats !== 'number') data.collectionProgress.totalDefeats = 0;
     if (typeof data.collectionProgress.recipesDiscovered !== 'number') data.collectionProgress.recipesDiscovered = 0;
+    if (typeof data.collectionProgress.highestAscension !== 'number') data.collectionProgress.highestAscension = 0;
+    if (typeof data.collectionProgress.totalTaijiMerges !== 'number') data.collectionProgress.totalTaijiMerges = 0;
+    if (typeof data.collectionProgress.noWallCompletions !== 'number') data.collectionProgress.noWallCompletions = 0;
+    if (typeof data.collectionProgress.singleElementCompletions !== 'number') data.collectionProgress.singleElementCompletions = 0;
+    if (typeof data.collectionProgress.maxConsecutivePerfectWaves !== 'number') data.collectionProgress.maxConsecutivePerfectWaves = 0;
   }
 
   if (!Array.isArray(data.collectionCompleted)) {

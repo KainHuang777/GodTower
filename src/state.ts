@@ -197,6 +197,16 @@ export interface GameState {
     // Roguelike 系統狀態
     roguelikeState: RoguelikeState;
 
+    // 成就系統本局追蹤（每局重置）
+    runNoWall: boolean;
+    runElementsUsed: string[];
+    runPerfectStreak: number;
+    runBreachOccurred: boolean;
+
+    // 難度選擇（3 級）
+    selectedDifficulty: 'easy' | 'normal' | 'hard';
+    difficultyHpMult: number;
+
     // Ascension 難度系統（P1）
     ascensionLevel: number;
     ascensionHpMult: number;
@@ -331,7 +341,15 @@ export function createGameState(): GameState {
       mysteryBoxPrice: 0,
     },
 
+    // 成就系統本局追蹤
+    runNoWall: true,
+    runElementsUsed: [],
+    runPerfectStreak: 0,
+    runBreachOccurred: false,
+
     // Ascension 難度系統
+    selectedDifficulty: 'normal',
+    difficultyHpMult: 1.0,
     ascensionLevel: 0,
     ascensionHpMult: 1.0,
     ascensionSpeedMult: 1.0,

@@ -1489,6 +1489,24 @@
       <button id="btnTalent" class="menu-btn menu-command-btn"><span class="menu-btn-icon"><svg class="ui-icon"><use href="#ui-icon-taiji"></use></svg></span><span>五行經脈</span></button>
       <button id="btnStore" class="menu-btn" disabled>商店</button>
       <button id="btnReleaseNotes" class="menu-btn menu-btn-secondary menu-command-btn"><span class="menu-btn-icon"><svg class="ui-icon"><use href="#ui-icon-scroll"></use></svg></span><span>遊戲資訊</span></button>
+      <div id="difficultySelector" class="difficulty-selector" role="radiogroup" aria-label="難度選擇">
+        <span class="diff-heading">難度</span>
+        <label class="diff-option" data-diff="easy">
+          <input type="radio" name="difficulty" value="easy" class="diff-radio">
+          <span class="diff-icon">🌱</span>
+          <span class="diff-label">簡單</span>
+        </label>
+        <label class="diff-option" data-diff="normal">
+          <input type="radio" name="difficulty" value="normal" checked class="diff-radio">
+          <span class="diff-icon">⚔️</span>
+          <span class="diff-label">普通</span>
+        </label>
+        <label class="diff-option" data-diff="hard">
+          <input type="radio" name="difficulty" value="hard" class="diff-radio">
+          <span class="diff-icon">🔥</span>
+          <span class="diff-label">困難</span>
+        </label>
+      </div>
       <div id="menuTalentInfo" class="menu-talent-info"></div>
     </div>
   </div>

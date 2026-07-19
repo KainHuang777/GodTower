@@ -3,7 +3,7 @@
 import { gameState } from '../state';
 import { getTowerDef, getSameMergeResult, getCrossRecipeResult, getSellPrice, getSameMergeCost, getCrossMergeCost, TowerTypeId } from '../towers';
 import { getWallCost } from '../talent';
-import { markTowerCrafted, addMerge } from '../collection/state';
+import { markTowerCrafted, addMerge, addTaijiMerge, evaluateAchievements } from '../collection/state';
 import { validatePlacement, updateAllEnemyPaths } from './pathfinding';
 import { playSFX } from '../audio/audioSystem';
 import { createMergeParticles } from '../renderer/particles';
@@ -13,6 +13,7 @@ import { Tower } from '../types';
 import { updateUI } from '../ui/uiManager';
 import { showFloat } from '../renderer/gameRenderer';
 import { getGateARefund } from './p3GateA';
+import { showAchievementUnlockNotification } from '../ui/achievementNotify';
 
 export function handleBuild(x: number, y: number) {
   if (gameState.grid[x][y] !== 0) { 
@@ -35,7 +36,13 @@ export function handleBuild(x: number, y: number) {
   }
 
   gameState.grid[x][y] = def.isWall ? 1 : 0;
-  
+
+  // 成就系統：追蹤本局建塔元素與岩壁使用
+  if (def.isWall) gameState.runNoWall = false;
+  if (def.element && !gameState.runElementsUsed.includes(def.element)) {
+    gameState.runElementsUsed.push(def.element);
+  }
+
   // 免費建塔旗標檢查
   if (isFree) {
     const rl = gameState.roguelikeState as any;
@@ -308,6 +315,13 @@ export function updateMergeAnimation() {
       gameState.mergeCount++;
       markTowerCrafted(gameState.talentData, anim.resultTypeId);
       addMerge(gameState.talentData);
+      if (anim.resultTypeId === 'yin_yang') {
+        addTaijiMerge(gameState.talentData);
+      }
+      const newlyUnlocked = evaluateAchievements(gameState.talentData);
+      if (newlyUnlocked.length > 0) {
+        showAchievementUnlockNotification(newlyUnlocked);
+      }
 
       // === 實作五行共鳴合成退款 ===
       if (gameState.roguelikeState.nextMergeCostPct < 1.0) {

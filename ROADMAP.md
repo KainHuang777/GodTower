@@ -18,7 +18,7 @@
 | 項目 | 內容 |
 |:---|:---|
 | 專案目標 | 製作以五行、陰陽、迷宮建構與塔防合成為核心的 HTML5 Canvas Web 遊戲。 |
-| 目前階段 | P3 Gate B 全數完成（含 v1.1）；五行圖鑑＋銅級成就已完成。 |
+| 目前階段 | P3 Gate B 全數完成（含 v1.1）；五行圖鑑＋銅／銀級成就與解鎖通知已完成；難度選擇（3 級）已完成。 |
 | 核心功能 | A* 迷宮尋路、七種基礎塔與合成、元素相剋、波次與 Boss、Roguelike 卡牌、天賦持久化、Ascension 難度、教學關卡、五行圖鑑＋成就系統。 |
 | 重要限制 | TypeScript + Vite + HTML5 Canvas；邏輯使用網格座標、渲染使用世界座標；外置圖片與音訊必須具 fallback；尋路僅在放置／拆除事件後重算。 |
 | 非目標／暫緩 | 不遷移 WebGL（先優化 Canvas 2D）；不支援手把；Steam、iOS 與完整 Android 平台版暫緩；AI 高清精靈不作正式視覺基準。 |
@@ -29,15 +29,15 @@
 
 | 欄位 | 目前內容 |
 |:---|:---|
-| 當前任務名稱 | P1 Codex 美術交接 |
-| 任務目標 | 建立 `docs/NEXT_CODEX_HANDOFF.md`，將銀級成就、MORE 系統、圖鑑 UI 翻新等 6 項視覺工作交接給 Codex。 |
-| 任務狀態 | ✅ 交接文件已建立。 |
-| 已完成內容 | • `docs/NEXT_CODEX_HANDOFF.md`：6 項 Codex 待辦（成就通知動畫、MORE SVG icon、圖鑑 Lore 補完、UI 翻新、進度條、可選 UI 改造）<br>• 每個項目附規格、現況、掛鉤點與不應修改的檔案清單<br>• 比照 P3_GATE_B_CODEX_HANDOFF.md 格式，保留「不應修改的檔案」原則。<br>• 修正圖鑑 Tab 仍顯示天賦連接線：切入圖鑑時隱藏並清空 `#talentSvg`，返回經脈頁時恢復重繪。<br>• #6 已完成使用者核准的核心範圍：共用視覺 token／SVG symbol、主選單守塔令面板、戰鬥 HUD 實體徽章與常用操作圖示；短螢幕主選單採左右雙欄。 |
-| 進行中內容 | #2 MORE SVG icon、#4 圖鑑 UI 翻新、#5 進度條及 #6 核心 UI 改造均已完成（含圖鑑頁天賦連線殘留修正）。已確認：銀級成就邏輯與設定完成後才製作 #1 成就通知；Lv2／配方／詞條資料進入 config 後才補 #3 Lore。 |
-| 尚未完成內容 | 銀級成就＋進階圖鑑（P1 範疇，邏輯已規劃，美術待 Codex）、難度選擇（3 級）、玩家回饋循環／監控。 |
-| 下一個具體行動 | 銀級成就邏輯與 config 完成後，實作 `docs/NEXT_CODEX_HANDOFF.md` #1 成就通知；Lv2／配方／詞條條目進入 config 後，補完 #3 Lore。#6 其餘關卡、卡牌、結算與羅盤圖鑑仍屬未核准選修。 |
+| 當前任務名稱 | #1 成就解鎖通知動畫 |
+| 任務目標 | 在擊殺、合成與結算時，將新解鎖成就以可排隊的 DOM overlay 即時呈現。 |
+| 任務狀態 | ✅ 已完成（待 Antigravity 人工目視確認）。 |
+| 已完成內容 | • 難度選擇系統（easy／normal／hard）：資料驅動 HP 倍率與起始金幣、主選單選擇器、場景同步與戰鬥數值掛鉤<br>• 新增 `src/ui/achievementNotify.ts`：獎盃 SVG、銅／銀 tier 橫幅、3 秒自動收起、點擊收起、序列佇列、無障礙 live region 與 reduced-motion 回退<br>• 在擊殺、合成與結算時，僅在 `evaluateAchievements()` 回傳新成就後顯示通知；不改動成就純邏輯或 config。 |
+| 進行中內容 | 無；通知畫面待 Antigravity 人工目視確認。 |
+| 尚未完成內容 | #3 進階圖鑑 Lore（待 Lv2／配方／詞條條目進入 config）、玩家回饋循環／監控。 |
+| 下一個具體行動 | 在 Antigravity 確認通知於戰鬥 HUD 與結算畫面的尺寸、層級與銅／銀色彩；其後待進階圖鑑資料完善再補 #3 Lore。 |
 | 目前阻塞問題 | 無。 |
-| 最近驗證時間 | 2026-07-19（Asia/Taipei）：核心 UI 改造後，完整驗證 269 tests／12 files 通過；build 60 modules clean。瀏覽器驗收 1280×720 與 844×390 主選單／戰鬥 HUD，無 console warning/error。 |
+| 最近驗證時間 | 2026-07-19（Asia/Taipei）：成就解鎖通知完成，298 tests／14 files 通過；build 65 modules clean。 |
 
 ---
 
@@ -126,6 +126,8 @@
 | #6 核心 UI 改造驗證 | 2026-07-19：完成共用視覺 token、11 枚 inline SVG symbol、主選單守塔令指令面板、HUD 四徽章與操作圖示；844×390 主選單改為品牌／指令左右雙欄。Vitest 12 檔、269/269 通過；build 60 modules 成功。瀏覽器驗收 1280×720 與 844×390，無溢出且 console 無 warning/error。 |
 | 已知錯誤 | `TODO`：本次未發現新的執行期錯誤；既有文件未列出可重現錯誤訊息。 |
 | 尚未驗證項目 | 20×10 教學全圖是否免拖曳、塔／岩壁前後景與連接、Mobile 橫向 HUD、外置塔精靈失敗 fallback、Canvas 效能與視覺可讀性（需 Antigravity 畫面驗收）。 |
+| 難度選擇驗證 | 2026-07-19：新增 DifficultyLevel type、DIFFICULTY_PRESETS config、主選單 UI 三按鈕選擇器、CSS 紙本風格、battle 掛鉤（起始金幣+20/0/-15、怪物 HP 0.8/1.0/1.3 倍率）。完整 Vitest 14 檔、298/298 通過；build 64 modules、1.14s 成功。 |
+| 成就解鎖通知驗證 | 2026-07-19：新增獨立 DOM overlay（code-native 獎盃 SVG、銅／銀 tier、3 秒自動收起、點擊收起、序列佇列、live region、reduced-motion），並接入擊殺／合成／結算三條新成就路徑。完整 Vitest 14 檔、298/298 通過；build 65 modules clean；待 Antigravity 人工目視確認。 |
 
 ## 下一步決策（2026-07-19）
 
@@ -139,8 +141,8 @@
 | P3 Gate A | ✅ 已關閉。 | P2-E 已關閉。 | 194/194、build 42 modules、瀏覽器全額退款提示與數值邊界測試通過。 |
 | P3 Gate B | ✅ Fully Completed（含 v1.1 F6/F10 + Antigravity 驗收）。 | Gate A 已完成。 | 240/240 Vitest、54 modules build clean；全部 F 級與美術接手事項完成；Antigravity 畫面驗收通過。 |
 | 五行圖鑑＋銅級成就 | ✅ 已完成：14 條圖鑑（7 怪物＋7 基礎塔）、8 銅級成就、資料驅動配置、戰鬥掛鉤、migration、天賦頁 UI、28 項測試。 | — | 269/12 Vitest、build clean。 |
-| 銀級成就＋進階圖鑑 | 📋 計劃中：銀級成就 ×12、Lv2 合成塔圖鑑、配方塔圖鑑、詞條圖鑑、Lore 補完、解鎖通知動畫、進度條。 | 銅級成就已完成。 | 尚未開始。 |
-| 難度選擇（3 級） | 📋 計劃中：簡單/普通/困難，影響怪物 HP 倍率與起始資源。 | P3 Gate B 全數完成。 | 尚未開始。 |
+| 銀級成就＋進階圖鑑 | ✅ 銀級成就邏輯已完成（12 成就），進階圖鑑待 Codex Lore。 | 銅級成就已完成。 | 298/14 Vitest、build clean。 |
+| 難度選擇（3 級） | ✅ 已完成：簡單/普通/困難，影響怪物 HP 倍率（0.8/1.0/1.3）與起始金幣（+20/0/-15）。 | P3 Gate B 全數完成。 | 298/14 Vitest、build clean。 |
 | P4（延後） | `ISaveStorage`／`IPlatform`、Tauri／Android、天象輪。 | 等待更多玩家回饋與平台方向確定。 | 目前不作為下一步。 |
 
 ---
@@ -163,6 +165,7 @@
 
 | 日期 | 任務名稱 | 完成內容 | 重要決策 | 遺留問題 |
 |:---|:---|:---|:---|:---|
+| 2026-07-19 | #1 成就解鎖通知動畫 | 新增 `src/ui/achievementNotify.ts`，提供 code-native 獎盃 SVG、銅／銀 tier、3 秒自動收起、點擊收起、單張佇列、`role="status"`／`aria-live="polite"` 與 reduced-motion 回退；已接入擊殺、合成與結算三條新成就路徑。Vitest 298/298、production build 65 modules 通過。 | 通知層獨立於 Canvas 與成就純邏輯，僅消費 `evaluateAchievements()` 回傳的新成就 ID；結算通知掛於 `document.body`，可跨場景切換持續顯示。 | 待 Antigravity 人工確認戰鬥 HUD／結算畫面的層級、尺寸與銅／銀色彩。 |
 | 2026-07-18 | Codex：P3 Gate B 美術與回饋交接完成 | 預設 ritual provider 改為不依賴外部檔案的 CSS／DOM 五行陣（太極、五行方位、卦爻、≤2.2 秒、可跳過）；主陣於桌面放大為原設計的 1.5 倍，木→火→土→金→水依序顯現，最後才展示中央題字。五個元素以同圓周、72° 等角距的正五邊形排列，並從中央放大位移至外圓邊界頂點。目標選擇、主選單提示與紀錄板改為羊皮紙、青銅與朱砂視覺；GAME_OVER 新增「達成／差一點／挑戰中」三態回饋；HUD 顯示波次／擊殺／合成目標進度；8 個 emoji 改為 code-native SVG icon；首次達成播放金色粒子與成功音效 fallback。Vitest 240/240、build 54 modules 通過。 | 不新增外部圖像／音效資產，維持離線可用與安全 fallback；保留 `RitualAssetProvider` 注入契約。 | Codex 交接 9/9 完成，需 Antigravity 驗收。F6／F10 為另行保留的 v1.1 邏輯改善。 |
 | 2026-07-13 | Roadmap 改造：專案規劃與任務上下文記憶 | 在 `ROADMAP.md` 新增 Project Overview、Current Task Context、Technical Decisions、Files and Components、Verification、長期規劃索引與本表；保留原有所有 Phase、P3/P4、技術債與盲點資料；重跑 `npm test`（178/178）與 `npm run build`（成功）。 | 長期規劃與單次任務狀態分離；不確定資訊以 `TODO`／`需要確認` 標示；以程式碼與最新驗證覆蓋過時文件。 | 需在 Antigravity 驗收未提交的教學與美術改動；`Sample/codex/` 用途需要確認。 |
 | 2026-07-13 | Git 忽略本機 Sample 目錄 | 在 `.gitignore` 加入 `Sample/`，保留本機檔案但排除公開 Git 追蹤。 | `Sample/` 為本機內容，不應推送到公開空間。 | 無。 |
@@ -371,7 +374,7 @@
 *   [x] **起卦儀式動畫**（placeholder）：主選單「開始遊戲」按鈕上方顯示目標提示，點擊後播放開局動畫（NoOp placeholder 待 Codex 替換）。
 *   [x] **紀錄板**：跨局紀錄追蹤（本次目標嘗試次數、累計成就進度）。
     *   [x] **五行圖鑑+銅級成就**（v1 完成）：14 條圖鑑（7 怪物＋7 基礎塔）、8 銅級成就、資料驅動配置（collection.json）、戰鬥掛鉤、舊存檔 migration、天賦頁「圖鑑」Tab UI、28 項自動化測試。
-    *   [ ] **難度選擇（3 級）**：簡單/普通/困難，影響怪物 HP 倍率與起始資源。
+    *   [x] **難度選擇（3 級）**：簡單/普通/困難，影響怪物 HP 倍率（0.8/1.0/1.3）與起始金幣（+20/0/-15）。
 *   **觀察與體驗迭代**：
     *   [ ] **玩家回饋循環**：外部測試者首玩錄影測試，收集皺眉點與笑容點。
     *   [ ] **監控項目**：監控 Wood DOT 強度、天賦頂配玩家的 HP 需求 vs 理論值。
@@ -398,7 +401,7 @@
 |:---|:---:|:---|
 | `main.ts` 模組化拆分 | ✅ | 已拆分至 `src/` 子目錄，`main.ts` 精簡至 113 行 |
 | 數值配置外部化 | 🚧 | `config/*.json`（towers / waves / enemies）已完成 |
-| 單元測試覆蓋 | ✅ | 269 tests，12 files（towers / enemies / talent / pathfinding / roguelike / tutorial / p3GateA / buildPlacement / talentConnections / goals / collection） |
+| 單元測試覆蓋 | ✅ | 298 tests，14 files（towers / enemies / talent / pathfinding / roguelike / tutorial / p3GateA / buildPlacement / talentConnections / goals / collection） |
 | 明亮東方像素視覺基準 | ✅ | Phase 4.8：日間暖色、通天塔主視覺、Canvas HUD、經脈天賦頁、九曲河谷與 24px 級輪廓；深色 Mindustry 風格保留為歷史階段 |
 | 主循環效能分析 | 📋 | 確認 60FPS 穩定性，必要時評估 WebGL 遷移 |
 | 尋路快取優化 | 📋 | 大地圖下的 A\* 計算頻率控制 |

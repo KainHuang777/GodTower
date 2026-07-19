@@ -8,7 +8,7 @@ import { astarFind, validatePlacement, updateAllEnemyPaths } from './pathfinding
 import { createSplatterParticles, createDeathParticles, updateParticles, createElementalHitParticles } from '../renderer/particles';
 import { playSFX } from '../audio/audioSystem';
 import { checkWaveEnd, endBattle } from './battleManager';
-import { recordKill } from '../collection/state';
+import { evaluateAchievements, recordKill } from '../collection/state';
 import { ENEMY_DEFS, EnemyTypeId, getEnemyCollisionRadius, getWaveConfig } from '../enemies';
 import { Point, Enemy } from '../types';
 
@@ -16,6 +16,7 @@ import { Point, Enemy } from '../types';
 import { updateUI } from '../ui/uiManager';
 import { showFloat } from '../renderer/gameRenderer';
 import { triggerCounterGlow } from '../ui/wuxingCompass';
+import { showAchievementUnlockNotification } from '../ui/achievementNotify';
 import { applyElementResistance } from './p3GateA';
 
 export function updatePhysics() {
@@ -123,6 +124,7 @@ export function updatePhysics() {
         gameState.gold += award;
         gameState.killCount++;
         recordKill(gameState.talentData, e.type, e.type === 'boss_dragon');
+        checkAchievementUnlocks();
         gameState.currentKillStreak++;
         if (gameState.currentKillStreak > gameState.maxKillStreak) gameState.maxKillStreak = gameState.currentKillStreak;
         showFloat(e.x, e.y, `+${award}g`, '#f59e0b');
@@ -179,6 +181,7 @@ export function updatePhysics() {
               gameState.hp -= 1;
               gameState.shakeIntensity = 8.0;
               gameState.shakeDecay = 0.25;
+              gameState.runBreachOccurred = true;
             }
             gameState.enemies.splice(i, 1);
             updateUI();
@@ -497,6 +500,7 @@ export function updatePhysics() {
           gameState.gold += award;
           gameState.killCount++;
           recordKill(gameState.talentData, b.targetEnemy.type, b.targetEnemy.type === 'boss_dragon');
+          checkAchievementUnlocks();
           gameState.currentKillStreak++;
           if (gameState.currentKillStreak > gameState.maxKillStreak) gameState.maxKillStreak = gameState.currentKillStreak;
           showFloat(b.targetEnemy.x, b.targetEnemy.y, `+${award}g`, '#f59e0b');
@@ -519,6 +523,7 @@ export function updatePhysics() {
           gameState.gold += award;
           gameState.killCount++;
           recordKill(gameState.talentData, gameState.enemies[j].type, gameState.enemies[j].type === 'boss_dragon');
+          checkAchievementUnlocks();
           showFloat(gameState.enemies[j].x, gameState.enemies[j].y, `+${award}g`, '#f59e0b');
           const pColor = ENEMY_DEFS[gameState.enemies[j].type]?.colorPrimary ?? '#facc15';
           createDeathParticles(gameState.particles, gameState.TILE_SIZE, gameState.enemies[j].x, gameState.enemies[j].y, pColor);
@@ -561,6 +566,12 @@ export function updatePhysics() {
   // 7. 更新背景星星與天氣 (Phase 4)
   updateBgStars();
   updateWeather();
+}
+
+function checkAchievementUnlocks(): void {
+  const newlyUnlocked = evaluateAchievements(gameState.talentData);
+  if (newlyUnlocked.length === 0) return;
+  showAchievementUnlockNotification(newlyUnlocked);
 }
 
 export function updateBgStars() {

@@ -319,6 +319,19 @@ export function initInputEvents() {
     const ritualEnabled = gameState.talentData.ritualEnabled !== false;
     playOpeningRitual(goalId, ritualEnabled, () => startFlow());
   });
+  document.getElementById('difficultySelector')!.addEventListener('click', (e) => {
+    const option = (e.target as HTMLElement).closest<HTMLElement>('.diff-option');
+    if (!option) return;
+    const diff = option.getAttribute('data-diff');
+    if (!diff || diff === gameState.selectedDifficulty) return;
+    playSFX('click');
+    gameState.selectedDifficulty = diff as 'easy' | 'normal' | 'hard';
+    document.querySelectorAll<HTMLElement>('.diff-option').forEach(el => {
+      el.classList.toggle('active', el.getAttribute('data-diff') === diff);
+    });
+    const radio = document.querySelector<HTMLInputElement>(`.diff-radio[value="${diff}"]`);
+    if (radio) radio.checked = true;
+  });
   document.getElementById('btnBackFromLevel')!.addEventListener('click', () => { 
     playSFX('click'); 
     if (gameState.switchScene) gameState.switchScene('MAIN_MENU'); 

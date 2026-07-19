@@ -8,6 +8,7 @@ import { ensureGoalFields, reconcileGoalStats } from './goals/migrate';
 import { getGoalConfigVersion } from './goals/config';
 import { createEmptyBoardSnapshot } from './goals/types';
 import { ensureCollectionFields } from './collection/migrate';
+import type { AchievementProgress } from './collection/types';
 
 const STORAGE_KEY = 'td_talent_data';
 const LEGACY_STORAGE_KEYS = ['checkpoint_maze_td_talent'] as const;
@@ -137,7 +138,7 @@ export interface TalentSaveData {
 
   // --- 圖鑑＋成就系統（P0 Codex） ---
   collectionBestiary?: { enemies: Record<string, boolean>; towers: Record<string, boolean>; traits: Record<string, boolean> };
-  collectionProgress?: { totalKills: number; totalMerges: number; totalVictories: number; highestWave: number; bossKills: number; totalDefeats: number; recipesDiscovered: number };
+  collectionProgress?: AchievementProgress;
   collectionCompleted?: string[];
 }
 
@@ -213,7 +214,7 @@ export function loadTalentData(): TalentSaveData {
     mainMenuSeenGoalId: null,
     ritualEnabled: true,
     collectionBestiary: { enemies: {}, towers: {}, traits: {} },
-    collectionProgress: { totalKills: 0, totalMerges: 0, totalVictories: 0, highestWave: 0, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0 },
+    collectionProgress: { totalKills: 0, totalMerges: 0, totalVictories: 0, highestWave: 0, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0, highestAscension: 0, totalTaijiMerges: 0, noWallCompletions: 0, singleElementCompletions: 0, maxConsecutivePerfectWaves: 0 },
     collectionCompleted: [],
   };
   return fresh;

@@ -6,7 +6,7 @@ import { getBaseHP, getStartGold, calcTalentPointsEarned, addTalentPoints, saveT
 import { ENEMY_DEFS, getEnemyCollisionRadius, getWaveConfig, EnemyTypeId } from '../enemies';
 import { astarFind, recalculatePathTiles, updateAllEnemyPaths } from './pathfinding';
 import { ThemeId, WeatherId, MAX_WAVES } from '../types';
-import { applyAscensionModifiers } from './difficulty';
+import { applyAscensionModifiers, getDifficultyConfig } from './difficulty';
 import { BASE_TOWERS, LV2_TOWERS, RECIPE_TOWERS, TowerDef } from '../towers';
 import { grantStartBonus, calcMysteryBoxPrice, showCardPicker, tickWaveBuffs } from '../system/roguelikeSystem';
 import { P3_GATE_A_CONFIG, getElementResistanceRate, getLowHpCompensation } from './p3GateA';
@@ -17,8 +17,9 @@ import type { RunStats } from '../goals/types';
 import { refreshGoalSelectorIfPresent } from '../ui/goalSelector';
 import { renderGoalRunResult } from '../ui/goalRunResult';
 import type { GoalRunFeedbackContext } from '../ui/goalRunResult';
-import { updateEndOfRunStats, evaluateAchievements } from '../collection/state';
+import { updateEndOfRunStats, evaluateAchievements, updateHighestAscension, updateNoWallCompletion, updateSingleElementCompletion, updateMaxConsecutivePerfectWaves } from '../collection/state';
 import { createInitialTowers } from './mapSetup';
+import { showAchievementUnlockNotification } from '../ui/achievementNotify';
 
 // 引入渲染與 UI 更新
 import { showFloat, initBgStars } from '../renderer/gameRenderer';
@@ -42,6 +43,14 @@ export function startBattle() {
   // 讀取天賦效果
   gameState.hp = getBaseHP(gameState.talentData);
   gameState.gold = gameState.currentMap.id === 'test_level' ? 999999 : getStartGold(gameState.talentData);
+  // 套用難度選擇（金幣加成）
+  if (gameState.currentMap.id !== 'test_level') {
+    const diffCfg = getDifficultyConfig(gameState.selectedDifficulty);
+    gameState.gold = Math.max(30, gameState.gold + diffCfg.startGoldBonus);
+    gameState.difficultyHpMult = diffCfg.monsterHpMult;
+  } else {
+    gameState.difficultyHpMult = 1.0;
+  }
   gameState.wave = 0;
   gameState.killCount = 0;
   gameState.isWaveActive = false;
@@ -59,6 +68,10 @@ export function startBattle() {
   gameState.nextTowerId = 1;
   gameState.mergeMode = false;
   gameState.mergeFirstTower = null;
+  gameState.runNoWall = true;
+  gameState.runElementsUsed = [];
+  gameState.runPerfectStreak = 0;
+  gameState.runBreachOccurred = false;
   gameState.spawnTimers.forEach(t => clearInterval(t));
   gameState.spawnTimers = [];
   gameState.waveTotal = 0;
@@ -167,6 +180,7 @@ export function spawnWave(waveNum: number) {
       const path = astarFind(startPos, gameState.WAYPOINTS[0], gameState.grid, gameState.COLS, gameState.ROWS, def.isFlying);
       const isStuck = !path;
       const ahp = gameState.ascensionHpMult;
+      const dhp = gameState.difficultyHpMult;
       const aspd = gameState.ascensionSpeedMult;
       // P1 耦合調整：天賦感知 HP 修正因子（花費天賦點越多，怪物 HP 越高，最多 +50%）
       const talentMod = 1.0 + getTalentDifficultyMod(gameState.talentData);
@@ -177,8 +191,8 @@ export function spawnWave(waveNum: number) {
         x: startPos.x * gameState.TILE_SIZE + gameState.TILE_SIZE / 2,
         y: startPos.y * gameState.TILE_SIZE + gameState.TILE_SIZE / 2,
         currentGridX: startPos.x, currentGridY: startPos.y,
-        hp: Math.floor(def.baseHp * cfg.hpMultiplier * ahp * talentMod),
-        maxHp: Math.floor(def.baseHp * cfg.hpMultiplier * ahp * talentMod),
+        hp: Math.floor(def.baseHp * cfg.hpMultiplier * ahp * dhp * talentMod),
+        maxHp: Math.floor(def.baseHp * cfg.hpMultiplier * ahp * dhp * talentMod),
         speed: def.speed * aspd,
         baseSpeed: def.speed * aspd,
         goldAward: def.goldAward,
@@ -405,6 +419,15 @@ export function checkWaveEnd() {
   if (gameState.enemies.length === 0 && gameState.isWaveActive) {
     gameState.isWaveActive = false;
     gameState.currentKillStreak = 0; // 波次間重置連殺計數
+
+    // 成就系統：完美波次追蹤（無任何敵人到達基地）
+    if (gameState.runBreachOccurred) {
+      gameState.runPerfectStreak = 0;
+    } else {
+      gameState.runPerfectStreak++;
+    }
+    gameState.runBreachOccurred = false;
+
     showFloat(640, 320, '波次防禦成功！', '#10b981');
     
     // P3 Gate A：低血量時每局只發一次救濟，避免故意賣血反覆刷金。
@@ -690,7 +713,23 @@ function commitCollectionEndOfRun(isVictory: boolean): void {
   const mapId = gameState.currentMap?.id;
   if (mapId === 'test_level' || mapId === 'tutorial') return;
   updateEndOfRunStats(gameState.talentData, isVictory, gameState.wave);
+  updateHighestAscension(gameState.talentData, gameState.ascensionLevel);
+
+  // 本局追蹤：無岩壁成就
+  if (isVictory && gameState.runNoWall) {
+    updateNoWallCompletion(gameState.talentData);
+  }
+
+  // 本局追蹤：單一元素成就（含陰陽之一也算單一元素）
+  if (isVictory && gameState.runElementsUsed.length === 1) {
+    updateSingleElementCompletion(gameState.talentData);
+  }
+
+  // 本局追蹤：完美波次成就（此局最佳連續完美波次）
+  updateMaxConsecutivePerfectWaves(gameState.talentData, gameState.runPerfectStreak);
+
   const newlyAchieved = evaluateAchievements(gameState.talentData);
+  showAchievementUnlockNotification(newlyAchieved);
   if (newlyAchieved.length > 0 || isVictory) {
     saveTalentData(gameState.talentData);
   }

@@ -44,6 +44,11 @@ export interface AchievementProgress {
   bossKills: number;
   totalDefeats: number;
   recipesDiscovered: number;
+  highestAscension: number;
+  totalTaijiMerges: number;
+  noWallCompletions: number;
+  singleElementCompletions: number;
+  maxConsecutivePerfectWaves: number;
 }
 
 export interface CollectionSaveData {

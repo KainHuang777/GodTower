@@ -1,3 +1,7 @@
+2026-07-19 Update README with Project Metrics and AI Model History
+- [README.md] Updated project scale metrics (23,209 lines across 80 code files), detailed module architecture breakdown (11 core modules), and expanded the AI Model History log to include Gemini 3.5 Flash (Medium). Cleaned up redundant section duplicates.
+- Build verified: npm run build and npm test (298/298 passed) completed successfully.
+
 2026-07-19 Implement Collection System & Visual UI Refresh (Phase P1 Extension)
 - [docs/NEXT_CODEX_HANDOFF.md] [NEW] Handoff Documentation: Added detailed handoff items for collection system and visual refresh assets.
 - [src/collection/*] [src/config/collection.json] [NEW] Collection Logic & Config: Added state management, criteria evaluation, and metadata config for the Bestiary and achievements.

@@ -1,6 +1,25 @@
-// src/battle/difficulty.ts — Ascension 難度系統
+// src/battle/difficulty.ts — 難度系統（3 級選擇 + Ascension）
 import { gameState } from '../state';
 import type { TalentSaveData } from '../talent';
+import type { DifficultyLevel } from '../types';
+
+export interface DifficultyPreset {
+  id: DifficultyLevel;
+  label: string;
+  icon: string;
+  monsterHpMult: number;
+  startGoldBonus: number;
+}
+
+export const DIFFICULTY_PRESETS: Record<DifficultyLevel, DifficultyPreset> = {
+  easy: { id: 'easy', label: '簡單', icon: '🌱', monsterHpMult: 0.8, startGoldBonus: 20 },
+  normal: { id: 'normal', label: '普通', icon: '⚔️', monsterHpMult: 1.0, startGoldBonus: 0 },
+  hard: { id: 'hard', label: '困難', icon: '🔥', monsterHpMult: 1.3, startGoldBonus: -15 },
+};
+
+export function getDifficultyConfig(level: DifficultyLevel): DifficultyPreset {
+  return DIFFICULTY_PRESETS[level];
+}
 
 export interface AscensionConfig {
   level: number;

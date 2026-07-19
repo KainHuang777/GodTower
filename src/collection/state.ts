@@ -1,6 +1,7 @@
 import type { TalentSaveData } from '../talent';
 import type { BestiarySaveData, AchievementProgress } from './types';
 import { getAllAchievements } from './config';
+import { getTowerDef } from '../towers';
 
 function ensureBestiary(data: TalentSaveData): BestiarySaveData {
   if (!data.collectionBestiary) {
@@ -15,7 +16,7 @@ function ensureBestiary(data: TalentSaveData): BestiarySaveData {
 
 function ensureProgress(data: TalentSaveData): AchievementProgress {
   if (!data.collectionProgress) {
-    data.collectionProgress = { totalKills: 0, totalMerges: 0, totalVictories: 0, highestWave: 0, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0 };
+    data.collectionProgress = { totalKills: 0, totalMerges: 0, totalVictories: 0, highestWave: 0, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0, highestAscension: 0, totalTaijiMerges: 0, noWallCompletions: 0, singleElementCompletions: 0, maxConsecutivePerfectWaves: 0 };
   }
   return data.collectionProgress;
 }
@@ -61,6 +62,31 @@ export function addMerge(data: TalentSaveData): void {
   data.collectionProgress!.totalMerges++;
 }
 
+export function addTaijiMerge(data: TalentSaveData): void {
+  ensureProgress(data);
+  data.collectionProgress!.totalTaijiMerges++;
+}
+
+export function updateHighestAscension(data: TalentSaveData, ascensionLevel: number): void {
+  const p = ensureProgress(data);
+  if (ascensionLevel > p.highestAscension) p.highestAscension = ascensionLevel;
+}
+
+export function updateNoWallCompletion(data: TalentSaveData): void {
+  ensureProgress(data);
+  data.collectionProgress!.noWallCompletions++;
+}
+
+export function updateSingleElementCompletion(data: TalentSaveData): void {
+  ensureProgress(data);
+  data.collectionProgress!.singleElementCompletions++;
+}
+
+export function updateMaxConsecutivePerfectWaves(data: TalentSaveData, streak: number): void {
+  const p = ensureProgress(data);
+  if (streak > p.maxConsecutivePerfectWaves) p.maxConsecutivePerfectWaves = streak;
+}
+
 export function updateEndOfRunStats(data: TalentSaveData, isVictory: boolean, highestWave: number): void {
   const p = ensureProgress(data);
   if (isVictory) p.totalVictories++;
@@ -75,7 +101,7 @@ export function evaluateAchievements(data: TalentSaveData): string[] {
   const newlyCompleted: string[] = [];
 
   const bestiary = data.collectionBestiary ?? { enemies: {}, towers: {}, traits: {} };
-  const recipeTowerIds = ['wood_fire', 'fire_earth', 'earth_metal', 'metal_water', 'water_wood'];
+  const recipeTowerIds = ['wood_fire', 'fire_earth', 'earth_metal', 'metal_water', 'water_wood', 'yin_yang'];
   const recipesDiscovered = recipeTowerIds.filter(id => bestiary.towers[id]).length;
 
   for (const ach of getAllAchievements()) {
@@ -91,6 +117,20 @@ export function evaluateAchievements(data: TalentSaveData): string[] {
       case 'totalDefeats': value = progress.totalDefeats; break;
       case 'recipesDiscovered': value = recipesDiscovered; break;
       case 'talentPointsSpent': value = data.spentTalentPoints ?? 0; break;
+      case 'highestAscension': value = progress.highestAscension; break;
+      case 'totalTaijiMerges': value = progress.totalTaijiMerges; break;
+      case 'noWallCompletions': value = progress.noWallCompletions; break;
+      case 'singleElementCompletions': value = progress.singleElementCompletions; break;
+      case 'maxConsecutivePerfectWaves': value = progress.maxConsecutivePerfectWaves; break;
+      case 'lv2TowersUnlocked': {
+        const baseIds = ['fire', 'water', 'wood', 'earth', 'metal', 'yin', 'yang'];
+        value = Object.keys(bestiary.towers).filter(id => {
+          if (baseIds.includes(id)) return false;
+          const def = getTowerDef(id as any);
+          return def !== null && def.level >= 2;
+        }).length;
+        break;
+      }
     }
 
     let met = false;
@@ -98,6 +138,10 @@ export function evaluateAchievements(data: TalentSaveData): string[] {
       case 'gte': met = value >= ach.condition.value; break;
       case 'lte': met = value <= ach.condition.value; break;
       case 'eq': met = value === ach.condition.value; break;
+    }
+
+    if (ach.condition.requiresVictory && (!progress.totalVictories || progress.totalVictories < 1)) {
+      met = false;
     }
 
     if (met) {

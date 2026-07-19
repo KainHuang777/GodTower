@@ -11,6 +11,11 @@ import {
   evaluateAchievements,
   getBestiaryUnlockedCount,
   getAchievementProgress,
+  addTaijiMerge,
+  updateHighestAscension,
+  updateNoWallCompletion,
+  updateSingleElementCompletion,
+  updateMaxConsecutivePerfectWaves,
 } from '../collection/state';
 import { ensureCollectionFields } from '../collection/migrate';
 import { getAllBestiaryEntries, getAllAchievements } from '../collection/config';
@@ -30,14 +35,14 @@ describe('collection migration', () => {
     const data = makeData();
     ensureCollectionFields(data);
     expect(data.collectionBestiary).toEqual({ enemies: {}, towers: {}, traits: {} });
-    expect(data.collectionProgress).toEqual({ totalKills: 0, totalMerges: 0, totalVictories: 0, highestWave: 0, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0 });
+    expect(data.collectionProgress).toEqual({ totalKills: 0, totalMerges: 0, totalVictories: 0, highestWave: 0, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0, highestAscension: 0, totalTaijiMerges: 0, noWallCompletions: 0, singleElementCompletions: 0, maxConsecutivePerfectWaves: 0 });
     expect(data.collectionCompleted).toEqual([]);
   });
 
   it('ensureCollectionFields does not overwrite existing data', () => {
     const data = makeData({
       collectionBestiary: { enemies: { snake: true }, towers: {}, traits: {} },
-      collectionProgress: { totalKills: 10, totalMerges: 2, totalVictories: 1, highestWave: 8, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0 },
+      collectionProgress: { totalKills: 10, totalMerges: 2, totalVictories: 1, highestWave: 8, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0, highestAscension: 0, totalTaijiMerges: 0, noWallCompletions: 0, singleElementCompletions: 0, maxConsecutivePerfectWaves: 0 },
       collectionCompleted: ['first_blood'],
     });
     ensureCollectionFields(data);
@@ -55,7 +60,7 @@ describe('collection migration', () => {
   it('ensureCollectionFields repairs corrupted progress', () => {
     const data = makeData({ collectionProgress: 'bad' as any });
     ensureCollectionFields(data);
-    expect(data.collectionProgress).toEqual({ totalKills: 0, totalMerges: 0, totalVictories: 0, highestWave: 0, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0 });
+    expect(data.collectionProgress).toEqual({ totalKills: 0, totalMerges: 0, totalVictories: 0, highestWave: 0, bossKills: 0, totalDefeats: 0, recipesDiscovered: 0, highestAscension: 0, totalTaijiMerges: 0, noWallCompletions: 0, singleElementCompletions: 0, maxConsecutivePerfectWaves: 0 });
   });
 });
 
@@ -242,5 +247,188 @@ describe('edge cases', () => {
     const newly = evaluateAchievements(data);
     expect(newly).not.toContain('first_blood');
     expect(newly).not.toContain('kill_50');
+  });
+});
+
+describe('silver achievement helper functions', () => {
+  it('addTaijiMerge increments totalTaijiMerges', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    addTaijiMerge(data);
+    expect(data.collectionProgress!.totalTaijiMerges).toBe(1);
+    addTaijiMerge(data);
+    expect(data.collectionProgress!.totalTaijiMerges).toBe(2);
+  });
+
+  it('updateHighestAscension only increases', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    updateHighestAscension(data, 3);
+    expect(data.collectionProgress!.highestAscension).toBe(3);
+    updateHighestAscension(data, 1);
+    expect(data.collectionProgress!.highestAscension).toBe(3);
+    updateHighestAscension(data, 5);
+    expect(data.collectionProgress!.highestAscension).toBe(5);
+  });
+
+  it('updateNoWallCompletion increments', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    updateNoWallCompletion(data);
+    expect(data.collectionProgress!.noWallCompletions).toBe(1);
+  });
+
+  it('updateSingleElementCompletion increments', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    updateSingleElementCompletion(data);
+    expect(data.collectionProgress!.singleElementCompletions).toBe(1);
+  });
+
+  it('updateMaxConsecutivePerfectWaves only stores max', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    updateMaxConsecutivePerfectWaves(data, 3);
+    expect(data.collectionProgress!.maxConsecutivePerfectWaves).toBe(3);
+    updateMaxConsecutivePerfectWaves(data, 7);
+    expect(data.collectionProgress!.maxConsecutivePerfectWaves).toBe(7);
+    updateMaxConsecutivePerfectWaves(data, 2);
+    expect(data.collectionProgress!.maxConsecutivePerfectWaves).toBe(7);
+  });
+});
+
+describe('silver achievement evaluation', () => {
+  it('grants kill_500 at 500 kills', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    for (let i = 0; i < 500; i++) addKill(data);
+    const newly = evaluateAchievements(data);
+    expect(newly).toContain('kill_500');
+  });
+
+  it('grants merge_30 at 30 merges', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    for (let i = 0; i < 30; i++) addMerge(data);
+    const newly = evaluateAchievements(data);
+    expect(newly).toContain('merge_30');
+  });
+
+  it('grants boss_10 at 10 boss kills', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    for (let i = 0; i < 10; i++) {
+      addKill(data);
+      data.collectionProgress!.bossKills++;
+    }
+    const newly = evaluateAchievements(data);
+    expect(newly).toContain('boss_10');
+  });
+
+  it('grants wave_15 at highestWave >= 15', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    updateEndOfRunStats(data, false, 15);
+    const newly = evaluateAchievements(data);
+    expect(newly).toContain('wave_15');
+  });
+
+  it('grants wave_20_clear only with victory', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    updateEndOfRunStats(data, false, 20);
+    let newly = evaluateAchievements(data);
+    expect(newly).not.toContain('wave_20_clear');
+
+    updateEndOfRunStats(data, true, 20);
+    newly = evaluateAchievements(data);
+    expect(newly).toContain('wave_20_clear');
+  });
+
+  it('grants taiji_first on first taiji merge', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    addTaijiMerge(data);
+    const newly = evaluateAchievements(data);
+    expect(newly).toContain('taiji_first');
+  });
+
+  it('grants all_recipes when all 6 recipes discovered', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    data.collectionBestiary = {
+      enemies: {},
+      towers: { wood_fire: true, fire_earth: true, earth_metal: true, metal_water: true, water_wood: true, yin_yang: true },
+      traits: {},
+    };
+    const newly = evaluateAchievements(data);
+    expect(newly).toContain('all_recipes');
+  });
+
+  it('grants asc5_clear with highestAscension >= 5 and victory', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    updateHighestAscension(data, 5);
+    updateEndOfRunStats(data, true, 20);
+    const newly = evaluateAchievements(data);
+    expect(newly).toContain('asc5_clear');
+  });
+
+  it('does not grant asc5_clear without victory', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    updateHighestAscension(data, 5);
+    const newly = evaluateAchievements(data);
+    expect(newly).not.toContain('asc5_clear');
+  });
+
+  it('grants no_wall_clear on first completion', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    updateNoWallCompletion(data);
+    const newly = evaluateAchievements(data);
+    expect(newly).toContain('no_wall_clear');
+  });
+
+  it('grants single_element_clear on first completion', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    updateSingleElementCompletion(data);
+    const newly = evaluateAchievements(data);
+    expect(newly).toContain('single_element_clear');
+  });
+
+  it('grants perfect_5 at 5 consecutive perfect waves', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    updateMaxConsecutivePerfectWaves(data, 5);
+    const newly = evaluateAchievements(data);
+    expect(newly).toContain('perfect_5');
+  });
+
+  it('grants full_tower_lv2 when all 7 Lv2 towers unlocked', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    data.collectionBestiary = {
+      enemies: {},
+      towers: {
+        fire_2: true, water_2: true, wood_2: true,
+        earth_2: true, metal_2: true, yin_2: true, yang_2: true,
+      },
+      traits: {},
+    };
+    const newly = evaluateAchievements(data);
+    expect(newly).toContain('full_tower_lv2');
+  });
+
+  it('config has 20 achievements total (8 bronze + 12 silver)', () => {
+    expect(getAllAchievements().length).toBe(20);
+  });
+
+  it('getAchievementProgress reflects 20 total achievements', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    const p = getAchievementProgress(data);
+    expect(p.total).toBe(20);
   });
 });

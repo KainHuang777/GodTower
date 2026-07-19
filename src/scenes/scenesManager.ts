@@ -290,6 +290,7 @@ export function switchScene(scene: GameScene) {
       }
       refreshMenuTalentInfo();
       renderGoalHint();
+      renderDifficultySelector();
       break;
     case 'LEVEL_SELECT':
       getDomRefs().levelSelectScreenEl.classList.add('active');
@@ -340,6 +341,16 @@ export function refreshMenuTalentInfo() {
   const pts = getAvailablePoints(gameState.talentData);
   const total = gameState.talentData.totalTalentPoints;
   info.textContent = total > 0 ? `🌟 天賦點: ${pts} 可用 / ${total} 總計` : '尚未獲得天賦點';
+}
+
+export function renderDifficultySelector(): void {
+  const current = gameState.selectedDifficulty;
+  document.querySelectorAll<HTMLElement>('.diff-option').forEach(el => {
+    const diff = el.getAttribute('data-diff');
+    el.classList.toggle('active', diff === current);
+  });
+  const radio = document.querySelector<HTMLInputElement>(`.diff-radio[value="${current}"]`);
+  if (radio) radio.checked = true;
 }
 
 export function renderLevelSelectScreen() {
