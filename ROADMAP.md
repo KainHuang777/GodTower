@@ -29,15 +29,15 @@
 
 | 欄位 | 目前內容 |
 |:---|:---|
-| 當前任務名稱 | #1 成就解鎖通知動畫 |
-| 任務目標 | 在擊殺、合成與結算時，將新解鎖成就以可排隊的 DOM overlay 即時呈現。 |
-| 任務狀態 | ✅ 已完成（待 Antigravity 人工目視確認）。 |
-| 已完成內容 | • 難度選擇系統（easy／normal／hard）：資料驅動 HP 倍率與起始金幣、主選單選擇器、場景同步與戰鬥數值掛鉤<br>• 新增 `src/ui/achievementNotify.ts`：獎盃 SVG、銅／銀 tier 橫幅、3 秒自動收起、點擊收起、序列佇列、無障礙 live region 與 reduced-motion 回退<br>• 在擊殺、合成與結算時，僅在 `evaluateAchievements()` 回傳新成就後顯示通知；不改動成就純邏輯或 config。 |
-| 進行中內容 | 無；通知畫面待 Antigravity 人工目視確認。 |
-| 尚未完成內容 | #3 進階圖鑑 Lore（待 Lv2／配方／詞條條目進入 config）、玩家回饋循環／監控。 |
-| 下一個具體行動 | 在 Antigravity 確認通知於戰鬥 HUD 與結算畫面的尺寸、層級與銅／銀色彩；其後待進階圖鑑資料完善再補 #3 Lore。 |
+| 當前任務名稱 | 圖鑑 expansion：Lv2／配方／詞條條目 |
+| 任務目標 | 將 16 條新 bestiary（7 Lv2 + 6 配方 + 3 詞條）加入 `collection.json`，重構成就計算為 data-driven。 |
+| 任務狀態 | ✅ 已完成。 |
+| 已完成內容 | • `BestiaryDefinition` 擴充 `level?`／`recipe?` 欄位<br>• `collection.json` 新增 16 條目（7 Lv2、6 配方、3 詞條含 Lore）、version 1.1.0<br>• `state.ts` 的 `recipesDiscovered` 與 `lv2TowersUnlocked` 改為從 bestiary definition data-driven 計算，移除硬編碼 ID 陣列與 `getTowerDef` 依賴<br>• `collectionIcons.ts` 新增 16 個 code-native SVG icon<br>• `collectionTab.ts` 分類標籤更新（妖／器／魄）<br>• 6 個新 config integrity 測試（30 條總數、類別分佈、level/recipe 完整性）<br>• 302 tests／14 files 通過、build 65 modules clean |
+| 進行中內容 | — |
+| 尚未完成內容 | #3 Lore 補完（Lv2／配方／詞條條目文案已到位，待 Codex 潤飾或擴充）、玩家回饋循環／監控。 |
+| 下一個具體行動 | 確認 #3 Lore 是否需要 Codex 潤飾；或進入玩家回饋循環階段。 |
 | 目前阻塞問題 | 無。 |
-| 最近驗證時間 | 2026-07-19（Asia/Taipei）：成就解鎖通知完成，298 tests／14 files 通過；build 65 modules clean。 |
+| 最近驗證時間 | 2026-07-19（Asia/Taipei）：圖鑑 expansion 完成，302 tests／14 files 通過；build 65 modules clean。 |
 
 ---
 
@@ -82,9 +82,9 @@
 | `src/input/buildPlacement.ts`、`src/__tests__/buildPlacement.test.ts` | 商店點擊／拖放建塔判定與 P3A 連續建造回歸防護。 | 新增；使用者已完成連續岩壁與塔按鈕切換手動驗證。 |
 | `src/state.ts`、`src/config/enemies.json`、`src/__tests__/tutorial.test.ts` | 教學狀態、敵人資料與教學單元測試。 | 已修改；P3 Gate B 新增 `mergeCount` 欄位。 |
 | `src/collection/types.ts`、`src/collection/config.ts`、`src/collection/state.ts`、`src/collection/migrate.ts` | 五行圖鑑＋成就系統純邏輯層：型別定義、配置載入、狀態管理、舊存檔 migration。 | 新增；28 項測試。 |
-| `src/config/collection.json` | 圖鑑＋成就資料驅動配置（14 條圖鑑、8 銅級成就）。 | 新增未追蹤。 |
-| `src/ui/collectionTab.ts` | 天賦頁「圖鑑」Tab 渲染（萬獸圖鑑＋成就一覽）。 | 新增未追蹤。 |
-| `src/__tests__/collection.test.ts` | 五行圖鑑專項測試（migration、recordKill、evaluateAchievements 等邊界）。 | 新增未追蹤；28 項測試。 |
+| `src/config/collection.json` | 圖鑑＋成就資料驅動配置（30 條圖鑑、20 項成就）。 | 新增未追蹤；含 Lv2／配方／詞條。 |
+| `src/ui/collectionTab.ts` | 天賦頁「圖鑑」Tab 渲染（萬獸圖鑑＋成就一覽）；分類標籤妖／器／魄。 | 新增未追蹤。 |
+| `src/__tests__/collection.test.ts` | 五行圖鑑專項測試（migration、recordKill、evaluateAchievements、config integrity 等邊界）。 | 新增未追蹤；52 項測試。 |
 | `docs/ROADMAP.md` | 簡化版開發路線圖（P0–P4 分階段清單）。 | 新增未追蹤。 |
 | `src/talent.ts`、`src/scenes/scenesManager.ts`、`src/__tests__/talent.test.ts` | 天賦資料、五臟敘事、分支漸進開放、經脈頁渲染與單元測試。 | P3 Gate B 新增 TalentSaveData +7 目標欄位、migration 接線。 |
 | `docs/NEXT_CODEX_HANDOFF.md` | P1 內容擴充階段 Codex 美術接手事項文件。 | 新增未追蹤；記錄 6 項待美術實作項目。 |
@@ -128,6 +128,7 @@
 | 尚未驗證項目 | 20×10 教學全圖是否免拖曳、塔／岩壁前後景與連接、Mobile 橫向 HUD、外置塔精靈失敗 fallback、Canvas 效能與視覺可讀性（需 Antigravity 畫面驗收）。 |
 | 難度選擇驗證 | 2026-07-19：新增 DifficultyLevel type、DIFFICULTY_PRESETS config、主選單 UI 三按鈕選擇器、CSS 紙本風格、battle 掛鉤（起始金幣+20/0/-15、怪物 HP 0.8/1.0/1.3 倍率）。完整 Vitest 14 檔、298/298 通過；build 64 modules、1.14s 成功。 |
 | 成就解鎖通知驗證 | 2026-07-19：新增獨立 DOM overlay（code-native 獎盃 SVG、銅／銀 tier、3 秒自動收起、點擊收起、序列佇列、live region、reduced-motion），並接入擊殺／合成／結算三條新成就路徑。完整 Vitest 14 檔、298/298 通過；build 65 modules clean；待 Antigravity 人工目視確認。 |
+| 圖鑑 expansion 驗證 | 2026-07-19：BestiaryDefinition 擴充 level/recipe 欄位；collection.json 新增 16 條目（7 Lv2、6 配方、3 詞條）；state.ts 改為 data-driven 成就計算；collectionIcons.ts 補 16 SVG；collectionTab.ts 分類標籤區分妖／器／魄。完整 Vitest 14 檔、302/302 通過；build 65 modules、1.30s 成功。 |
 
 ## 下一步決策（2026-07-19）
 
@@ -141,8 +142,8 @@
 | P3 Gate A | ✅ 已關閉。 | P2-E 已關閉。 | 194/194、build 42 modules、瀏覽器全額退款提示與數值邊界測試通過。 |
 | P3 Gate B | ✅ Fully Completed（含 v1.1 F6/F10 + Antigravity 驗收）。 | Gate A 已完成。 | 240/240 Vitest、54 modules build clean；全部 F 級與美術接手事項完成；Antigravity 畫面驗收通過。 |
 | 五行圖鑑＋銅級成就 | ✅ 已完成：14 條圖鑑（7 怪物＋7 基礎塔）、8 銅級成就、資料驅動配置、戰鬥掛鉤、migration、天賦頁 UI、28 項測試。 | — | 269/12 Vitest、build clean。 |
-| 銀級成就＋進階圖鑑 | ✅ 銀級成就邏輯已完成（12 成就），進階圖鑑待 Codex Lore。 | 銅級成就已完成。 | 298/14 Vitest、build clean。 |
-| 難度選擇（3 級） | ✅ 已完成：簡單/普通/困難，影響怪物 HP 倍率（0.8/1.0/1.3）與起始金幣（+20/0/-15）。 | P3 Gate B 全數完成。 | 298/14 Vitest、build clean。 |
+| 銀級成就＋進階圖鑑 | ✅ 全部完成：銀級 12 成就邏輯＋16 條進階圖鑑（Lv2／配方／詞條）含 Lore。 | 銅級成就已完成。 | 302/14 Vitest、build clean。 |
+| 難度選擇（3 級） | ✅ 已完成：簡單/普通/困難，影響怪物 HP 倍率（0.8/1.0/1.3）與起始金幣（+20/0/-15）。 | P3 Gate B 全數完成。 | 302/14 Vitest、build clean。 |
 | P4（延後） | `ISaveStorage`／`IPlatform`、Tauri／Android、天象輪。 | 等待更多玩家回饋與平台方向確定。 | 目前不作為下一步。 |
 
 ---

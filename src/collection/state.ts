@@ -1,7 +1,6 @@
 import type { TalentSaveData } from '../talent';
 import type { BestiarySaveData, AchievementProgress } from './types';
-import { getAllAchievements } from './config';
-import { getTowerDef } from '../towers';
+import { getAllAchievements, getAllBestiaryEntries } from './config';
 
 function ensureBestiary(data: TalentSaveData): BestiarySaveData {
   if (!data.collectionBestiary) {
@@ -101,8 +100,7 @@ export function evaluateAchievements(data: TalentSaveData): string[] {
   const newlyCompleted: string[] = [];
 
   const bestiary = data.collectionBestiary ?? { enemies: {}, towers: {}, traits: {} };
-  const recipeTowerIds = ['wood_fire', 'fire_earth', 'earth_metal', 'metal_water', 'water_wood', 'yin_yang'];
-  const recipesDiscovered = recipeTowerIds.filter(id => bestiary.towers[id]).length;
+  const allEntries = getAllBestiaryEntries();
 
   for (const ach of getAllAchievements()) {
     if (completed.has(ach.id)) continue;
@@ -115,7 +113,11 @@ export function evaluateAchievements(data: TalentSaveData): string[] {
       case 'highestWave': value = progress.highestWave; break;
       case 'bossKills': value = progress.bossKills; break;
       case 'totalDefeats': value = progress.totalDefeats; break;
-      case 'recipesDiscovered': value = recipesDiscovered; break;
+      case 'recipesDiscovered': {
+        value = allEntries.filter(e => e.category === 'tower' && e.recipe === true)
+          .map(e => e.id).filter(id => bestiary.towers[id]).length;
+        break;
+      }
       case 'talentPointsSpent': value = data.spentTalentPoints ?? 0; break;
       case 'highestAscension': value = progress.highestAscension; break;
       case 'totalTaijiMerges': value = progress.totalTaijiMerges; break;
@@ -123,12 +125,8 @@ export function evaluateAchievements(data: TalentSaveData): string[] {
       case 'singleElementCompletions': value = progress.singleElementCompletions; break;
       case 'maxConsecutivePerfectWaves': value = progress.maxConsecutivePerfectWaves; break;
       case 'lv2TowersUnlocked': {
-        const baseIds = ['fire', 'water', 'wood', 'earth', 'metal', 'yin', 'yang'];
-        value = Object.keys(bestiary.towers).filter(id => {
-          if (baseIds.includes(id)) return false;
-          const def = getTowerDef(id as any);
-          return def !== null && def.level >= 2;
-        }).length;
+        value = allEntries.filter(e => e.category === 'tower' && e.level != null && e.level >= 2 && !e.recipe)
+          .map(e => e.id).filter(id => bestiary.towers[id]).length;
         break;
       }
     }

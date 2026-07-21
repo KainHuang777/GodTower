@@ -9,6 +9,8 @@ export interface BestiaryDefinition {
   element: string;
   lore: string;
   spriteType: string;
+  level?: number;
+  recipe?: boolean;
 }
 
 export interface AchievementDefinition {

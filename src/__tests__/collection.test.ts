@@ -190,6 +190,7 @@ describe('bestiary counts', () => {
     ensureCollectionFields(data);
     const c = getBestiaryUnlockedCount(data);
     expect(c.total).toBe(0);
+    expect(c.traits).toBe(0);
   });
 
   it('getBestiaryUnlockedCount counts correctly', () => {
@@ -201,6 +202,7 @@ describe('bestiary counts', () => {
     const c = getBestiaryUnlockedCount(data);
     expect(c.enemies).toBe(2);
     expect(c.towers).toBe(1);
+    expect(c.traits).toBe(0);
     expect(c.total).toBe(3);
   });
 });
@@ -218,8 +220,8 @@ describe('config integrity', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('config has at least 14 bestiary entries', () => {
-    expect(getAllBestiaryEntries().length).toBeGreaterThanOrEqual(14);
+  it('config has 30 bestiary entries (7 enemies + 7 base + 7 Lv2 + 6 recipe + 3 traits)', () => {
+    expect(getAllBestiaryEntries().length).toBe(30);
   });
 
   it('config has at least 8 achievements', () => {
@@ -232,6 +234,30 @@ describe('config integrity', () => {
     const p = getAchievementProgress(data);
     expect(p.completed).toBe(0);
     expect(p.total).toBeGreaterThanOrEqual(8);
+  });
+
+  it('bestiary has correct category counts', () => {
+    const entries = getAllBestiaryEntries();
+    expect(entries.filter(e => e.category === 'enemy').length).toBe(7);
+    expect(entries.filter(e => e.category === 'tower').length).toBe(20);
+    expect(entries.filter(e => e.category === 'trait').length).toBe(3);
+  });
+
+  it('bestiary Lv2 towers have level field and non-recipe have level only', () => {
+    const entries = getAllBestiaryEntries();
+    const lv2Only = entries.filter(e => e.level != null && e.level >= 2 && !e.recipe);
+    expect(lv2Only.length).toBe(7);
+    lv2Only.forEach(e => expect(e.category).toBe('tower'));
+  });
+
+  it('bestiary recipe towers have recipe flag and level field', () => {
+    const entries = getAllBestiaryEntries();
+    const recipe = entries.filter(e => e.recipe === true);
+    expect(recipe.length).toBe(6);
+    recipe.forEach(e => {
+      expect(e.category).toBe('tower');
+      expect(e.level).toBe(2);
+    });
   });
 });
 
@@ -358,7 +384,10 @@ describe('silver achievement evaluation', () => {
     ensureCollectionFields(data);
     data.collectionBestiary = {
       enemies: {},
-      towers: { wood_fire: true, fire_earth: true, earth_metal: true, metal_water: true, water_wood: true, yin_yang: true },
+      towers: {
+        wood_fire: true, fire_earth: true, earth_metal: true,
+        metal_water: true, water_wood: true, yin_yang: true,
+      },
       traits: {},
     };
     const newly = evaluateAchievements(data);
@@ -419,6 +448,21 @@ describe('silver achievement evaluation', () => {
     };
     const newly = evaluateAchievements(data);
     expect(newly).toContain('full_tower_lv2');
+  });
+
+  it('does not grant full_tower_lv2 with only recipe towers', () => {
+    const data = makeData();
+    ensureCollectionFields(data);
+    data.collectionBestiary = {
+      enemies: {},
+      towers: {
+        wood_fire: true, fire_earth: true, earth_metal: true,
+        metal_water: true, water_wood: true, yin_yang: true,
+      },
+      traits: {},
+    };
+    const newly = evaluateAchievements(data);
+    expect(newly).not.toContain('full_tower_lv2');
   });
 
   it('config has 20 achievements total (8 bronze + 12 silver)', () => {

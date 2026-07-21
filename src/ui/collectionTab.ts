@@ -19,7 +19,7 @@ export function renderCollectionTab(): void {
   allBestiary.forEach(entry => {
     const unlocked = talentData.collectionBestiary?.enemies?.[entry.id] === true ||
       talentData.collectionBestiary?.towers?.[entry.id] === true;
-    const cat = entry.category === 'enemy' ? '妖' : '器';
+    const cat = entry.category === 'enemy' ? '妖' : entry.category === 'trait' ? '魄' : '器';
     if (unlocked) {
       html += `<div class="collection-card unlocked" data-id="${entry.id}">`;
       html += `<span class="collection-icon-frame">${getCollectionIcon(entry.id)}</span>`;

@@ -1,3 +1,12 @@
+2026-07-21 Implement Bestiary Expansion & Data-Driven Achievements
+- [ROADMAP.md] Updated development progress roadmap for Bestiary Expansion (Lv2, Recipes, Traits).
+- [src/config/collection.json] Added 16 new bestiary definitions (7 Lv2 towers, 6 recipe towers, 3 traits) with lore, version bumped to 1.1.0.
+- [src/collection/types.ts] [src/collection/state.ts] Refactored recipe and L2 tower checks to be data-driven from bestiary configuration instead of hardcoded lists.
+- [src/ui/collectionIcons.ts] Added 16 code-native SVG icons for the new towers and traits.
+- [src/ui/collectionTab.ts] Updated tab category labels for elements to (妖/器/魄).
+- [src/__tests__/collection.test.ts] Added configuration integrity unit tests validating entries, category distribution, and structure limits.
+- Build verified: npm run build and npm test (302/302 passed) completed successfully.
+
 2026-07-19 Update README with Project Metrics and AI Model History
 - [README.md] Updated project scale metrics (23,209 lines across 80 code files), detailed module architecture breakdown (11 core modules), and expanded the AI Model History log to include Gemini 3.5 Flash (Medium). Cleaned up redundant section duplicates.
 - Build verified: npm run build and npm test (298/298 passed) completed successfully.
