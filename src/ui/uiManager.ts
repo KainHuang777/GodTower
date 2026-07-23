@@ -118,14 +118,25 @@ function updateHudGoalProgress(): void {
   if (!progressEl) return;
 
   const goal = getGoalById(gameState.talentData.nextGoalId ?? null);
-  if (!goal || goal.completion.operator !== 'gte') {
+  if (!goal) {
+    progressEl.hidden = true;
+    return;
+  }
+
+  // v2: 只處理單一條件葉，複合條件不顯示進度
+  const completion = goal.completion;
+  if (!('operator' in completion) || !('key' in completion) || !('value' in completion)) {
+    progressEl.hidden = true;
+    return;
+  }
+  if (completion.operator !== 'gte') {
     progressEl.hidden = true;
     return;
   }
 
   let current: number;
   let label: string;
-  switch (goal.completion.key) {
+  switch (completion.key) {
     case 'highestWave':
       current = gameState.wave;
       label = '波次';
@@ -144,7 +155,7 @@ function updateHudGoalProgress(): void {
   }
 
   progressEl.hidden = false;
-  progressEl.textContent = `🎯 ${goal.label}・${label} ${Math.min(current, goal.completion.value)}/${goal.completion.value}`;
+  progressEl.textContent = `🎯 ${goal.label}・${label} ${Math.min(current, completion.value)}/${completion.value}`;
 }
 
 export function updateWaveProgress() {

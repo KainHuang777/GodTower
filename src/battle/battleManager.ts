@@ -17,13 +17,14 @@ import type { RunStats } from '../goals/types';
 import { refreshGoalSelectorIfPresent } from '../ui/goalSelector';
 import { renderGoalRunResult } from '../ui/goalRunResult';
 import type { GoalRunFeedbackContext } from '../ui/goalRunResult';
-import { updateEndOfRunStats, evaluateAchievements, updateHighestAscension, updateNoWallCompletion, updateSingleElementCompletion, updateMaxConsecutivePerfectWaves } from '../collection/state';
+import { updateEndOfRunStats, evaluateAchievements, updateHighestAscension, updateNoWallCompletion, updateSingleElementCompletion, updateMaxConsecutivePerfectWaves, markCollectionTrait } from '../collection/state';
 import { createInitialTowers } from './mapSetup';
 import { showAchievementUnlockNotification } from '../ui/achievementNotify';
 
 // 引入渲染與 UI 更新
 import { showFloat, initBgStars } from '../renderer/gameRenderer';
 import { updateUI } from '../ui/uiManager';
+import { initSprites } from '../sprites';
 
 export function startBattle() {
   // 關卡可宣告自己的展示尺寸；未宣告者沿用標準大地圖。
@@ -59,6 +60,10 @@ export function startBattle() {
   gameState.maxKillStreak = 0;
   gameState.mergeCount = 0;
   gameState.lowHpCompensationGrants = 0;
+  // v2: 初始化追蹤欄位
+  (gameState as any).runDamageTaken = 0;
+  (gameState as any).runSpecificEnemyKills = {};
+  (gameState as any).runTraitsEncountered = {};
   gameState.enemies = [];
   gameState.towers = [];
   gameState.bullets = [];
@@ -156,12 +161,15 @@ export function spawnWave(waveNum: number) {
   if (gameState.currentMap.id !== 'test_level') {
     for (const cfg of configs) {
       if (cfg.armor && markTraitSeen(gameState.talentData, 'armor')) {
+        markCollectionTrait(gameState.talentData, 'trait_armor');
         showFloat(640, 200, '🛡️ 首次遭遇【裝甲】怪！卡牌池解鎖對抗卡', '#94a3b8', 14);
       }
       if (cfg.regen && markTraitSeen(gameState.talentData, 'regen')) {
+        markCollectionTrait(gameState.talentData, 'trait_regen');
         showFloat(640, 220, '🩹 首次遭遇【再生】怪！卡牌池解鎖對抗卡', '#94a3b8', 14);
       }
       if (cfg.split && markTraitSeen(gameState.talentData, 'split')) {
+        markCollectionTrait(gameState.talentData, 'trait_split');
         showFloat(640, 240, '🌀 首次遭遇【分裂】怪！卡牌池解鎖對抗卡', '#94a3b8', 14);
       }
     }
@@ -212,7 +220,10 @@ export function spawnWave(waveNum: number) {
         armor: cfg.armor,
         regen: cfg.regen,
         split: cfg.split,
-        hasSplit: false
+        hasSplit: false,
+        stealthRemaining: def.stealth ? 60 : 0,
+        phaseTimer: def.phaseCycleFrames ? def.phaseCycleFrames - def.phaseActiveFrames! : 0,
+        phaseActive: false
       });
       if (isStuck) {
         showFloat(startPos.x * gameState.TILE_SIZE + 8, startPos.y * gameState.TILE_SIZE, '道路被封死！', '#ef4444', 15);
@@ -225,6 +236,9 @@ export function spawnWave(waveNum: number) {
 }
 
 export function spawnTestEnemy(enemyType: EnemyTypeId) {
+  if (gameState.currentMap.id !== 'test_level') return;
+  // 測試關卡優先可視性：重建 Canvas 精靈快取，避免開發時 HMR 留下舊矩陣。
+  initSprites();
   const def = ENEMY_DEFS[enemyType];
   if (!def) return;
   const startPos = { ...gameState.SPAWN_POINT };
@@ -261,7 +275,10 @@ export function spawnTestEnemy(enemyType: EnemyTypeId) {
     vy: 0,
     squashX: 1,
     squashY: 1,
-    hitRadius: getEnemyCollisionRadius(enemyType, gameState.TILE_SIZE)
+    hitRadius: getEnemyCollisionRadius(enemyType, gameState.TILE_SIZE),
+    stealthRemaining: def.stealth ? 60 : 0,
+    phaseTimer: def.phaseCycleFrames ? def.phaseCycleFrames - def.phaseActiveFrames! : 0,
+    phaseActive: false
   });
 
   updateUI();
@@ -345,18 +362,43 @@ export function endBattle(isVictory: boolean) {
  * combatTowerCount：def.damage > 0 的「實戰塔」數量（earth 純牆 damage=0 不計）。
  * clearTimeMinutes：以 battleRealStart 計算的真實時間（含波間等待），而非 waveTicks。
  *   未開波放棄時為 0。
+ *
+ * v2 新增欄位：
+ * - mapId: 當前地圖 ID
+ * - difficultyLevel: 難度等級（0=easy, 1=normal, 2=hard）
+ * - difficultyName: 難度名稱
+ * - yinYangTowerCount: 陰/陽塔數量
+ * - synthesisRecipeCount: 配方合成次數（暫未追蹤，設為 0）
+ * - damageTaken: 基地受傷總量（暫未追蹤，設為 0）
+ * - noDamageTaken: 零傷旗標
+ * - specificEnemyKills: 各怪物擊殺數（暫未追蹤，設為空物件）
+ * - traitsEncountered: 本局遭遇詞條（暫未追蹤，設為空物件）
  */
 function buildRunStats(isVictory: boolean): RunStats {
   const wuxingSet = new Set<string>();
   let combatTowerCount = 0;
+  let yinYangTowerCount = 0;
   for (const t of gameState.towers) {
     const el = t.def.element;
     if (el === 'fire' || el === 'water' || el === 'wood' || el === 'metal' || el === 'earth') {
       wuxingSet.add(el);
     }
     if (t.def.damage > 0) combatTowerCount++;
+    if (el === 'yin' || el === 'yang') yinYangTowerCount++;
   }
   const clearTimeMinutes = gameState.battleRealStart > 0 ? (performance.now() - gameState.battleRealStart) / 60000 : 0;
+
+  // v2: 難度映射
+  const difficultyMap: Record<string, { level: number; name: string }> = {
+    'easy': { level: 0, name: 'easy' },
+    'normal': { level: 1, name: 'normal' },
+    'hard': { level: 2, name: 'hard' },
+  };
+  const diff = difficultyMap[gameState.selectedDifficulty] ?? { level: 1, name: 'normal' };
+
+  // v2: 零傷判定
+  const noDamageTaken = (gameState as any).runDamageTaken === 0 ? 1 : 0;
+
   return {
     highestWave: gameState.wave,
     clearedAllWaves: isVictory ? 1 : 0,
@@ -367,6 +409,16 @@ function buildRunStats(isVictory: boolean): RunStats {
     clearTimeMinutes,
     ascensionLevel: gameState.ascensionLevel,
     killCount: gameState.killCount,
+    // v2 新增欄位
+    mapId: gameState.currentMap?.id ?? '',
+    difficultyLevel: diff.level,
+    difficultyName: diff.name,
+    yinYangTowerCount,
+    synthesisRecipeCount: 0, // TODO: 追蹤配方合成次數
+    damageTaken: (gameState as any).runDamageTaken ?? 0,
+    noDamageTaken,
+    specificEnemyKills: (gameState as any).runSpecificEnemyKills ?? {},
+    traitsEncountered: (gameState as any).runTraitsEncountered ?? {},
   };
 }
 

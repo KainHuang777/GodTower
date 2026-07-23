@@ -116,29 +116,39 @@ function replaceContainerChildren(container: HTMLElement, ...children: Node[]): 
 }
 
 function isNearCompletion(goal: GoalDefinition, runStats: RunStats): boolean {
-  if (goal.completion.requiresVictory && !runStats.isVictory) return false;
-  const current = runStats[goal.completion.key] as number;
-  const target = goal.completion.value;
-  switch (goal.completion.operator) {
+  // v2: 只處理單一條件葉，複合條件回傳 false
+  const completion = goal.completion;
+  if (!('key' in completion) || !('operator' in completion) || !('value' in completion)) return false;
+  if (completion.requiresVictory && !runStats.isVictory) return false;
+  const current = (runStats as any)[completion.key] as number;
+  const target = completion.value as number;
+  switch (completion.operator) {
     case 'gte':
       return current < target && current >= target * 0.8;
     case 'lte':
       return current > target && current <= target * 1.2;
     case 'eq':
       return Math.abs(current - target) <= 1;
+    default:
+      return false;
   }
 }
 
 function describeProgress(goal: GoalDefinition, runStats: RunStats): string {
-  if (goal.completion.requiresVictory && !runStats.isVictory) {
+  // v2: 只處理單一條件葉，複合條件回傳預設訊息
+  const completion = goal.completion;
+  if (!('key' in completion) || !('operator' in completion) || !('value' in completion)) {
+    return '完成所有條件以達成目標。';
+  }
+  if (completion.requiresVictory && !runStats.isVictory) {
     return '此目標需完成最終波次後才會計入。';
   }
 
-  const current = runStats[goal.completion.key] as number;
-  const target = goal.completion.value;
-  const label = METRIC_LABEL[goal.completion.key] ?? '進度';
-  const displayCurrent = goal.completion.key === 'clearTimeMinutes' ? current.toFixed(1) : current;
-  const displayTarget = goal.completion.key === 'clearTimeMinutes' ? target.toFixed(1) : target;
-  const operator = goal.completion.operator === 'lte' ? '需不超過' : '目標';
+  const current = (runStats as any)[completion.key] as number;
+  const target = completion.value as number;
+  const label = METRIC_LABEL[completion.key as keyof RunStats] ?? '進度';
+  const displayCurrent = completion.key === 'clearTimeMinutes' ? current.toFixed(1) : current;
+  const displayTarget = completion.key === 'clearTimeMinutes' ? target.toFixed(1) : target;
+  const operator = completion.operator === 'lte' ? '需不超過' : '目標';
   return `${label} ${displayCurrent}／${operator} ${displayTarget}`;
 }

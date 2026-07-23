@@ -605,7 +605,7 @@ export function initInputEvents() {
   if (btnSpawnTestMonster && testMonsterSelect) {
     btnSpawnTestMonster.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (gameState.currentScene !== 'BATTLE') return;
+      if (gameState.currentScene !== 'BATTLE' || gameState.currentMap.id !== 'test_level') return;
       playSFX('click');
       const enemyType = testMonsterSelect.value as EnemyTypeId;
       spawnTestEnemy(enemyType);

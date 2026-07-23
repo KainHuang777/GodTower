@@ -57,7 +57,10 @@ export function updatePhysics() {
           vy: 0,
           squashX: 1,
           squashY: 1,
-          hitRadius: getEnemyCollisionRadius(randType, gameState.TILE_SIZE)
+          hitRadius: getEnemyCollisionRadius(randType, gameState.TILE_SIZE),
+          stealthRemaining: 0,
+          phaseTimer: 0,
+          phaseActive: false
         });
       }
     }
@@ -98,8 +101,23 @@ export function updatePhysics() {
       }
     }
 
+    // Phase 機制：循環切換虛無態
+    if (e.phaseTimer !== undefined && e.phaseTimer > 0) {
+      e.phaseTimer--;
+      if (e.phaseTimer <= 0) {
+        e.phaseActive = !e.phaseActive;
+        const def = ENEMY_DEFS[e.type];
+        e.phaseTimer = e.phaseActive ? (def.phaseCycleFrames! - def.phaseActiveFrames!) : def.phaseActiveFrames!;
+      }
+    }
+
+    // Stealth 機制：遞減隱身時間
+    if (e.stealthRemaining && e.stealthRemaining > 0) {
+      e.stealthRemaining--;
+    }
+
     // DOT 傷害
-    if (e.dotDuration > 0) {
+    if (e.dotDuration > 0 && !e.phaseActive) {
       let dotDmg = e.dotDamage;
       if (gameState.wave >= 6 && e.dotElement) {
         const elBonus = getElementBonus(e.dotElement, e.element, gameState.wave);
@@ -123,6 +141,9 @@ export function updatePhysics() {
         const award = Math.max(1, Math.floor(e.goldAward * goldMult));
         gameState.gold += award;
         gameState.killCount++;
+        // v2: 追蹤各怪物擊殺數
+        const kills = (gameState as any).runSpecificEnemyKills ??= {};
+        kills[e.type] = (kills[e.type] ?? 0) + 1;
         recordKill(gameState.talentData, e.type, e.type === 'boss_dragon');
         checkAchievementUnlocks();
         gameState.currentKillStreak++;
@@ -179,6 +200,7 @@ export function updatePhysics() {
           if (e.waypointIndex > gameState.WAYPOINTS.length) {
             if (gameState.currentMap.id !== 'test_level') {
               gameState.hp -= 1;
+              (gameState as any).runDamageTaken = ((gameState as any).runDamageTaken ?? 0) + 1;
               gameState.shakeIntensity = 8.0;
               gameState.shakeDecay = 0.25;
               gameState.runBreachOccurred = true;
@@ -229,6 +251,9 @@ export function updatePhysics() {
     let minDist = Infinity;
 
     for (const e of gameState.enemies) {
+      // Stealth/Phase 機制：隱身或虛無態的怪物不可被鎖定（陽塔可破陰系隱身/虛無）
+      if (e.phaseActive && tower.def.element !== 'yang') continue;
+      if (e.stealthRemaining && e.stealthRemaining > 0 && tower.def.element !== 'yang') continue;
       // Roguelike 全場射程加成
       const effectiveRange = tower.def.range + gameState.roguelikeState.rangeBonusGlobal;
       const d = Math.sqrt((e.x - tx) ** 2 + (e.y - ty) ** 2) / gameState.TILE_SIZE;
@@ -310,6 +335,14 @@ export function updatePhysics() {
       // 擊中處理
       let dmg = b.damage;
 
+      // Evasion 機制：雷鷹有機率完全閃避攻擊
+      const targetDef = ENEMY_DEFS[target.type];
+      if (targetDef.evasion && Math.random() < targetDef.evasion) {
+        showFloat(target.x, target.y - 10, '閃避!', '#f59e0b');
+        gameState.bullets.splice(i, 1);
+        continue;
+      }
+
       // 五行相剋加成
       const bonus = getElementBonus(b.element, b.targetEnemy.element, gameState.wave);
       dmg = Math.floor(dmg * bonus);
@@ -374,6 +407,11 @@ export function updatePhysics() {
       // % 血量傷害
       if (b.hpPctDamage) {
         dmg += Math.floor(b.targetEnemy.maxHp * b.hpPctDamage);
+      }
+
+      // Innate Armor 機制：玄龜的岩甲減免直接傷害（DOT/%HP 不受影響）
+      if (targetDef.innateArmor && !b.trueDamage) {
+        dmg = Math.floor(dmg * (1 - targetDef.innateArmor));
       }
 
       b.targetEnemy.hp -= dmg;
@@ -499,6 +537,9 @@ export function updatePhysics() {
           const award = Math.max(1, Math.floor(b.targetEnemy.goldAward * goldMult));
           gameState.gold += award;
           gameState.killCount++;
+          // v2: 追蹤各怪物擊殺數
+          const kills = (gameState as any).runSpecificEnemyKills ??= {};
+          kills[b.targetEnemy.type] = (kills[b.targetEnemy.type] ?? 0) + 1;
           recordKill(gameState.talentData, b.targetEnemy.type, b.targetEnemy.type === 'boss_dragon');
           checkAchievementUnlocks();
           gameState.currentKillStreak++;
@@ -522,6 +563,9 @@ export function updatePhysics() {
           const award = Math.max(1, Math.floor(gameState.enemies[j].goldAward * goldMult));
           gameState.gold += award;
           gameState.killCount++;
+          // v2: 追蹤各怪物擊殺數
+          const kills = (gameState as any).runSpecificEnemyKills ??= {};
+          kills[gameState.enemies[j].type] = (kills[gameState.enemies[j].type] ?? 0) + 1;
           recordKill(gameState.talentData, gameState.enemies[j].type, gameState.enemies[j].type === 'boss_dragon');
           checkAchievementUnlocks();
           showFloat(gameState.enemies[j].x, gameState.enemies[j].y, `+${award}g`, '#f59e0b');
@@ -734,7 +778,10 @@ function triggerSplit(e: Enemy) {
       squashY: 1.0,
       hitRadius: getEnemyCollisionRadius('salamander', gameState.TILE_SIZE),
       isStuck: e.isStuck,
-      pathBlockedHintShown: e.pathBlockedHintShown
+      pathBlockedHintShown: e.pathBlockedHintShown,
+      stealthRemaining: 0,
+      phaseTimer: 0,
+      phaseActive: false
     });
   }
   showFloat(e.x, e.y, '💥 分裂！', '#ef4444', 16);

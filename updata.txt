@@ -1,3 +1,12 @@
+2026-07-24 Expand Goal System Tiers, Enemy Configurations & Visual/Battle Enhancements
+- [src/config/goals.json] [src/goals/*] Expanded target goals configuration with difficulty tiers, progress tracking, and reward evaluation logic.
+- [src/config/enemies.json] [src/enemies.ts] [src/sprites.ts] Enhanced enemy types, attributes, and pixel sprite rendering logic.
+- [src/battle/battleManager.ts] [src/battle/physics.ts] Integrated live target evaluation, projectile physics calculations, and battle status updates.
+- [src/maps.ts] [src/ui/visualRefresh.css] Expanded layout maps configuration and updated visual refresh CSS styling.
+- [scripts/fusion-gemini-bridge.ps1] [NEW] Added Fusion Gemini helper bridge script for external agent context sync.
+- [README.md] [ROADMAP.md] [docs/*] Updated handoff documents and project roadmap details.
+- Build verified: TypeScript check (0 errors) and Vitest suite (301/301 tests passed) completed successfully.
+
 2026-07-21 Implement Bestiary Expansion & Data-Driven Achievements
 - [ROADMAP.md] Updated development progress roadmap for Bestiary Expansion (Lv2, Recipes, Traits).
 - [src/config/collection.json] Added 16 new bestiary definitions (7 Lv2 towers, 6 recipe towers, 3 traits) with lore, version bumped to 1.1.0.

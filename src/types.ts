@@ -42,6 +42,9 @@ export interface Enemy {
   hasSplit?: boolean;
   dotSourceTowerId?: number; // P2 tracking for DOT damage source
   dotElement?: Element; // P3 tracking for DOT damage element
+  stealthRemaining?: number;
+  phaseTimer?: number;
+  phaseActive?: boolean;
 }
 
 export interface Tower {

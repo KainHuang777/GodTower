@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "goals": [
     {
       "id": "reach_wave_15",
@@ -11,7 +11,8 @@
         "key": "highestWave",
         "operator": "gte",
         "value": 15
-      }
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 1 }]
     },
     {
       "id": "clear_20_boss",
@@ -25,7 +26,8 @@
         "value": 1,
         "requiresVictory": true
       },
-      "unlock": { "minRunsCompleted": 1 }
+      "unlock": { "minRunsCompleted": 1 },
+      "rewards": [{ "type": "talentPoints", "amount": 2 }]
     },
     {
       "id": "synthesis_master",
@@ -37,7 +39,8 @@
         "key": "mergeCount",
         "operator": "gte",
         "value": 8
-      }
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 1 }]
     },
     {
       "id": "five_elements",
@@ -49,7 +52,8 @@
         "key": "wuxingElementCount",
         "operator": "gte",
         "value": 5
-      }
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 1 }]
     },
     {
       "id": "minimalist",
@@ -62,7 +66,8 @@
         "operator": "lte",
         "value": 6,
         "requiresVictory": true
-      }
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 2 }]
     },
     {
       "id": "speed_clear",
@@ -75,7 +80,8 @@
         "operator": "lte",
         "value": 5,
         "requiresVictory": true
-      }
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 3 }]
     },
     {
       "id": "asc2_clear",
@@ -89,7 +95,8 @@
         "value": 1,
         "requiresVictory": true
       },
-      "unlock": { "minAscension": 2 }
+      "unlock": { "minAscension": 2 },
+      "rewards": [{ "type": "talentPoints", "amount": 3 }]
     },
     {
       "id": "boss_slayer",
@@ -101,7 +108,145 @@
         "key": "killCount",
         "operator": "gte",
         "value": 100
-      }
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 2 }]
+    },
+    {
+      "id": "rift_yin_yang",
+      "label": "陰陽裂界平衡",
+      "description": "在陰陽裂界地圖通關，且陰塔與陽塔各至少 2 座。",
+      "emoji": "🌑",
+      "category": "element",
+      "completion": {
+        "type": "and",
+        "conditions": [
+          { "type": "string", "key": "mapId", "operator": "eq", "value": "rift", "requiresVictory": true },
+          { "key": "yinYangTowerCount", "operator": "gte", "value": 4, "requiresVictory": true }
+        ]
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 3 }]
+    },
+    {
+      "id": "spiral_minimalist",
+      "label": "盤蛇極簡",
+      "description": "在盤蛇古陣以普通以上難度通關，且實戰塔不超過 5 座。",
+      "emoji": "🌀",
+      "category": "restriction",
+      "completion": {
+        "type": "and",
+        "conditions": [
+          { "type": "string", "key": "mapId", "operator": "eq", "value": "spiral", "requiresVictory": true },
+          { "key": "difficultyLevel", "operator": "gte", "value": 1, "requiresVictory": true },
+          { "key": "combatTowerCount", "operator": "lte", "value": 5, "requiresVictory": true }
+        ]
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 3 }]
+    },
+    {
+      "id": "anti_stealth_hunter",
+      "label": "影貓獵手",
+      "description": "通關且單局擊殺 30 隻以上影貓。",
+      "emoji": "🐱",
+      "category": "combat",
+      "completion": {
+        "type": "and",
+        "conditions": [
+          { "key": "killCount", "operator": "gte", "value": 30, "requiresVictory": true },
+          { "key": "killCount", "subKey": "shadow_cat", "operator": "gte", "value": 30, "requiresVictory": true }
+        ]
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 2 }]
+    },
+    {
+      "id": "armor_breaker",
+      "label": "碎甲狂潮",
+      "description": "通關且單局擊殺 20 隻以上玄龜。",
+      "emoji": "🐢",
+      "category": "combat",
+      "completion": {
+        "type": "and",
+        "conditions": [
+          { "key": "killCount", "operator": "gte", "value": 20, "requiresVictory": true },
+          { "key": "killCount", "subKey": "basalt_tortoise", "operator": "gte", "value": 20, "requiresVictory": true }
+        ]
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 2 }]
+    },
+    {
+      "id": "evasion_counter",
+      "label": "閃避對策",
+      "description": "存活至第 20 波且擊殺 15 隻以上雷鷹。",
+      "emoji": "🦅",
+      "category": "combat",
+      "completion": {
+        "type": "and",
+        "conditions": [
+          { "key": "highestWave", "operator": "gte", "value": 20 },
+          { "key": "killCount", "subKey": "thunder_roc", "operator": "gte", "value": 15 }
+        ]
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 2 }]
+    },
+    {
+      "id": "phase_tracker",
+      "label": "相位追蹤",
+      "description": "存活至第 20 波且擊殺 20 隻以上幽魂。",
+      "emoji": "👻",
+      "category": "combat",
+      "completion": {
+        "type": "and",
+        "conditions": [
+          { "key": "highestWave", "operator": "gte", "value": 20 },
+          { "key": "killCount", "subKey": "wandering_wisp", "operator": "gte", "value": 20 }
+        ]
+      },
+      "rewards": [{ "type": "talentPoints", "amount": 2 }]
+    },
+    {
+      "id": "zero_breach",
+      "label": "滴水不漏",
+      "description": "通關且基地全程未受傷。",
+      "emoji": "🛡️",
+      "category": "restriction",
+      "completion": {
+        "key": "noDamageTaken",
+        "operator": "eq",
+        "value": 1,
+        "requiresVictory": true
+      },
+      "unlock": { "completedGoalIds": ["clear_20_boss"] },
+      "rewards": [{ "type": "talentPoints", "amount": 5 }]
+    },
+    {
+      "id": "yin_yang_void",
+      "label": "太極歸一",
+      "description": "在困難難度通關，且不建造任何五行基礎塔（僅使用陰陽塔與合成塔）。",
+      "emoji": "☯️",
+      "category": "restriction",
+      "completion": {
+        "type": "and",
+        "conditions": [
+          { "type": "string", "key": "difficultyName", "operator": "eq", "value": "hard", "requiresVictory": true },
+          { "key": "wuxingElementCount", "operator": "eq", "value": 0, "requiresVictory": true }
+        ]
+      },
+      "unlock": { "completedGoalIds": ["asc2_clear"] },
+      "rewards": [{ "type": "talentPoints", "amount": 5 }]
+    },
+    {
+      "id": "asc5_clear",
+      "label": "天賦試煉·Asc5",
+      "description": "於 Ascension 5 以上通關本局。",
+      "emoji": "🎖️",
+      "category": "ascension",
+      "completion": {
+        "key": "clearedAllWaves",
+        "operator": "eq",
+        "value": 1,
+        "requiresVictory": true
+      },
+      "unlock": { "minAscension": 5, "completedGoalIds": ["asc2_clear"] },
+      "rewards": [{ "type": "talentPoints", "amount": 5 }]
     }
   ]
 }

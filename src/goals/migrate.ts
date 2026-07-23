@@ -31,6 +31,8 @@ export function ensureGoalFields(data: TalentSaveData): void {
   data.mainMenuSeenGoalId ??= null;
   data.ritualEnabled ??= true;
   data.formalRunsCompleted ??= 0;
+  // v2: 補上已領取獎勵標記
+  data.claimedGoalRewards ??= {};
 
   // 清掉指向已刪目標的 nextGoalId
   data.nextGoalId = validateGoalId(data.nextGoalId);

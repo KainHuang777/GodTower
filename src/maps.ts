@@ -275,6 +275,88 @@ export const MAPS: MapConfig[] = [
       { x: 15, y: 35 }, { x: 30, y: 5 }, { x: 45, y: 35 }, { x: 60, y: 5 }
     ],
     obstacles: generateHardObstacles()
+  },
+
+  // 5. 盤蛇古陣 (螺旋向心)
+  {
+    id: 'spiral',
+    name: '【簡單+】盤蛇古陣',
+    difficulty: '簡單',
+    description: '路徑從外圍順時針螺旋向中心盤旋，怪物在彎道處堆疊，是 AOE 與減速鏈的絕佳獵場。',
+    spawnPoint: { x: 75, y: 2 },
+    basePoint: { x: 20, y: 20 },
+    waypoints: [
+      { x: 75, y: 10 },
+      { x: 60, y: 10 },
+      { x: 60, y: 30 },
+      { x: 30, y: 30 },
+      { x: 30, y: 12 },
+      { x: 50, y: 12 },
+      { x: 50, y: 25 },
+      { x: 35, y: 25 },
+      { x: 35, y: 18 },
+      { x: 20, y: 18 }
+    ],
+    visibleWaypointIndices: [1, 3, 5, 7, 9],
+    obstacles: [
+      ...generateRectPoints(62, 0, 64, 8),
+      ...generateRectPoints(62, 12, 64, 28),
+      ...generateRectPoints(32, 32, 34, 14),
+      ...generateRectPoints(32, 14, 34, 10),
+      ...generateRectPoints(52, 14, 54, 23),
+      ...generateRectPoints(36, 27, 38, 20),
+      ...generateRectPoints(36, 20, 38, 16),
+      ...generateRectPoints(22, 20, 24, 16),
+    ],
+    presentation: {
+      motif: 'custom',
+      featureTags: ['螺旋向心', '彎道堆疊', 'AOE 獵場'],
+      strategy: '在螺旋彎道內側放置烈焰塔與冰凍塔，怪物會反覆經過射程。',
+      focusPoint: { x: 45, y: 20 },
+      expectedAttackWindows: 4,
+      previewAccent: '#065f46',
+    },
+    dimensions: { cols: 80, rows: 40, tileSize: 24 }
+  },
+
+  // 6. 陰陽裂界 (三線合流)
+  {
+    id: 'rift',
+    name: '【中等+】陰陽裂界',
+    difficulty: '中等',
+    description: '三條獨立通道從左側匯向右方基地，中途合流為一。三路防禦考驗經濟分配，合流處是最後防線。',
+    spawnPoint: { x: 3, y: 5 },
+    basePoint: { x: 76, y: 20 },
+    waypoints: [
+      { x: 20, y: 5 },
+      { x: 35, y: 10 },
+      { x: 50, y: 18 },
+      { x: 65, y: 20 }
+    ],
+    visibleWaypointIndices: [0, 1, 2, 3],
+    obstacles: [
+      ...generateRectPoints(10, 0, 12, 3),
+      ...generateRectPoints(10, 7, 12, 13),
+      ...generateRectPoints(10, 15, 12, 25),
+      ...generateRectPoints(10, 27, 12, 33),
+      ...generateRectPoints(10, 35, 12, 39),
+      ...generateRectPoints(25, 7, 27, 9),
+      ...generateRectPoints(25, 15, 27, 25),
+      ...generateRectPoints(25, 30, 27, 33),
+      ...generateRectPoints(45, 0, 47, 16),
+      ...generateRectPoints(45, 24, 47, 39),
+      ...generateRectPoints(60, 0, 62, 18),
+      ...generateRectPoints(60, 22, 62, 39),
+    ],
+    presentation: {
+      motif: 'custom',
+      featureTags: ['三線合流', '三路防禦', '經濟壓力'],
+      strategy: '用岩壁塔封閉 1-2 條路線迫使怪物繞行，集中火力於合流區。',
+      focusPoint: { x: 50, y: 20 },
+      expectedAttackWindows: 3,
+      previewAccent: '#7c3aed',
+    },
+    dimensions: { cols: 80, rows: 40, tileSize: 24 }
   }
 ];
 

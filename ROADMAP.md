@@ -1,15 +1,12 @@
 # 🗺️ 五行迷宮塔防 — 開發路線圖 (ROADMAP)
 
-> 本文件記錄已完成的里程碑與未來計劃中的功能方向。  
-> 狀態標記：✅ 已完成｜🚧 進行中｜📋 計劃中｜💡 想法探索
+> 狀態標記：✅ 已完成｜🚧 進行中｜📋 計劃中
 
 ---
 
 ## 任務恢復指示
 
-> 開始新任務時，先讀取本 Roadmap，優先查看 Current Task Context、Technical Decisions、Files and Components 及 Verification，再檢查目前程式碼與測試結果。若文件內容與程式碼不一致，以目前程式碼與最新驗證結果為準，並在繼續工作前更新 Roadmap。
-
-更新規則：每完成一個重要步驟，即更新 **Current Task Context**；任務完成或切換主題時，將具體摘要移至 **Task History**。資訊無法從程式碼、Git 或測試確認時，一律標記為 `TODO`／`需要確認`。
+開始新任務時，先讀取本 Roadmap → 檢查程式碼與 `npm test` / `npm run build` 結果 → 以程式碼為準更新本文件。
 
 ---
 
@@ -17,420 +14,143 @@
 
 | 項目 | 內容 |
 |:---|:---|
-| 專案目標 | 製作以五行、陰陽、迷宮建構與塔防合成為核心的 HTML5 Canvas Web 遊戲。 |
-| 目前階段 | P3 Gate B 全數完成（含 v1.1）；五行圖鑑＋銅／銀級成就與解鎖通知已完成；難度選擇（3 級）已完成。 |
-| 核心功能 | A* 迷宮尋路、七種基礎塔與合成、元素相剋、波次與 Boss、Roguelike 卡牌、天賦持久化、Ascension 難度、教學關卡、五行圖鑑＋成就系統。 |
-| 重要限制 | TypeScript + Vite + HTML5 Canvas；邏輯使用網格座標、渲染使用世界座標；外置圖片與音訊必須具 fallback；尋路僅在放置／拆除事件後重算。 |
-| 非目標／暫緩 | 不遷移 WebGL（先優化 Canvas 2D）；不支援手把；Steam、iOS 與完整 Android 平台版暫緩；AI 高清精靈不作正式視覺基準。 |
+| 專案目標 | 五行、陰陽、迷宮建構為核心的 HTML5 Canvas 塔防遊戲 |
+| 目前階段 | P1 收尾中（程式碼層面完成，僅剩 4 隻新怪物正式像素精靈待 Codex 美術） |
+| 核心功能 | A* 尋路、7 基礎塔+合成、元素相剋（含陰陽互剋）、波次/Boss、Roguelike 卡牌、天賦持久化、Ascension 難度、教學關卡、五行圖鑑+成就、目標系統 v2、11 種怪物+6 張地圖 |
+| 技術棧 | TypeScript + Vite + HTML5 Canvas；網格座標（邏輯）/ 世界座標（渲染）；外置資產具 fallback；尋路事件驅動 |
+| 非目標 | WebGL、手把、Steam/iOS/Android、AI 高清精靈 |
 
 ---
 
 ## Current Task Context
 
-| 欄位 | 目前內容 |
+| 欄位 | 內容 |
 |:---|:---|
-| 當前任務名稱 | 圖鑑 expansion：Lv2／配方／詞條條目 |
-| 任務目標 | 將 16 條新 bestiary（7 Lv2 + 6 配方 + 3 詞條）加入 `collection.json`，重構成就計算為 data-driven。 |
-| 任務狀態 | ✅ 已完成。 |
-| 已完成內容 | • `BestiaryDefinition` 擴充 `level?`／`recipe?` 欄位<br>• `collection.json` 新增 16 條目（7 Lv2、6 配方、3 詞條含 Lore）、version 1.1.0<br>• `state.ts` 的 `recipesDiscovered` 與 `lv2TowersUnlocked` 改為從 bestiary definition data-driven 計算，移除硬編碼 ID 陣列與 `getTowerDef` 依賴<br>• `collectionIcons.ts` 新增 16 個 code-native SVG icon<br>• `collectionTab.ts` 分類標籤更新（妖／器／魄）<br>• 6 個新 config integrity 測試（30 條總數、類別分佈、level/recipe 完整性）<br>• 302 tests／14 files 通過、build 65 modules clean |
-| 進行中內容 | — |
-| 尚未完成內容 | #3 Lore 補完（Lv2／配方／詞條條目文案已到位，待 Codex 潤飾或擴充）、玩家回饋循環／監控。 |
-| 下一個具體行動 | 確認 #3 Lore 是否需要 Codex 潤飾；或進入玩家回饋循環階段。 |
-| 目前阻塞問題 | 無。 |
-| 最近驗證時間 | 2026-07-19（Asia/Taipei）：圖鑑 expansion 完成，302 tests／14 files 通過；build 65 modules clean。 |
+| 任務 | P1 收尾 — 待 Codex 像素精靈替換 |
+| 狀態 | 🚧 進行中（程式碼完成，僅剩美術） |
+| 已完成 | 目標系統 v2（17 goals）、4 新怪物+2 新地圖邏輯、陰陽相剋、新詞條系統、圖鑑 v1.4.0（34 條+Lore）、SVG icon 38 枚、成就通知、難度選擇、UI 翻新 |
+| 待完成 | 無；4 隻新怪物正式 24×24 像素精靈矩陣與 2 幀動畫已完成，待畫面驗收 |
+| 驗證 | 311 tests／14 files、build 65 modules clean（2026-07-24） |
 
 ---
 
 ## Technical Decisions
 
-| 決策 | 原因 | 不應輕易改變的限制 |
+| 決策 | 原因 | 不可輕易改變 |
 |:---|:---|:---|
-| HTML5 Canvas 2D 優先，暫不遷移 WebGL | 已分析瓶頸主要在瓦片 `drawImage` 次數；快取與減少繪製呼叫為先。 | 新視覺功能不得破壞 tile／道路／障礙快取與 60 FPS 目標；WebGL 僅在重新量測後評估。 |
-| 標準關卡使用 80×40、16px 網格；教學／測試可由 `dimensions` 覆寫 | 讓教學 20×10、64px 全圖展示不污染戰鬥核心。 | 禁止在戰鬥核心硬編碼教學尺寸；所有尋路、放置與輸入換算須讀取目前地圖尺寸。 |
-| 原生像素精靈為正式視覺，外部素材可選且須 fallback | AI 高清圖在小網格下模糊且去背不穩；fallback 可避免載入失敗中斷遊戲。 | 外置 `Image`／音訊失敗時必須安全回退到程式像素繪製／可遊玩狀態。 |
-| 塔作為牆體，尋路採事件驅動重算 | 迷宮建構是核心玩法，並避免每幀 A* 造成效能問題。 | 不可為方便視覺效果而改變網格、碰撞或封路可達性規則。 |
-| PC 為主、Mobile 橫向觸控為第一階段支援 | 已有共用響應式 HUD 與觸控操作；完整行動平台尚未立項。 | 不承諾手把、直向 Mobile 或完整 Android／iOS 發布。 |
-| 天賦視覺採「《內經》藏象 × 後世任督脈學 ×《易》象裝飾」三層來源 | 可使用五藏官職、任督與太極八卦，又不把不同時代的內容錯稱為同一部古籍原文。 | 典故與玩法效果分欄；使用「取意／化用」；不得宣稱醫療效果，太極／八卦不得冒稱《黃帝內經》原圖。 |
-| 天賦改名只改顯示層 | 古典主名提升氛圍，機制副標維持新手可讀性，且不破壞既有進度。 | `TalentId`、數值、前置、0／2／6／12 門檻、`td_talent_data` 與戰鬥效果不得因美術第二階段改變。 |
-| 天賦存檔以 `td_talent_data` 為正式 key，舊 key 可 fallback 讀取 | 對齊專案規範，同時保留現有玩家在 `checkpoint_maze_td_talent` 的進度。 | 新存檔只寫正式 key；讀取時先正式 key、後舊 key，不可刪除回退路徑。 |
-| 經脈頁正式圖像使用古書手繪 raster，inline SVG 作 fallback | 生成圖負責人物筆觸與品像，HTML 負責文字／狀態／互動；SVG 保證外置資產缺失時仍可完整使用。 | 正／背人體必須分離；不可把節點文字烘焙進圖片；圖片 `onerror` 必須無縫回退。 |
-| 天賦頁正式名稱為「靈蘭藏象圖」 | 「靈蘭」呼應《素問・靈蘭秘典論》的典藏意象，「藏象」涵蓋五藏、經脈與元素世界觀。 | UI 可保留「五行經脈・天賦修習」作新手副標；後續不得自行改回暫定名或只顯示艱深古語。 |
+| Canvas 2D 優先 | 瓶頸在 drawImage 次數；快取優先 | 新視覺不得破壞 tile/道路快取與 60 FPS |
+| 標準 80×40/16px；教學可覆寫 | 教學 20×10/64px 全圖展示 | 戰鬥核心不得硬編碼教學尺寸 |
+| 原生像素精靈為正式視覺 | AI 圖在小網格模糊；fallback 保可玩性 | 外置資產失敗必須回退程式繪製 |
+| 塔=牆體，事件驅動重算尋路 | 迷宮建構是核心玩法 | 不得因視覺改變網格/碰撞/封路規則 |
+| 天賦視覺：藏象×任督×易象 | 可使用五藏官職、任督太極八卦 | 不宣稱醫療效果；太極八卦不冒稱《內經》原圖 |
+| 天賦改名只改顯示層 | 古典主名提升氛圍，機制副標維持可讀性 | TalentId/數值/前置/門檻/存檔 key 不得改變 |
+| 天賦存檔 key: `td_talent_data` | 對齊規範，舊 key 可 fallback | 新存檔只寫正式 key，讀取先正式後舊 key |
+| 經脈頁：古書 raster + SVG fallback | 生成圖負責筆觸，HTML 負責互動 | 正/背人體分離；節點文字不烘焙進圖片 |
+| 天賦頁正式名稱：靈蘭藏象圖 | 呼應《素問・靈蘭秘典論》典藏意象 | UI 可保留「五行經脈・天賦修習」作副標 |
 
 ---
 
 ## Files and Components
 
-下列「工作區狀態」已於 2026-07-14 以 `git status --short` 重查；除本次新增的規劃文件與 Roadmap 追加內容外，其餘均屬既有未提交改動，請勿覆寫。
-
-| 檔案／元件 | 目前用途 | 工作區狀態 |
+| 檔案 | 用途 | 狀態 |
 |:---|:---|:---|
-| `ROADMAP.md` | 長期規劃、任務上下文、驗證與歷史紀錄。 | 已由本任務擴充；未提交。 |
-| `README.md` | 專案概覽、技術與教學關卡說明。 | 已修改；內容顯示教學尺寸、素材 fallback 與地形參考資訊。 |
-| `src/maps.ts` | 關卡配置與地圖尺寸設定。 | 已修改；涉及教學／測試 `dimensions`。 |
-| `src/battle/battleManager.ts`、`src/battle/towerActions.ts` | 戰鬥流程與塔操作。 | 已修改；需以最新測試確認。 |
-| `src/input/inputHandler.ts` | 滑鼠／觸控輸入與座標處理。 | 已修改；需驗證特殊尺寸地圖座標。 |
-| `src/renderer/gameRenderer.ts`、`src/renderer/tileCache.ts` | Canvas 戰場與地形快取渲染。 | 已修改；需做效能與畫面驗收。 |
-| `src/sprites.ts`、`assets/sprites/towers-v2/` | 塔與怪物精靈、外置塔素材及程式化 fallback。 | 已修改／新增未追蹤資產；須確認每個素材缺失時回退正常。 |
-| `src/ui/uiManager.ts`、`src/ui/visualRefresh.css`、`src/scenes/scenesManager.ts` | 教學文案、HUD、畫面狀態切換、P2-D SVG renderer、P3 Gate A 退款提示與可讀性樣式。 | 已修改；P2-A～P2-E 關閉，P3 Gate A 瀏覽器 HUD 驗收通過。 |
-| `src/ui/talentConnections.ts`、`src/__tests__/talentConnections.test.ts` | 由天賦前置資料衍生 theme／state／kind 連線、外章定義、自適應曲線與純函式測試。 | P2-D 新增；5 項專項測試通過。 |
-| `src/battle/p3GateA.ts`、`src/config/p3GateA.json`、`src/__tests__/p3GateA.test.ts` | P3 Gate A 的元素抗性、前四波退款與單次低血救濟規則。 | 新增；5 項專項測試，納入最新 197/197 與 build。 |
-| `src/goals/types.ts`、`src/goals/config.ts`、`src/goals/state.ts`、`src/goals/migrate.ts` | P3 Gate B 目標系統純邏輯層：型別定義、config 載入、純函式、migration。 | 新增；40 項專項測試，納入最新 244/244 與 build。 |
-| `src/config/goals.json` | P3 Gate B v1 目標清單（8 目標：reach_wave_15/clear_20_boss/synthesis_master/five_elements/minimalist/speed_clear/asc2_clear/boss_slayer）。 | 新增；JSON 資料驅動。 |
-| `src/ui/goalSelector.ts`、`src/ui/goalHint.ts`、`src/ui/goalBoard.ts`、`src/ui/ritual.ts` | P3 Gate B UI 渲染層：天賦頁目標選擇面板、主選單提示、紀錄板、起卦儀式 overlay。 | 新增；NoOpRitualAssetProvider 預設，待 Codex 替換。 |
-| `src/__tests__/goals.test.ts` | P3 Gate B 目標系統專項測試（migration、evaluate、selectGoal、updateGoalStats、commitEndOfRun、reconcileGoalStats 等邊界）。 | 新增；40 項測試。 |
-| `docs/P3_GATE_B_CODEX_HANDOFF.md` | P3 Gate B Codex 美術接手事項文件。 | 新增；記錄 9 項待美術替換項目。 |
-| `src/input/buildPlacement.ts`、`src/__tests__/buildPlacement.test.ts` | 商店點擊／拖放建塔判定與 P3A 連續建造回歸防護。 | 新增；使用者已完成連續岩壁與塔按鈕切換手動驗證。 |
-| `src/state.ts`、`src/config/enemies.json`、`src/__tests__/tutorial.test.ts` | 教學狀態、敵人資料與教學單元測試。 | 已修改；P3 Gate B 新增 `mergeCount` 欄位。 |
-| `src/collection/types.ts`、`src/collection/config.ts`、`src/collection/state.ts`、`src/collection/migrate.ts` | 五行圖鑑＋成就系統純邏輯層：型別定義、配置載入、狀態管理、舊存檔 migration。 | 新增；28 項測試。 |
-| `src/config/collection.json` | 圖鑑＋成就資料驅動配置（30 條圖鑑、20 項成就）。 | 新增未追蹤；含 Lv2／配方／詞條。 |
-| `src/ui/collectionTab.ts` | 天賦頁「圖鑑」Tab 渲染（萬獸圖鑑＋成就一覽）；分類標籤妖／器／魄。 | 新增未追蹤。 |
-| `src/__tests__/collection.test.ts` | 五行圖鑑專項測試（migration、recordKill、evaluateAchievements、config integrity 等邊界）。 | 新增未追蹤；52 項測試。 |
-| `docs/ROADMAP.md` | 簡化版開發路線圖（P0–P4 分階段清單）。 | 新增未追蹤。 |
-| `src/talent.ts`、`src/scenes/scenesManager.ts`、`src/__tests__/talent.test.ts` | 天賦資料、五臟敘事、分支漸進開放、經脈頁渲染與單元測試。 | P3 Gate B 新增 TalentSaveData +7 目標欄位、migration 接線。 |
-| `docs/NEXT_CODEX_HANDOFF.md` | P1 內容擴充階段 Codex 美術接手事項文件。 | 新增未追蹤；記錄 6 項待美術實作項目。 |
-| `docs/TALENT_MERIDIAN_PHASE2_PLAN.md` | 天賦頁第二階段的史料邊界、顯示命名、古書／經脈構圖、實作順序與驗收基準。 | P2-A～P2-E 工程與瀏覽器驗收完成，待 Antigravity 總驗收。 |
-| `assets/ui/talent-atlas-figures-v1.png` | 左右分離的正／背古書手繪人物與淡墨太極八卦底圖。 | 新增；載入失敗時自動回退 inline SVG。 |
-| `.agents/skills/codex-fusion-research/`、`.opencode/agents/fusion-codex-*.md`、`scripts/codex-opencode-*` | Fusion skill、OpenCode 面板代理與受控橋接腳本。 | 已按 `E:\WORK\Fusion\README.md` 安裝；未覆寫 `opencode.json`、憑證或 `.env`。 |
-| `docs/mockups/terrain-material-board-v1.png` | 地形色盤與材質方向參考稿，非正式 runtime 素材。 | 新增未追蹤；待拆分為可平鋪資產。 |
-| `Sample/` | 僅供本機使用的範例／工作檔。 | 已由 `.gitignore` 排除，不推送至公開儲存庫。 |
+| `src/main.ts` | 遊戲主循環、場景管理、輸入處理 | 穩定 |
+| `src/sprites.ts` | 像素精靈矩陣（怪物/塔/地圖 tile） | 4 新怪物 24×24、各 2 幀已接線 |
+| `src/towers.ts` / `src/enemies.ts` | 塔/怪物定義與合成邏輯 | 穩定 |
+| `src/battle/` | 戰鬥核心（physics/battleManager/towerActions/pathfinding/difficulty） | 穩定 |
+| `src/goals/` | 目標系統 v2（types/config/state/migrate） | 新增 |
+| `src/collection/` | 圖鑑+成就系統（types/config/state/migrate） | 新增 |
+| `src/ui/` | UI 元件（collectionTab/collectionIcons/achievementNotify/goalSelector/goalHint/goalBoard/ritual） | 新增/穩定 |
+| `src/talent.ts` | 天賦資料、經脈頁渲染 | 穩定 |
+| `src/config/*.json` | 資料驅動配置（enemies/towers/waves/goals/collection/maps） | 穩定 |
+| `src/renderer/` | Canvas 渲染（gameRenderer/tileCache/particles） | 穩定 |
+| `src/input/` | 輸入處理（inputHandler/buildPlacement） | 穩定 |
+| `src/system/` | Roguelike 卡牌、天賦持久化 | 穩定 |
+| `src/__tests__/` | Vitest 測試（14 檔，311 項） | 穩定 |
+| `docs/NEXT_CODEX_HANDOFF.md` | P1 Codex 美術交接文件 | 待啟動 |
+| `docs/TALENT_MERIDIAN_PHASE2_PLAN.md` | 天賦頁二階規劃 | P2-A~E 已完成 |
 
 ---
 
 ## Verification
 
-| 類別 | 結果／狀態 |
+| 最新驗證 | 311/311 tests（14 檔）、build 65 modules clean（2026-07-24） |
 |:---|:---|
-| 已執行測試 | 2026-07-13 14:58（Asia/Taipei）執行 `npm test` 與 `npm run build`。 |
-| 本次已完成檢查 | `git status --short`、`git diff --stat`、`git diff -- ROADMAP.md`、`package.json` 腳本與 Roadmap 全文盤點。 |
-| 可用測試命令 | `npm test`（Vitest）與 `npm run build`（`tsc && vite build`）。 |
-| 測試結果 | Vitest：12 個測試檔、269/269 測試通過（1.36s）。建置：`tsc && vite build` 成功。 |
-| 精靈重繪驗證 | 2026-07-13 23:28：第一批精靈修改後 Vitest 6 個檔案、178/178 通過（897ms）；`tsc && vite build` 成功（39 modules，982ms）。 |
-| 天賦敘事驗證 | 2026-07-13 23:34：新增分支門檻、舊存檔保持開放等 3 項測試；Vitest 6 個檔案、181/181 通過（948ms）；`tsc && vite build` 成功（39 modules，929ms）。 |
-| 整體精靈重繪驗證 | 2026-07-13 23:40：第二批常規塔／敵人完成後 Vitest 181/181 通過（865ms），build 成功（39 modules，974ms）；岩壁塔鄰接狀態、Boss 4 幀、Lv2／配方塔 2 幀均已盤點。 |
-| 天賦視覺二階規劃驗證 | 2026-07-14：檢查 `index.html`、`src/ui/visualRefresh.css`、`src/scenes/scenesManager.ts`、`src/talent.ts` 與概念圖；確認現況仍是矩形節點、簡化人體底圖、單線任督與固定 50ms 重畫，未達概念圖視覺。逐項核對 16 個 `TalentId`、效果、等級與前置後，完成三層史料邊界、命名表、五階段實作與驗收條件；本輪未改程式，未重跑測試。 |
-| P2-A 顯示資料與 DOM 驗證 | 2026-07-14：新增 3 項 metadata／theme／存檔 key 相容測試；Vitest 6 個測試檔、184/184 通過（896ms）；`npx tsc --noEmit` 通過；`npm run build` 成功（39 modules，964ms）；`git diff --check` 無錯誤。 |
-| P2-B 古書框架與詳情章頁驗證 | 2026-07-14：完成木／青銅框、紙頁、CSS 雲雷角飾、玉印標題、玉牌、章籤與右側固定資訊層級；Vitest 184/184 通過（1.02s）；`npx tsc --noEmit` 與 build 通過（39 modules，926ms）；尚待 Antigravity 視覺確認。 |
-| P2-C 人體任督五藏 SVG 驗證 | 2026-07-15：以單一 responsive inline SVG 完成正／背人體、任督雙線、五藏印記、純 path 太極與低對比八卦；保留 `z0` 裝飾、`z1` 動態連線、`z2` HTML 節點及 `pointer-events: none`。Vitest 184/184 通過（1.08s）；build 成功（39 modules，1.12s）；`git diff --check` 通過；待 Antigravity 視覺確認。 |
-| P2-C 品質重製／Fusion 驗證 | 2026-07-15：Fusion wrapper 回傳 `bridge diagnostic acknowledged`（model 欄位未獨立驗證）；GLM、Kimi 與 Codex QA 完成分工。瀏覽器 1280×720 與 896×414 驗證無水平溢位，生成圖成功載入；暫時移除圖片後自動顯示分離式 SVG fallback；空間方向鍵由 `fortress_1` 正確移至 `fortress_2`。Vitest 184/184 與 production build 通過。 |
-| P2-D 五色經線與外環印記驗證 | 2026-07-15：以去敏感摘要執行 Fusion wrapper；當時的 `ok:true` 只代表 wrapper／CLI 有文字回應，未取得 provider／resolved model／usage 的獨立證據，不把面板輸出視為工作區檢查。Vitest 7 檔 189/189、build 40 modules 通過；瀏覽器 1280×720、896×414、844×390 驗證無頁面水平溢位，端點誤差 0px、鍵盤高亮同步、五個外印不可操作、reduced-motion 規則有效。 |
-| P2-D 青銅印記美術重製驗證 | 2026-07-15：依新去敏感規則派發 OpenCode Go；GLM wrapper `ok:true`（`opencode-go/glm-5.2`），Kimi wrapper `ok:true`（`opencode-go/kimi-k2.7-code`）。採青銅雲雷／方折回紋、inline SVG symbols 與 CSS 浮雕；Vitest 189/189、build 40 modules 通過；瀏覽器 1280×720 與 896×414 確認主印、節點與詳情圖形正常且無頁面水平溢位。 |
-| P2-E 響應式與回退驗證 | 2026-07-16：瀏覽器確認 1366×768、1680×944、896×414、844×390 無頁面水平溢位，橫向最小點按區約 54px、方向鍵維持單一 roving tabindex 與選取同步、五個外印皆為 inert `role=note`；暫時停用人物 raster 後，自動切換 SVG 且四枚互動印章仍可用。Vitest 7 檔 189/189、build 40 modules 通過。另以去敏感摘要呼叫 GLM／Kimi wrapper，兩者均 `ok:true`；因 wrapper 未回傳可獨立驗證的 provider／resolved model／usage metadata，模型身份標記為 `unverified`。 |
-| Roadmap／模型驗證重整 | 2026-07-16：重新盤點下一步為「Antigravity P2-E 美術 Gate → P3 Gate A」；Fusion wrapper 兩次回應的輸出含未受證實的自我派發／讀檔敘述，依規則視為不可信參考，不把它們當作工作區或模型用量證據。 |
-| P2-E 最終美術 Gate 準備 | 2026-07-16：新版 wrapper 下 GLM `ok:true`（16.397s）、Kimi `ok:true`（31.598s），兩者均未觸發 `PANEL_OUTPUT_POLICY_VIOLATION`。主管 Judge 實際檢查 1366×768、1680×944、896×414 畫面，確認人物／印章層級與無水平溢位，並把亮黃選中框改為低飽和朱砂雙線。Vitest 189/189、build 40 modules 通過；Antigravity IDE 已啟動，但視窗擷取因 `0x80004002` 失敗，需人工目視簽核。 |
-| P3 Gate A 驗證 | 2026-07-16：GLM wrapper `ok:true`（27.340s）、Kimi wrapper `ok:true`（46.683s），均通過新版面板輸出政策；模型／provider／usage 未獨立驗證。新增資料驅動 Gate A 模組、實際投入成本追蹤與 5 項邊界測試，完整 Vitest 8 檔、194/194 通過；build 42 modules 成功。瀏覽器戰鬥情境確認 wave 0 顯示「拆除・全額」、全額退款 title 與操作提示一致。 |
-| P3A 輸入回歸與 OpenCode 交接 | 2026-07-17：使用者確認連續放置 12–15 個岩壁與依序點擊塔按鈕均正常；新增輸入防護後完整 Vitest 9 檔、197/197 通過，production build 43 modules 成功。隨後嘗試以去敏感 P3 Gate B 摘要派發 GLM；wrapper 回傳 `ok:false`、`NO_FINAL_TEXT`、`verified:false`，未取得可驗證 OpenCode 模型結果，因此依規則終止派發，Kimi 未呼叫。 |
-| P3 Gate B 最小垂直切片 | 2026-07-17：完整實作下次目標系統。包含 `src/goals/` 邏輯層（types/config/state/migrate + 40 測試）、8 目標 v1 config、talent.ts migration、`src/ui/goalSelector/goalHint/goalBoard/ritual` UI 層、scenesManager/battleManager/inputHandler/towerActions 接線、mergeCount 追蹤、playOpeningRitual singleton guard、F1/F2 防護。Vitest 244/244、build 52 modules；Fusion 3 panel 審查後 P0 全修；Codex 接手事項記錄於 `docs/P3_GATE_B_CODEX_HANDOFF.md`。 |
-| P3 Gate B 驗證 | 2026-07-17：完整 11 檔 Vitest、244/244 通過；`npm run build` 52 modules clean；Fusion 3 panel（Kimi/Qwen/MiMo）審查確認架構無阻塞問題，3 項 P0（playOpeningRitual singleton guard、hasPlayedBefore 布林正規化、7 個邊界 Vitest）已全修。F 級改善與 Codex 接手事項記錄於 `docs/P3_GATE_B_CODEX_HANDOFF.md`。 |
-| 五行圖鑑＋銅級成就驗證 | 2026-07-19：完整 12 檔 Vitest、269/269 通過（含 collection 28 項、goalRunResult 新增測試）；`npm run build` 成功。圖鑑 14 條、銅級成就 8 項、戰鬥掛鉤（physics.ts 擊殺／towerActions.ts 合成／battleManager.ts 結算）、migration 與 UI 均已確認。 |
-| 圖鑑 Tab 連線殘留修正驗證 | 2026-07-19：切入圖鑑時將 `#talentSvg` 設為 hidden 並清空；回到任一天賦經脈時取消 hidden、由既有排程重新繪製。完整 Vitest 12 檔、269/269 通過；build 60 modules 成功。`git diff --check` 僅回報既有 `.opencode/skills/fusion-research/SKILL.md` 第 204、208 行尾端空白，本次未修改。 |
-| #6 核心 UI 改造驗證 | 2026-07-19：完成共用視覺 token、11 枚 inline SVG symbol、主選單守塔令指令面板、HUD 四徽章與操作圖示；844×390 主選單改為品牌／指令左右雙欄。Vitest 12 檔、269/269 通過；build 60 modules 成功。瀏覽器驗收 1280×720 與 844×390，無溢出且 console 無 warning/error。 |
-| 已知錯誤 | `TODO`：本次未發現新的執行期錯誤；既有文件未列出可重現錯誤訊息。 |
-| 尚未驗證項目 | 20×10 教學全圖是否免拖曳、塔／岩壁前後景與連接、Mobile 橫向 HUD、外置塔精靈失敗 fallback、Canvas 效能與視覺可讀性（需 Antigravity 畫面驗收）。 |
-| 難度選擇驗證 | 2026-07-19：新增 DifficultyLevel type、DIFFICULTY_PRESETS config、主選單 UI 三按鈕選擇器、CSS 紙本風格、battle 掛鉤（起始金幣+20/0/-15、怪物 HP 0.8/1.0/1.3 倍率）。完整 Vitest 14 檔、298/298 通過；build 64 modules、1.14s 成功。 |
-| 成就解鎖通知驗證 | 2026-07-19：新增獨立 DOM overlay（code-native 獎盃 SVG、銅／銀 tier、3 秒自動收起、點擊收起、序列佇列、live region、reduced-motion），並接入擊殺／合成／結算三條新成就路徑。完整 Vitest 14 檔、298/298 通過；build 65 modules clean；待 Antigravity 人工目視確認。 |
-| 圖鑑 expansion 驗證 | 2026-07-19：BestiaryDefinition 擴充 level/recipe 欄位；collection.json 新增 16 條目（7 Lv2、6 配方、3 詞條）；state.ts 改為 data-driven 成就計算；collectionIcons.ts 補 16 SVG；collectionTab.ts 分類標籤區分妖／器／魄。完整 Vitest 14 檔、302/302 通過；build 65 modules、1.30s 成功。 |
-
-## 下一步決策（2026-07-19）
-
-| Gate | 範圍 | 進入條件 | 完成證據 |
-|:---|:---|:---|:---|
-| P1 Codex 美術交接 | ✅ 交接文件已建立：`docs/NEXT_CODEX_HANDOFF.md` 記錄 6 項 Codex 待辦（成就通知動畫、MORE SVG icon、圖鑑 Lore 補完、UI 翻新、進度條、可選 UI 改造）。 | 銅級成就 + P3 Gate B 已完成。 | 文件已建立，待 Codex 啟動實作。 |
-
-| Gate | 範圍 | 進入條件 | 完成證據 |
-|:---|:---|:---|:---|
-| P2-E 視覺 Gate | ✅ 已關閉。 | 已關閉。 | P2-A～P2-E 文件、測試與視覺證據。 |
-| P3 Gate A | ✅ 已關閉。 | P2-E 已關閉。 | 194/194、build 42 modules、瀏覽器全額退款提示與數值邊界測試通過。 |
-| P3 Gate B | ✅ Fully Completed（含 v1.1 F6/F10 + Antigravity 驗收）。 | Gate A 已完成。 | 240/240 Vitest、54 modules build clean；全部 F 級與美術接手事項完成；Antigravity 畫面驗收通過。 |
-| 五行圖鑑＋銅級成就 | ✅ 已完成：14 條圖鑑（7 怪物＋7 基礎塔）、8 銅級成就、資料驅動配置、戰鬥掛鉤、migration、天賦頁 UI、28 項測試。 | — | 269/12 Vitest、build clean。 |
-| 銀級成就＋進階圖鑑 | ✅ 全部完成：銀級 12 成就邏輯＋16 條進階圖鑑（Lv2／配方／詞條）含 Lore。 | 銅級成就已完成。 | 302/14 Vitest、build clean。 |
-| 難度選擇（3 級） | ✅ 已完成：簡單/普通/困難，影響怪物 HP 倍率（0.8/1.0/1.3）與起始金幣（+20/0/-15）。 | P3 Gate B 全數完成。 | 302/14 Vitest、build clean。 |
-| P4（延後） | `ISaveStorage`／`IPlatform`、Tauri／Android、天象輪。 | 等待更多玩家回饋與平台方向確定。 | 目前不作為下一步。 |
+| 歷史基準 | P0~P3 Gate B 全部通過，最新基準 311 tests |
+| 測試命令 | `npm test`（Vitest）/ `npm run build`（tsc && vite build） |
+| 已知錯誤 | 無 |
+| 未驗證 | 4 新怪物正式像素精靈視覺（待 Antigravity） |
 
 ---
 
-## Roadmap（長期規劃索引）
+## 下一步決策
 
-| 層級 | 內容 | 優先序／依賴 |
+| Gate | 範圍 | 狀態 | 證據 |
+|:---|:---|:---:|:---|
+| P1 Codex 美術 | 4 新怪物像素精靈 | ✅ 程式完成 | 24×24／2 幀矩陣，待畫面驗收 |
+| P2-E 視覺 Gate | 天賦經脈頁 | ✅ 關閉 | P2-A~E 文件/測試/視覺 |
+| P3 Gate A | 元素抗性+反雪球 | ✅ 關閉 | 194/194、build 42 |
+| P3 Gate B | 目標系統 v1 | ✅ 關閉 | 240/240、build 54 |
+| 五行圖鑑+成就 | 圖鑑 34 條+成就 20 項 | ✅ 關閉 | 311/311、build 65 |
+| 難度選擇 | 簡單/普通/困難 | ✅ 關閉 | 311/311、build 65 |
+| P4（延後） | 平台抽象/Tauri/天象輪 | 📋 | 待玩家回饋 |
+
+---
+
+## Roadmap 索引
+
+| 里程碑 | 內容 |
+|:---|:---|
+| 目前 | P1 收尾（待 Codex 精靈） |
+| 下一步 | P1 完成 → 玩家回饋循環（正式版後） |
+| 後續 | P2 成長曲線重構 → P3 深度整合 → P4 打磨上線 |
+| 原則 | 先 bug/測試/效能，再擴增高成本內容 |
+
+---
+
+## Task History（近期）
+
+| 日期 | 任務 | 摘要 |
 |:---|:---|:---|
-| 長期目標 | 穩定完成核心迷宮塔防體驗、提升重玩性，並保留桌面打包與平台抽象的擴展路徑。 | 以既有 Phase 0–7 與 P3/P4 詳細項目為準。 |
-| 目前里程碑 | P3 Gate B 全數完成（含 v1.1 F6/F10 + Antigravity 驗收）。 | 全部完成，無剩餘事項。 |
-| 下一個里程碑 | 五行圖鑑+成就系統 或 難度選擇（3 級）。 | 需等待玩家回饋或決定優先順序。 |
-| 後續待辦事項 | 五行圖鑑/成就 → 難度選擇 → 玩家回饋循環 → 監控項目；P4 的平台抽象、Tauri／Android 與天象輪延後。 | 每個 Gate 都要有測試、build、手動情境與可追溯紀錄。 |
-| 優先順序與依賴 | 不覆蓋下方原有 P3/P4 清單；先處理可重現 bug、測試與效能，再擴增高成本內容。 | Canvas 快取、fallback、A* 可達性與既有資料驅動配置為跨項前提。 |
+| 2026-07-24 | P1 進度盤點 | 確認程式碼層面完成，僅剩 4 新怪物精靈待 Codex |
+| 2026-07-23 | P1 目標系統 v2 | 17 goals、遞歸條件、獎勵體系、目標鏈；311/311 tests |
+| 2026-07-23 | P1 新詞條系統 | 4 trait 詞條自動解鎖；302/302 tests |
+| 2026-07-23 | P1 新地圖+怪物+陰陽相剋 | 4 新怪物+2 新地圖+yin↔yang +30%；302/302 tests |
+| 2026-07-23 | P1 Lore+圖鑑進度條 | 30 條 lore 古典中文+五行漸變進度條；278/278 tests |
+| 2026-07-19 | 圖鑑 expansion | Lv2/配方/詞條 16 條目；302/302 tests |
+| 2026-07-19 | 成就通知+難度選擇 | DOM overlay 通知+3 級難度；298/298 tests |
+| 2026-07-19 | 核心 UI 改造 | 視覺 token+11 SVG+主選單+HUD+關卡選擇；269/269 tests |
+| 2026-07-18 | P3 Gate B 美術交接 | CSS/DOM 五行陣+羊皮紙視覺；240/240 tests |
+| 2026-07-17 | P3 Gate B 最小切片 | goals/邏輯+UI+接線；244/244 tests |
+| 2026-07-16 | P3 Gate A | 抗性階梯+退款+低血救濟；194/194 tests |
+| 2026-07-15~16 | P2-C/D/E 天賦視覺 | 古書/人體 SVG/五色經線/響應式；189/189 tests |
 
-下方保留原有詳細 Roadmap、里程碑、優先序、技術債與分析紀錄，作為本索引的唯一細節來源。
-
----
-
-## Task History
-
-| 日期 | 任務名稱 | 完成內容 | 重要決策 | 遺留問題 |
-|:---|:---|:---|:---|:---|
-| 2026-07-19 | #1 成就解鎖通知動畫 | 新增 `src/ui/achievementNotify.ts`，提供 code-native 獎盃 SVG、銅／銀 tier、3 秒自動收起、點擊收起、單張佇列、`role="status"`／`aria-live="polite"` 與 reduced-motion 回退；已接入擊殺、合成與結算三條新成就路徑。Vitest 298/298、production build 65 modules 通過。 | 通知層獨立於 Canvas 與成就純邏輯，僅消費 `evaluateAchievements()` 回傳的新成就 ID；結算通知掛於 `document.body`，可跨場景切換持續顯示。 | 待 Antigravity 人工確認戰鬥 HUD／結算畫面的層級、尺寸與銅／銀色彩。 |
-| 2026-07-18 | Codex：P3 Gate B 美術與回饋交接完成 | 預設 ritual provider 改為不依賴外部檔案的 CSS／DOM 五行陣（太極、五行方位、卦爻、≤2.2 秒、可跳過）；主陣於桌面放大為原設計的 1.5 倍，木→火→土→金→水依序顯現，最後才展示中央題字。五個元素以同圓周、72° 等角距的正五邊形排列，並從中央放大位移至外圓邊界頂點。目標選擇、主選單提示與紀錄板改為羊皮紙、青銅與朱砂視覺；GAME_OVER 新增「達成／差一點／挑戰中」三態回饋；HUD 顯示波次／擊殺／合成目標進度；8 個 emoji 改為 code-native SVG icon；首次達成播放金色粒子與成功音效 fallback。Vitest 240/240、build 54 modules 通過。 | 不新增外部圖像／音效資產，維持離線可用與安全 fallback；保留 `RitualAssetProvider` 注入契約。 | Codex 交接 9/9 完成，需 Antigravity 驗收。F6／F10 為另行保留的 v1.1 邏輯改善。 |
-| 2026-07-13 | Roadmap 改造：專案規劃與任務上下文記憶 | 在 `ROADMAP.md` 新增 Project Overview、Current Task Context、Technical Decisions、Files and Components、Verification、長期規劃索引與本表；保留原有所有 Phase、P3/P4、技術債與盲點資料；重跑 `npm test`（178/178）與 `npm run build`（成功）。 | 長期規劃與單次任務狀態分離；不確定資訊以 `TODO`／`需要確認` 標示；以程式碼與最新驗證覆蓋過時文件。 | 需在 Antigravity 驗收未提交的教學與美術改動；`Sample/codex/` 用途需要確認。 |
-| 2026-07-13 | Git 忽略本機 Sample 目錄 | 在 `.gitignore` 加入 `Sample/`，保留本機檔案但排除公開 Git 追蹤。 | `Sample/` 為本機內容，不應推送到公開空間。 | 無。 |
-| 2026-07-13 | 第一批逐類精靈重繪 | 修改 `src/sprites.ts`：小蛇與火蜥蜴加入依 `vx` 左右鏡像及 2 幀身體／四肢步態；烈焰塔加入火焰待機與攻擊升焰幀；冰凍塔加入冰晶呼吸與攻擊張開幀。`npm test` 178/178、`npm run build` 成功。 | 正式 pixel 模式延伸 code-native 精靈，不以 AI 高畫素圖取代；不改碰撞、網格或資產載入 fallback。 | 需於 Antigravity 驗收輪廓、方向與動畫幅度；整體逐類重繪仍未完成。 |
-| 2026-07-13 | 天賦敘事深化 | 修改 `src/talent.ts`、`src/scenes/scenesManager.ts`、`index.html`、`src/ui/visualRefresh.css`、`src/__tests__/talent.test.ts`：加入木肝／火心／土脾／金肺／水腎敘事、0／2／6／12 點分支開放、鎖定提示、下一階段指引與 3 項相容性測試。Vitest 181/181、build 成功。 | 使用歷史累積 `totalTalentPoints` 開放分支，重置不倒退；既有存檔只要曾投資該分支就保持開放。 | 需在 Antigravity 驗收桌面與橫向 Mobile 版面。 |
-| 2026-07-13 | 第二批與整體逐類精靈重繪完成 | 修改 `src/sprites.ts`：纏繞塔葉冠／核心、鏡刃塔旗刃、暗影塔陰影、聖光塔日輪加入待機與攻擊姿態；蒼蠅、水靈、石傀儡、金甲蟲加入專屬 2 幀動作。盤點確認岩壁鄰接、Boss 4 幀及 Lv2／配方塔 2 幀已存在。Vitest 181/181、build 成功。 | 正式 pixel 單位以 code-native 多狀態為完成標準；外置 AI 圖仍只作可選載入與安全 fallback。 | 需在 Antigravity 做整體畫面驗收與微調。 |
-| 2026-07-14 | 天賦經脈頁概念圖對齊第二階段規劃 | 新增 `docs/TALENT_MERIDIAN_PHASE2_PLAN.md`；盤點 `index.html`、`src/ui/visualRefresh.css`、`src/scenes/scenesManager.ts` 與概念圖，列出 16 個節點的古典主名／機制副標、五階段實作與桌面／橫向 Mobile 驗收條件；頁面正式名稱確認為「靈蘭藏象圖」。 | 採「《內經》藏象 × 後世任督脈學 ×《易》象裝飾」；改名只動顯示 metadata；核心圖像優先 CSS／inline SVG，保留 fallback 與舊存檔。 | P2-A 至 P2-E 程式與視覺實作未開始；逐字古籍引文需在上線前逐條核對；需 Antigravity 最終驗收。 |
-| 2026-07-14 | P2-A 穩定顯示資料與 DOM | 為 16 個天賦加入完整顯示 metadata 與明確 theme mapping；UI 改用古典主名／機制副標；節點加入 `data-theme`、`data-state`、`aria-selected` 與鍵盤導覽；P2-A CSS 收斂到 `.talent-atlas-v2`；新增存檔 key fallback 與 3 項測試。 | `td_talent_data` 為正式 key，舊 `checkpoint_maze_td_talent` 保留讀取相容；`TalentId`、數值、前置與門檻不變。 | P2-B～P2-E 尚未實作；畫面仍需 Antigravity 最終驗收。 |
-| 2026-07-14 | P2-B 古書框架與詳情章頁 | 新增可縮放深木／青銅框、四角雲雷飾、紙纖維章頁、玉印標題、天賦點玉牌與章籤導覽；詳情欄拆分機制副標、藏象取意／來源、實際戰鬥效果與前置／花費狀態。 | 全部使用 HTML／CSS 與現有 inline SVG，無外置紋理依賴；不改天賦數值或存檔。 | P2-C～P2-E 尚未實作；P2-B 畫面需 Antigravity 視覺確認。 |
-| 2026-07-15 | P2-C 人體、任督、五藏、太極與八卦 SVG | 將簡化底圖替換為單一 responsive inline SVG，加入錯位正／背人體、任督雙線、五藏藏象印記、純 SVG 太極與八卦水印；保留獨立動態連線與 HTML 操作層。 | 只改靜態 HTML／CSS／SVG，不改 TalentId、數值、存檔、節點 renderer 或 P2-D 連線狀態；不把五藏示意當成現代解剖。 | 需 Antigravity 確認人體輪廓、經線對比與點擊範圍；P2-D／P2-E 尚未實作。 |
-| 2026-07-15 | P2-C 古書人物與印章節點品質重製 | 依使用者視覺回饋安裝 Fusion 並分派 GLM／Kimi／Codex QA；以生成圖重做左右分離的正背人物，SVG 改為 fallback；16 個節點改為散落式原生印章按鈕，補空間鍵盤導覽、ResizeObserver／rAF、reduced motion、Mobile 單欄與資產失敗回退。 | 圖像只承擔美術，文字、狀態與互動由 HTML 提供；避免醫療穴位宣稱；鎖定／可學／已啟／滿級不只靠顏色。 | theme／kind 五色經線與 Antigravity 多尺寸美術總驗收仍待完成。 |
-| 2026-07-15 | P2-D 五色經線與外環印記 | 新增資料驅動 SVG group renderer、五行／任督／氣／陰陽色票、四態線型、分支／匯流／外章 kind、五個 inert 外印、selected 路徑同步、observer/rAF 場景清理及 5 項純函式測試。 | 真實邊只由 `TALENT_TREE.prerequisites` 衍生；外印不進天賦樹、存檔或操作流程；UI 統一稱天賦印／外環印記，不宣稱醫療穴位。 | 後續已由 P2-E 完成多尺寸、fallback 與主管 Judge 視覺驗收。 |
-| 2026-07-15 | P2-D 青銅雲紋印記重製 | 使用去敏感摘要成功取得 GLM／Kimi `ok:true` wrapper；新增青銅雲雷／回紋 SVG symbol、14 類圖形內核、三層「靈」主印、詳情印與五個外章浮雕外環，移除節點內的純文字圖示。 | 只改 HTML／CSS／SVG 美術層，不傳送專案原始碼給外部面板，不改 TalentId、數值、解鎖、存檔或連線資料。 | 後續 P2-E 已完成 1366／1680 與橫向尺寸驗收。 |
-| 2026-07-16 | P2-E Fusion 響應式與回退驗收 | 完成 1366×768、1680×944、896×414、844×390 瀏覽器驗收、方向鍵 roving tabindex、reduced-motion、外印 inert 語意與人物 raster 失敗時的 SVG 回退驗證；最終主管 Judge 再以實際畫面確認構圖並將選中框改為朱砂雙線。Vitest 189/189 與 production build 通過。另呼叫新版 GLM／Kimi wrapper，兩者 `ok:true` 但模型／provider／usage 未被獨立驗證。 | P2-E 不新增玩法或資料，只以現有 CSS／HTML／SVG 交付；直向 Mobile 與實體裝置／Lighthouse 不列為本專案 PC／橫向觸控範圍的阻塞項。 | 使用者已接續下達 P3 Gate A，P2-E 關閉。 |
-| 2026-07-16 | P3 Gate A：元素抗性與反雪球 | 將直接傷害／DOT 的抗性階梯、前四波全額退款與低血補償收斂至 JSON＋純函式；塔追蹤實際投入，合成塔累加材料／合成費，免費塔投入為 0。補償改為 HP ≤35% 每局一次 12g，新增 wave 6 抗性提示與「拆除・全額」HUD。新增 5 項測試，完整 194/194、build 42 modules 與瀏覽器情境通過。 | 保留既有 10%／15%／20% 與全額退款窗口；拒絕限制每塔一次退款，因無利潤且自由試錯正是反雪球目的；低血救濟才需要一次性防刷金。 | P3 Gate B 尚未開始；實際長局平衡仍需玩家回饋監控。 |
-| 2026-07-17 | P3A 輸入回歸與 OpenCode 交接 | 修正商店點擊穿透與連續建造工具清除問題；使用者確認連續放置 12–15 個岩壁、依序點擊不同塔按鈕均正常。Vitest 197/197、build 43 modules 通過。OpenCode GLM 派發回傳 `NO_FINAL_TEXT`／`verified:false`，依 fail-fast 規則終止，未呼叫 Kimi。 | OpenCode 接手前必須先讀取 Roadmap、README、AGENTS；未取得可驗證模型結果時，不以 Codex 或回退模型冒充 Fusion。 | P3 Gate B 尚未開始；需在 OpenCode 重新執行並驗證派發流程。 |
-| 2026-07-13 | 教學關卡全圖化（既有紀錄） | 教學／測試關卡改採 `dimensions`，目標為 20×10、64px 全圖；教學流程擴充為放塔、岩壁、戰鬥、合成、加速、卡牌、空中敵人、Boss、天賦引導。 | 特殊尺寸不可硬編碼進戰鬥核心。 | 地形設計稿尚未拆為可平鋪 runtime 素材；本次尚未重驗測試與視覺。 |
+> 完整歷史（P0~P2-B 逐項紀錄）保留於 git 歷史與舊版 Roadmap。
 
 ---
 
-## Task History（續）
+## 既有 Phase 清單（摘要）
 
-| 日期 | 任務名稱 | 完成內容 | 重要決策 | 遺留問題 |
-|:---|:---|:---|:---|:---|
-| 2026-07-19 | P1 Codex 美術交接文件建立 | 建立 `docs/NEXT_CODEX_HANDOFF.md`，記錄 6 項 Codex 待辦（成就通知動畫、MORE SVG icon、圖鑑 Lore 補完、UI 翻新、進度條、可選 UI 改造）。每項含規格、現況、掛鉤點與不應修改的檔案清單。更新 ROADMAP.md Current Task Context。 | 比照 P3_GATE_B_CODEX_HANDOFF.md 格式，保留「邏輯層禁止 import 美術資源」原則。 | 待 Codex 啟動實作。 |
+### ✅ Phase 0 — 初始化
+遊戲設計調研、AI 開發指南、GDD 模板
 
-## 既有詳細 Roadmap 與歷史紀錄（保留）
+### ✅ Phase 1 — 核心系統
+場景管理、天賦 Meta-Progression、7 基礎塔+合成、6 怪物+Boss、像素精靈
 
-## ✅ Phase 0 — 專案初始化（2026-06-26）
+### ✅ Phase 2 — 系統優化
+數值平衡、多級天賦、路線預覽、任意位置合成
 
-- [x] 完成遊戲設計調研與提案
-- [x] 建立 AI 協同開發指南（`AI_Coding_Guidelines.md`）
-- [x] 建立 GDD 模板（`GDD_Template.md`）
+### ✅ Phase 3 — 內容完善
+6 異系合成塔實裝、售塔、波次進度列、統計面板
 
----
+### ✅ Phase 4 — 視覺升級
+圖片快取+Hybrid 渲染、行動適放、粒子特效、音效系統、4 地圖主題、動態天氣
 
-## ✅ Phase 1 — 核心系統建構（2026-06-26）
+### ✅ Phase 4.5 — 像素風升級
+16×16/16×24 精靈矩陣、多幀動畫、地板 Tile、像素 UI、Outlines/閃白/Splatters
 
-- [x] 建立場景管理系統（MainMenu / Talent / Battle / GameOver）
-- [x] 天賦系統 Meta-Progression（天賦點獲取、分配、localStorage 持久化）
-- [x] 砲台系統重構：五行（金木水火土）+ 陰陽七種基礎砲台
-- [x] 同系 Lv2 合成 + 五行相生異系配方合成（含陰陽太極）
-- [x] 怪物系統：六種常規怪 + Boss（五行屬性 + 相剋加成）
-- [x] 像素美術系統：所有怪物與砲台以程式碼像素矩陣繪製
-- [x] 新增模組架構：`towers.ts`、`enemies.ts`、`talent.ts`、`sprites.ts`
-- [x] GDD 文件全面更新
+### ✅ Phase 4.6 — 自適應優化
+雙向縮放、座標精確映射、Audio Pool、BGM Fallback、Debug 工具
 
----
-
-## ✅ Phase 2 — 系統優化（2026-06-26）
-
-- [x] 調整砲台數值平衡：岩壁塔 8g → 2g，烈焰塔設為預設解鎖
-- [x] 天賦系統重構為多級升級，UI 顯示 Lv.n/max 進度
-- [x] 新增路線預覽功能（A* 計算、半透明天藍色動態虛線，3 秒後漸隱）
-- [x] 移除合成「必須相鄰」限制，支援任意位置選取合成
-- [x] 優化系統反饋飄字字體大小（15px/16px），提升視覺反饋清晰度
-
----
-
-## ✅ Phase 3 — 內容完善（2026-06-27）
-
-- [x] **合成塔實裝**：實作六種異系合成塔（焚林塔、熔岩塔、鍛造塔、寒鐵塔、靈木塔、太極塔）的完整戰鬥邏輯
-  - [x] 焚林塔（木+火）：大範圍 AOE + DOT
-  - [x] 熔岩塔（火+土）：地面灼燒持傷區域
-  - [x] 鍛造塔（土+金）：範圍增益 buff，強化周圍砲台
-  - [x] 寒鐵塔（金+水）：高傷害 + 深度減速
-  - [x] 靈木塔（水+木）：生成臨時地形障礙
-  - [x] 太極塔（陰+陽）：真實傷害（無視防禦）+ 基地治療
-- [x] **售塔功能**：右鍵或快捷鍵賣出砲台，回收部分金幣
-- [x] **波次進度列**：UI 顯示當前波次進度與剩餘怪物數量
-- [x] **玩家統計面板**：遊戲結算頁面顯示更多統計（最高連殺、傷害輸出等）
-
----
-
-## ✅ Phase 4 — 視覺升級與適配（已完成）
-
-- [x] **高品質美術資源**：
-  - [x] 實作前端圖片快取與 Hybrid 雙重渲染機制（無縫相容外置圖片與像素 Fallback）
-  - [x] 建立本地 Stable Diffusion 產圖自檢與自動去背工具（`test_sd_api.py`）
-  - [x] 批量生成並導入所有怪物與砲台的 SD 精靈圖（*註：因 16px 網格縮放模糊，已決議棄用 SD 高清圖，全面轉向方案 D 像素優化*）
-- [x] **行動裝置畫面適配與縮放**：
-  - [x] 支援 Auto-fit 初始自動縮放（依螢幕寬度自動 scale 遊戲容器）
-  - [x] 實作 Canvas 單指/滑鼠拖曳平移地圖與雙指捏合縮放邏輯（擺塔座標自動反向換算）
-  - [x] 介面版面（HP、金幣、控制按鈕等）改為固定，不隨地圖滾動平移
-- [x] **粒子特效系統**：攻擊命中、怪物死亡、合成成功等粒子效果（已完全實作高性能粒子動畫與發光效果）
-- [x] **音效系統**：
-  - [x] 建立音訊資產目錄 `assets/audio/` 並制定音訊檔案命名規範
-  - [x] 實作背景音樂與音效的前端 HTML5 Audio 播控邏輯（已完成三首 BGM 輪播、間隔 5 秒與開關控制）
-  - [x] 實作遊戲音效（射擊、死亡、合成與點擊等事件重疊播放與靜音連動）
-- [x] **地圖主題**：多種地圖視覺主題（古典中式、山水墨、星空版）（已完全實作四套主題背景、網格線及起點終點與檢查點古風、水墨、星空風格渲染）
-- [x] **動態天氣效果**：如雨、霧、雷電等地圖氛圍渲染（已完全實作煙雨濛濛、迷霧繚繞、狂風暴雷等動態天氣粒子系統與雷電閃屏效果）
-
----
-
-## ✅ Phase 4.5 — 極致像素風視覺升級（方案 D）（2026-06-28）
-
-為了徹底解決 SD 高清圖片在 16px 網格下縮放模糊、去背不完全及視覺不協調的問題，專案調整視覺路線為 **方案 D（極致原生像素風）**，將像素美術做到極致：
-
-- [x] **精靈矩陣升級**：將現有像素精靈統一重構為 16x16 高規矩陣，且 L2/L3 合成砲台重構為 16x24 isometric 2.5D 高精像素畫（無重灰色底座、精簡元素圖示，並由 TOWER_SPRITE_MAP 支援）
-- [x] **動態動畫幀**：為所有怪物（行走/受擊/死亡/轉向）與砲台（待機/攻擊）實作 2 ~ 4 幀的動態像素動畫與 recoil 彈性形變
-- [x] **地面與場景紋理**：用精緻的像素地板 Tile（草地、古風石磚、墨滴、星際塵埃）替換現有的純色背景網格，支援四套主題隨機自然裝飾點綴
-- [x] **像素風 UI 重構**：重製像素風格的 HUD 面板、血條、飄字與性能診斷面板
-- [x] **光影後處理與特效**：實作零濾鏡高效率 Outlines 邊框、受擊閃白快取 Canvas 機制，並實作拋物線受擊/死亡 Splatters 噴濺效果
-- [x] **清理 SD 冗餘**：在確認像素美術升級完成後，重構並清理 sd 冗餘，自動 downscale SD 精靈為規格尺寸，支援 fallback 免圖片原生像素渲染
-
----
-
-## ✅ Phase 4.6 — 畫面自適應、精確定位與音訊系統優化（2026-06-28）
-
-針對遊戲在大尺寸、特定高度及高頻開火下的效能瓶頸進行專項優化，全面提升操作精確度與效率：
-
-- [x] **雙向等比例自適應縮放**：重構 `resizeGameContainer`，同時考量視窗寬度與高度比例，對遊戲容器進行 scale 控制，確保小高度螢幕或測試工具折行時底端功能列不被遮擋
-- [x] **游標與觸控座標精確對齊**：引入 Canvas 解析度到物理渲染邊界的映射因子 `(canvas.width / rect.width)`，修正 CSS transform 縮小後防禦塔放置、拆除、編輯器畫筆與 Pinch-zoom 的坐標累積偏差
-- [x] **常駐怪物路線與流向辨識**：修改 Sci-Fi (黑金) 與 Starry (金紫) 路徑地磚配色，避開與藍色天然障礙物的視覺重疊。並在戰鬥時常駐繪製 25% 透明金色流光線與微型方向箭頭，順著怪物前進方向動態滑動
-- [x] **HTML5 Audio 音效播放池 (Audio Pool)**：廢棄 cloneNode 建立 Audio 節點做法，改為每種音效限制上限 10 個實例的靜態對象池，防範 Chrome WebMediaPlayer 實例爆滿導致的音效卡死與卡頓
-- [x] **BGM 加載防禦性 Fallback**：為背景音樂綁定 `error` 監聽。音樂資源缺失時自動暫停並跳下一首，且當連續出錯達 Playlist 長度時自動停止，避開無限死循環
-- [x] **測試關卡 Debug 工具**：開放 Test Level 的所有塔與配方建造權限、完整傷害計算，並提供自定義怪物一鍵 Spawn 控制面板
-
----
-
-## ✅ Phase 4.8 — Mockup 對齊：明亮東方像素美術與 Console HUD（2026-07-12）
-
-本階段已將前一輪偏深色工業風的基準，切換為「日間暖色、東方山水、輪廓優先」的像素策略；不再以辨識度不足的 AI 高清精靈作為正式視覺。
-
-- [x] **主選單與 UI 基準**：通天塔剪影＋山水遠景主視覺；介面改為主機遊戲式像素面板、較大字級與精簡文案。
-- [x] **戰鬥 HUD**：資訊與塔列疊在 Canvas 上；低頻功能收進「更多」，右下角保留常駐 `EXIT`，避免離開關卡的操作被隱藏。
-- [x] **示範關卡**：簡單關卡改為「九曲河谷」，以日間草地、圓角暖色道路與曲折路徑作為後續地圖標準。
-- [x] **經脈天賦頁（一階）**：人體經脈輪廓、太極中心、五行分支與右側詳情面板已完成；後續再補五臟敘事與逐步開放節點。
-- [x] **PC／Mobile**：維持 PC 操作，第一階段支援 Mobile 橫向觸控與響應式 HUD；不規劃手把支援。
-- [x] **原生像素精靈基準**：程式矩陣像素精靈為正式預設；AI 高清圖僅保留實驗性載入與安全 fallback。
-- [x] **輪廓尺寸第二輪**：地圖、尋路與放置維持 16px 網格；一般敵人以 1.18–1.38 倍呈現，戰場砲塔以 1.35 倍（約 22px）呈現，提升輪廓可讀性且不改動核心座標。
-- [x] **Boss 尺寸與碰撞同步**：龍影維持 1.55 倍視覺尺寸與 0.75 格實際碰撞半徑，子彈命中、血條與相剋提示均依半徑處理。
-- [x] **Canvas 效能保護**：地形／道路與障礙採快取繪製，減少塔與敵人的重複 Glow 繪製；本輪測試與型別檢查通過。
-- [x] **首關學習節奏重排**：教學關改為短 S 型道路與一次小幅改道；第一波教合成、第二波結束展示一次三選一隨機技能，完整迷宮策略後移至中後期關卡。
-- [x] **文字可讀性稽核**：正文統一使用高解析中文字；淺色紙張面板固定深棕黑字，深色遮罩固定米白字與陰影，修正結算、遊戲資訊與選關卡的低對比問題。
-- [x] **砲塔與敵人形象第二輪**：七座基礎塔改為石台＋建築主體＋元素核心的 28px 級原生像素剪影；常規敵人改為有頭身／肢體的生物輪廓並提升顯示尺寸，Boss 仍使用獨立的大型碰撞半徑。
-- [x] **高密度塔身與首關地景**：七座塔由設計稿拆分為透明背景 72×96 原生像素素材，正式 pixel 模式以約 48×64px 顯示；教學地圖縮短為兩個折返點的短 S 型道路，草地／暖土道路提升紋理密度，折返點改為可讀的地面法陣編號。
-- [x] **大型塔留白與連續岩壁**：砲塔依地圖座標做前後景排序，相鄰大型塔自動縮小視覺尺寸以保留合成可讀性；岩壁塔改為依上下左右鄰接狀態拼接的石牆段，可在畫面中形成連續牆體。
-
-### 下一輪美術工作（未完成）
-
-- [x] **逐類精靈重繪**：不改回 AI 高畫素圖，以 24/32px 原生像素規格補強專屬剪影、朝向與攻擊幀（2026-07-13；程式實作完成，待 Antigravity 視覺驗收）。
-  - [x] 第一批：烈焰塔、冰凍塔、小蛇、火蜥蜴的 code-native 待機／攻擊／移動姿態（2026-07-13；待 Antigravity 視覺驗收）。
-  - [x] 第二批：纏繞塔、鏡刃塔、暗影塔、聖光塔、蒼蠅、水靈、石傀儡、金甲蟲的 code-native 專屬姿態。
-  - [x] 既有覆蓋確認：岩壁塔鄰接狀態、Boss 4 幀、Lv2 與配方塔 2 幀矩陣。
-- [x] **天賦敘事深化**：加入五臟對應、逐步解鎖與新手理解提示，避免經脈頁只具裝飾性（2026-07-13；待 Antigravity 視覺驗收）。
-- [x] **天賦經脈頁概念圖視覺對齊（二階）**：古書框架、人體任督、五藏印記、太極八卦、印章節點、彩色經線與響應式驗收完成；詳見 `docs/TALENT_MERIDIAN_PHASE2_PLAN.md`。
-  - [x] 史料分層、16 節點顯示命名、實作順序與驗收條件規劃（2026-07-14）。
-  - [x] P2-A：顯示 metadata、theme mapping、DOM state 與 CSS scope（2026-07-14；184/184、TypeScript 與 build 通過）。
-  - [x] P2-B：古書框架、章籤、玉牌與右側詳情章頁（2026-07-14；程式完成，待 Antigravity 視覺確認）。
-  - [x] P2-C：正／背人物改為左右分離的古書手繪生成圖，inline SVG 作資產失敗 fallback（2026-07-15）。
-  - [x] P2-D：資料驅動 theme／state／kind 五色經線、四態線型、五個 inert 外環印記、ResizeObserver／rAF 與方向鍵高亮同步完成（2026-07-15）。
-  - [x] P2-E：桌面 1366×768／1680×944、橫向 896×414／844×390、reduced motion、圖片失敗 SVG fallback、鍵盤與 189 項測試／build 已通過（2026-07-16）；主管 Judge 視覺 Gate 完成，使用者已推進 P3。
-
----
-
-## ✅ Phase 7 — 商業化打磨完成（2026-07-12）
-
-> P0/P1/P2 全部完成，P3 部分完成。以下為已完成之主要項目。
-
-### ✅ Priority 0 — 核心玩法與數值平衡
-- [x] 20 波次手調配置表（含教學節奏、Boss 分級機制）
-- [x] DPS/Cost 標準化、金幣經濟衰減因子、元素克制梯度化
-- [x] Metal_2 數值修正（3.66→1.84 DPS/gold）
-
-### ✅ Priority 1 — 資訊視覺化與操作流暢度
-- [x] 五行羅盤常駐、克制戰鬥回饋、合成幽靈預覽、配方書 Codex
-- [x] 快捷鍵系統（1-7/Space/G）、按鈕放大（48dp）、觸控容錯半徑
-- [x] **Mindustry 風格視覺升級**：2px 深色描邊、調色盤集中化（`theme.ts`）、雙層螢光 Glow、屬性底盤光環、背景 `#0E1117` 統一
-
-### ✅ Priority 2 — UI/UX 打磨與 Roguelike 系統
-- [x] HUD 資訊階層重構、DOM Tooltip、首次合成引導、像素 Icon
-- [x] 天賦箭線 SVG 化
-- [x] 波間卡牌三選一（Common/Rare/Legendary 三階稀有度 + 動態權重 + 傳說卡牌）
-- [x] 起始隨機補給、雙軌隨機箱（神秘召喚）
-- [x] 代碼模組化拆分（`main.ts` 113 行）、主題/天氣簡化、合成系統凍結 2 種、地圖編輯器凍結
-
-### ✅ **詞條機制學習系統**（既有 P3 Gate B 歷史紀錄）
-- [x] Wave 3/6/10 放入偵察怪，學習對應詞條（護甲/再生/分裂）
-- [x] 9 張 trait_counter 卡牌（每詞條 × 3 稀有度），校驗 `seenTraits` 後才加入卡池
-- [x] 卡牌物理效果實作（破甲一擊、五行破甲、無視護甲、灼燒標記、毒纏、封印再生、速攻指令、制止分裂、反向分裂）
-- [x] `TalentSaveData` 加入 `seenTraits`、`markTraitSeen()/isTraitSeen()` 輔助函數
-
----
-
-## 🚩 待完成工作 (依優先級排序)
-
----
-
-### 🟣 Priority 3 (P3) — 遊戲回饋感與機制深化 (選修/中長期打磨)
-
-*   **Game Feel 視覺與音效深度加強**：
-    *   [x] **五行屬性可讀性**：每種屬性有獨特攻擊粒子色 + 獨特擊中音效 + 怪物受擊屬性特效。
-    *   [x] **像素 9-slice UI 面板**：以程式繪製 9-slice 像素邊框 tile，取代 CSS 圓角，標題改用像素字型。
-    *   [x] **合成揭示動畫**：三段式熔合儀式（選材預覽 → 互轉碰撞 → 閃白升起 + 雙色粒子 + 打字機名字）。
-*   **玩法與天賦深化**：
-    *   [x] 資訊 UI 升級（波次開始前怪物組成預覽含元素圖示、結算畫面 DPS 統計）。
-    *   [x] 天賦新手引導：首局結束後自動彈出天賦頁面並高亮指引第一個點。
-    *   [x] 強制教學關卡（First 30 Seconds）。
-    *   [x] **詞條機制學習系統**（Wave 3/6/10 偵察怪 + 9 張 trait_counter 卡牌 + physics.ts 卡牌效果實作）。
-     *   [x] **天賦經脈圖敘事化（一階）**：天賦頁已改為人體經脈輪廓、太極中心、五行分支與右側詳情面板；五臟敘事與逐步開放留待第二輪。
-    *   [x] **怪物元素抗性**：wave 6+ 非克制 -10%／-15%／-20%，克制與真實傷害略過；直接傷害與 DOT 共用資料驅動規則（2026-07-16）。
-    *   [x] **反雪球機制**：wave 1-4 依實際投入成本 100% 退費（合成塔含材料與合成費、免費塔不變現）；HP ≤35% 時每局一次 12g 救濟，HUD 明示退款狀態（2026-07-16）。
-*   **重玩性設計（「願意玩第二次」的系統化體驗）**：
-*   [x] **下次目標勾選系統**：天賦頁新增「下次目標」私密勾選區。
-*   [x] **起卦儀式動畫**（placeholder）：主選單「開始遊戲」按鈕上方顯示目標提示，點擊後播放開局動畫（NoOp placeholder 待 Codex 替換）。
-*   [x] **紀錄板**：跨局紀錄追蹤（本次目標嘗試次數、累計成就進度）。
-    *   [x] **五行圖鑑+銅級成就**（v1 完成）：14 條圖鑑（7 怪物＋7 基礎塔）、8 銅級成就、資料驅動配置（collection.json）、戰鬥掛鉤、舊存檔 migration、天賦頁「圖鑑」Tab UI、28 項自動化測試。
-    *   [x] **難度選擇（3 級）**：簡單/普通/困難，影響怪物 HP 倍率（0.8/1.0/1.3）與起始金幣（+20/0/-15）。
-*   **觀察與體驗迭代**：
-    *   [ ] **玩家回饋循環**：外部測試者首玩錄影測試，收集皺眉點與笑容點。
-    *   [ ] **監控項目**：監控 Wood DOT 強度、天賦頂配玩家的 HP 需求 vs 理論值。
-
----
-
-### 🔵 Priority 4 (P4) — 商業化、平台擴展與長期規劃 (延後執行)
-
-*   **平台與商業化接口實作**：
-    *   [ ] `IPlatform` 平台介面具體實作（平台判斷/離開/開啟 URL）。
-    *   [ ] `IPayment` 內購/DLC 具體實作，解鎖主選單灰色「商店」按鈕。
-    *   [ ] `ISaveStorage` 存檔抽象層實作（將現有 `localStorage` 調用統一改走此層）。
-*   **平台打包與行動端擴展**：
-     *   [x] **手機橫向觸控支援（一階）**：PC／Mobile 共用 HUD 響應式版面，保留觸控操作；直向與完整平台版本留待後續評估。
-    *   [ ] Tauri 桌面端打包（Steam 預留）與 Android 版本評估。
-*   **Roguelike 進階系統（中長期方向）**：
-    *   [ ] 🔄 **天象輪+爐鼎煉丹系統**：畫面上方七元素圓輪每 5-10 秒旋轉一格，當前對位元素為「在運元素」（買該元素塔 8 折、合成+10% buff）。底部 3 槽煉丹爐可將庫存塔拖入，依五行規則預測產物，花金幣+5 秒「開爐」，不相生配方有 30% 機率產出奇異變體隱藏塔。土元素固定每 7 格出現一次（可預測），玩家可卡時機囤岩壁。
-
----
-
-## 📊 技術債與品質目標
-
-| 項目 | 狀態 | 說明 |
-|:---|:---:|:---|
-| `main.ts` 模組化拆分 | ✅ | 已拆分至 `src/` 子目錄，`main.ts` 精簡至 113 行 |
-| 數值配置外部化 | 🚧 | `config/*.json`（towers / waves / enemies）已完成 |
-| 單元測試覆蓋 | ✅ | 298 tests，14 files（towers / enemies / talent / pathfinding / roguelike / tutorial / p3GateA / buildPlacement / talentConnections / goals / collection） |
-| 明亮東方像素視覺基準 | ✅ | Phase 4.8：日間暖色、通天塔主視覺、Canvas HUD、經脈天賦頁、九曲河谷與 24px 級輪廓；深色 Mindustry 風格保留為歷史階段 |
-| 主循環效能分析 | 📋 | 確認 60FPS 穩定性，必要時評估 WebGL 遷移 |
-| 尋路快取優化 | 📋 | 大地圖下的 A\* 計算頻率控制 |
-| TypeScript 型別完善 | 📋 | 補齊所有 `any` 型別標註 |
-| 記憶體洩漏檢查 | 📋 | 長局遊戲中的 Canvas 資源回收 |
-| 72 小時 Roguelike 曲線 | ✅ | 天賦點公式 `floor(wave/4)+1` + 雙軌成就獎勵；Ascension 0-10 層已實作；完成一二輪天賦×經濟×數值耦合修正 |
-| 詞條機制學習系統 | ✅ | Wave 3/6/10 偵察怪 + 9 張 trait_counter 卡牌 + physics.ts 卡牌效果實作 |
-| 失敗體驗重構 | 📋 | 設計文件已完成（殘局遺物 + 死亡回放 + 仇人記號），待實作 |
-
----
-
-## 🔻 已知盲點與待討論事項（2026-07-12 Fusion 分析發現）
-
-| # | 盲點 | 風險 | 待討論 |
-|:--|:-----|:-----|:-----|
-| B1 | ✅ **Canvas 效能天花板**（已分析）<br>極端場景（50 塔 + 50 怪 + 200 彈 + 粒子 + 天氣）繪製調用達 ~4,650 次/幀，JS 繪製開銷 ~93ms（超 60FPS 預算 5.6 倍）。瓶頸在 **3,200 次瓦片 drawImage**（佔 64ms），非 GPU 算力。<br>**結論：不遷移 WebGL，先做 Canvas 2D 四大優化（預估降調用至 ~500 次、開銷至 ~10ms）。** | 打磨進行到一半發現掉幀，所有視覺改進前功盡棄 | ✅ 已決議：Canvas 2D 優化優先，WebGL 留待後續評估 |
-| B2 | **玩家回饋缺失**：目前無外部測試者數據，打磨方向全憑開發者主觀判斷 | 打磨方向偏差，開發者覺得好 ≠ 玩家覺得好 | 🔒 暫時跳過，待 Phase 4.7 核心打磨完成後對外開放收集玩家數據、問卷 |
-| B3 | ✅ **天賦 × 經濟 × 數值耦合**（已全面修正，2026-07-12）<br>已確認後期金幣過剩根因：怪物數量線性爆炸（第 20 波 ~123 隻） × 固定金幣 → 單波收入 ~400g，加上天賦傷害加成 → 支出需求更低 → 累積過千金幣。<br>**Fusion 補強發現**：(1) Metal_2 DPS/cost=3.66 嚴重超模；(2) 線性 HP × 複合 DPS 成長導致後期難度崩潰；(3) 砲台合併比率不一致（Metal_2=2.13× vs Fire_2=0.89×）。<br>**設計哲學：岩壁塔 2g 維持不變**（繞路迷宮為核心玩法）。<br>**P0 修正**（Metal_2 + HP曲線）已完成。<br>**P1 修正**（天賦感知 HP 因子 `getTalentDifficultyMod`：最高 +50%）已完成。<br>**P2 修正**（波次獎勵金衰減 Wave 20: 75g→51g；開局金幣 soft cap 200g）已完成。<br>**P1+P2 耦合提示**（`getAscensionHintForTalentLevel`：依天賦點數建議 Ascension 難度）已完成。 | 局內體驗調好，meta 平衡崩潰拖垮整體 | ✅ 已全面修正，P0/P1/P2 全部完成 |
-| B4 | ✅ **商業化路徑與技術選型**（已決策）<br>**Desktop**：Tauri 打包（~5MB），Steam 暫不考慮。**Mobile**：暫緩，待 Phase 4.7 打磨品質確認後再決定是否開發 Android 版本。<br>Phase 4.7 Tier 0 期間僅預留 `IPlatform` / `IPayment` / `ISaveStorage` 三個抽象介面（不實作），現有 `localStorage` 調用統一改走 `ISaveStorage`。 | Web 技術堆疊的打包與平台遷移可行性 | ✅ 已決策：Tauri 打包 Desktop、Android 預留介面、Steam/iOS 暫不考慮 |
-| B5 | ✅ **系統互動 Bug**（已評估）<br>🔴 Critical（必修）：A* 封死無路徑處理、子彈 target 懸空參照。<br>🟡 Medium（粗修）：售塔/合成時參照清理、frame-based 邏輯檢查。<br>🟢 Low（跳過）：場景切換殘留、天氣傷害邏輯。<br>**策略：僅修 🔴+🟡，預估半天。核心玩法後續可能大幅調整，不深修。** | 打磨前可能需要先修一輪未知 bug | ✅ 已評估，Phase 4.7 Tier 0 期間執行粗修 |
-
----
-
-*最後更新：2026-07-17（P3 Gate B：下次目標系統完成；244/244 Vitest、52 modules build；F 級與 Codex 接手事項記錄於 `docs/P3_GATE_B_CODEX_HANDOFF.md`。）*
-
-### 教學關卡全圖化（2026-07-13）
-
-- [x] 教學關卡改為 20×10、64px 格子的全圖試煉場，PC 與橫向 Mobile 不需拖曳鏡頭。
-- [x] 教學流程重排為：放攻擊塔 → 放連續岩壁 → 第一波 → 合成 → 加速 → 隨機技能 → 空中敵人 → Boss → 天賦引導。
-- [x] 教學與測試關卡改用可配置的 `dimensions`，避免把特殊尺寸硬寫在戰鬥核心。
-- [ ] 將地形材質設計稿拆成可無縫平鋪的草地、土路、石岸與水面正式資產；目前遊戲僅套用其色盤與程式化表現，尚未直接載入設計稿材質。
+### ✅ Phase 4.8 — 東方像素美術
+明亮暖色山水、Console HUD、生物輪廓、連續岩壁、高密度塔身

@@ -2,6 +2,13 @@ import type { TalentSaveData } from '../talent';
 import type { BestiarySaveData, AchievementProgress } from './types';
 import { getAllAchievements, getAllBestiaryEntries } from './config';
 
+const ENEMY_TRAIT_MAP: Record<string, string> = {
+  shadow_cat: 'trait_stealth',
+  basalt_tortoise: 'trait_innate_armor',
+  thunder_roc: 'trait_evasion',
+  wandering_wisp: 'trait_phase',
+};
+
 function ensureBestiary(data: TalentSaveData): BestiarySaveData {
   if (!data.collectionBestiary) {
     data.collectionBestiary = { enemies: {}, towers: {}, traits: {} };
@@ -27,6 +34,8 @@ export function recordKill(data: TalentSaveData, enemyTypeId: string, isBoss: bo
     const p = ensureProgress(data);
     p.bossKills++;
   }
+  const traitId = ENEMY_TRAIT_MAP[enemyTypeId];
+  if (traitId) markCollectionTrait(data, traitId);
 }
 
 export function markEnemySeen(data: TalentSaveData, enemyTypeId: string): boolean {
@@ -40,6 +49,14 @@ export function markTowerCrafted(data: TalentSaveData, towerTypeId: string): boo
   const bestiary = ensureBestiary(data);
   if (bestiary.towers[towerTypeId]) return false;
   bestiary.towers[towerTypeId] = true;
+  return true;
+}
+
+export function markCollectionTrait(data: TalentSaveData, traitId: string): boolean {
+  const bestiary = ensureBestiary(data);
+  const key = traitId.replace(/^trait_/, '');
+  if (bestiary.traits[key]) return false;
+  bestiary.traits[key] = true;
   return true;
 }
 

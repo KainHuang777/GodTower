@@ -41,6 +41,34 @@
       "baseHp": 500, "speed": 0.5, "goldAward": 15, "isFlying": true,
       "visualScale": 1.55, "collisionRadiusTiles": 0.75,
       "colorPrimary": "#dc2626", "colorSecondary": "#7c2d12"
+    },
+    "shadow_cat": {
+      "id": "shadow_cat", "name": "影貓", "element": "yin",
+      "baseHp": 65, "speed": 1.3, "goldAward": 3, "isFlying": false,
+      "visualScale": 1.28,
+      "colorPrimary": "#6d28d9", "colorSecondary": "#e9d5ff",
+      "stealth": true
+    },
+    "basalt_tortoise": {
+      "id": "basalt_tortoise", "name": "玄龜", "element": "water",
+      "baseHp": 220, "speed": 0.45, "goldAward": 5, "isFlying": false,
+      "visualScale": 1.6,
+      "colorPrimary": "#1e6091", "colorSecondary": "#a8d8ea",
+      "innateArmor": 0.35
+    },
+    "thunder_roc": {
+      "id": "thunder_roc", "name": "雷鷹", "element": "yang",
+      "baseHp": 85, "speed": 1.3, "goldAward": 4, "isFlying": true,
+      "visualScale": 1.35,
+      "colorPrimary": "#f59e0b", "colorSecondary": "#fef3c7",
+      "evasion": 0.15
+    },
+    "wandering_wisp": {
+      "id": "wandering_wisp", "name": "幽魂", "element": "yin",
+      "baseHp": 60, "speed": 1.2, "goldAward": 3, "isFlying": false,
+      "visualScale": 1.3,
+      "colorPrimary": "#7c3aed", "colorSecondary": "#c4b5fd",
+      "phaseCycleFrames": 90, "phaseActiveFrames": 30
     }
   }
 }

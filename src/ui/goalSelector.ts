@@ -111,7 +111,7 @@ function renderSelectTab(container: HTMLElement): void {
   grid.className = 'goal-card-grid';
 
   for (const goal of getAllGoals()) {
-    const unlocked = isGoalUnlocked(goal, ascensionLevel, runsCompleted);
+    const unlocked = isGoalUnlocked(goal, ascensionLevel, runsCompleted, data);
     const completed = isGoalCompleted(data, goal.id);
     const selected = currentGoalId === goal.id;
 
@@ -124,9 +124,10 @@ function renderSelectTab(container: HTMLElement): void {
     card.disabled = !unlocked;
     card.dataset.goalId = goal.id;
 
-    const unlockNote = unlocked ? '' : renderUnlockNote(goal.unlock, ascensionLevel, runsCompleted);
+    const unlockNote = unlocked ? '' : renderUnlockNote(goal.unlock, ascensionLevel, runsCompleted, data);
     const completedTag = completed ? '<span class="goal-card-tag">✓ 已達成</span>' : '';
     const selectedTag = selected ? '<span class="goal-card-current">目前選擇</span>' : '';
+    const rewardsNote = renderRewardsNote(goal.rewards);
 
     card.innerHTML = `
       <div class="goal-card-head">
@@ -141,6 +142,7 @@ function renderSelectTab(container: HTMLElement): void {
         </span>
       </div>
       <div class="goal-card-desc">${goal.description}</div>
+      ${rewardsNote}
       ${unlockNote}
     `;
 
@@ -166,9 +168,10 @@ function renderSelectTab(container: HTMLElement): void {
 }
 
 function renderUnlockNote(
-  unlock: { minAscension?: number; minRunsCompleted?: number } | undefined,
+  unlock: { minAscension?: number; minRunsCompleted?: number; completedGoalIds?: string[]; completedGoalMode?: 'all' | 'any' } | undefined,
   ascensionLevel: number,
   runsCompleted: number,
+  _data?: any,
 ): string {
   if (!unlock) return '';
   const parts: string[] = [];
@@ -178,8 +181,45 @@ function renderUnlockNote(
   if (unlock.minRunsCompleted !== undefined) {
     parts.push(`通關 ${unlock.minRunsCompleted} 局+ (目前 ${runsCompleted})`);
   }
+  // v2: 鏈前置提示
+  if (unlock.completedGoalIds?.length) {
+    const mode = unlock.completedGoalMode ?? 'all';
+    const goalNames = unlock.completedGoalIds.map(id => {
+      const g = getAllGoals().find(g => g.id === id);
+      return g?.label ?? id;
+    });
+    if (mode === 'all') {
+      parts.push(`完成：${goalNames.join('、')}`);
+    } else {
+      parts.push(`完成其一：${goalNames.join('、')}`);
+    }
+  }
   if (parts.length === 0) return '';
   return `<div class="goal-card-locked-note">🔒 尚未解鎖：${parts.join('、')}</div>`;
+}
+
+/** v2: 渲染獎勵預覽 */
+function renderRewardsNote(rewards: any[] | undefined): string {
+  if (!rewards || rewards.length === 0) return '';
+  const parts: string[] = [];
+  for (const r of rewards) {
+    switch (r.type) {
+      case 'talentPoints':
+        parts.push(`天賦點 +${r.amount}`);
+        break;
+      case 'startingGold':
+        parts.push(`起始金幣 +${r.amount}`);
+        break;
+      case 'unlockCard':
+        parts.push(`解鎖卡牌`);
+        break;
+      case 'unlockTalent':
+        parts.push(`解鎖天賦`);
+        break;
+    }
+  }
+  if (parts.length === 0) return '';
+  return `<div class="goal-card-rewards">🎁 獎勵：${parts.join('、')}</div>`;
 }
 
 /** 提供外部於結算後強制刷新面板用（例如玩家在天賦頁切回時） */

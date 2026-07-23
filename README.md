@@ -90,6 +90,10 @@
 | 🗿 石傀儡 | 土 | 180 | 地行（坦克型） |
 | 🪲 金甲蟲 | 金 | 120 | 地行 |
 | 🐲 龍影 | 火 | 500 | 飛行 Boss（每 5 波） |
+| 🐱 影貓 | 陰 | 60 | 隱身（陽塔反制） |
+| 🐢 玄龜 | 水 | 150 | 岩甲減傷（DOT 無視） |
+| 🦅 雷鷹 | 陽 | 90 | 閃避（陰陽剋制） |
+| 👻 幽魂 | 陰 | 70 | 相位免疫（時間窗口） |
 
 ---
 
@@ -135,9 +139,9 @@
 |:---|:---|
 | **主要語言** | TypeScript (68.35%)、CSS (13.72%)、HTML (10.15%)、Python (7.78%) |
 | **專案規模** | 總程式碼約 **23,209 行** (不含 JSON 設定檔、Markdown 等)<br>• TypeScript: 15,863 行 (69 個檔案)<br>• CSS: 3,185 行 (1 個檔案)<br>• HTML: 2,356 行 (2 個檔案)<br>• Python 輔助腳本: 1,805 行 (8 個檔案) |
-| **模組架構** | 專案在 `src/` 下劃分為 **11 個核心模組** (目錄)：<br>1. `scenes/`：場景管理與渲染（主選單、關卡選擇、天賦樹等）<br>2. `battle/`：戰鬥系統核心邏輯（怪獸移動、路徑計算、砲台行為、波次管理）<br>3. `renderer/`：Canvas 預渲染與粒子特效（2.5D 預渲染快取、地圖 Autotile）<br>4. `ui/`：DOM UI 元件與介面渲染（圖鑑面板、合成提示、下次目標提示）<br>5. `input/`：輸入事件與防禦塔擺放輔助<br>6. `audio/`：多通道音訊播放與對象池（自動 Fallback 處理）<br>7. `system/`：跨局天賦系統、成就紀錄與 Roguelike 核心<br>8. `config/`：資料驅動的 JSON 數值配置（波次、防禦塔、怪獸）<br>9. `goals/`：下次目標與成就管理<br>10. `collection/`：圖鑑狀態與條件解鎖管理<br>11. `__tests__/`：單元測試 (Vitest) |
+| **模組架構** | 專案在 `src/` 下劃分為 **14 個核心模組** (目錄)：<br>1. `scenes/`：場景管理與渲染<br>2. `battle/`：戰鬥系統核心（physics/battleManager/towerActions/pathfinding/difficulty）<br>3. `renderer/`：Canvas 預渲染與粒子特效<br>4. `ui/`：DOM UI 元件（圖鑑/成就通知/目標選擇/起卦儀式）<br>5. `input/`：輸入事件與防禦塔擺放<br>6. `audio/`：多通道音訊播放與對象池<br>7. `system/`：天賦持久化、Roguelike 卡牌<br>8. `config/`：資料驅動 JSON 配置<br>9. `goals/`：目標系統 v2（遞歸條件/獎勵/目標鏈）<br>10. `collection/`：圖鑑+成就系統（34 條目/20 成就/migration）<br>11. `physics/`：物理碰撞與擊殺追蹤<br>12. `talent/`：天賦資料與經脈頁<br>13. `collection/`：圖鑑狀態與解鎖<br>14. `__tests__/`：單元測試 (Vitest, 311 tests) |
 | **打包工具** | Vite 5 |
-| **測試框架** | Vitest（14 個測試檔案，298 個測試項目全部通過） |
+| **測試框架** | Vitest（14 個測試檔案，311 個測試項目全部通過） |
 | **渲染** | HTML5 Canvas |
 | **精靈渲染** | OffscreenCanvas 預渲染快取，支援 16x16 與 16x24 2.5D 原生像素動畫與 45 度等角立體光影 |
 | **視覺風格** | 明亮日間暖色山水 + 高密度像素精靈 + 深色描邊與柔和 Glow；夜色、星空、雷雨僅作特殊關卡主題 |
@@ -201,9 +205,9 @@ npm run preview
 
 ## 🤖 OpenCode 專案交接
 
-目前 P3 Gate A 已完成，下一步是 P3 Gate B 的最小垂直切片：
+P1 內容擴充階段程式碼層面已完成，僅剩 4 隻新怪物正式像素精靈待 Codex 美術替換。
 
-> 下次目標勾選 → 主選單提示 → 跨局完成紀錄。
+> 下一步：Codex 完成 sprites.ts 中 4 隻新怪物的 16×16 正式像素精靈矩陣（各 2 幀動畫）。
 
 要改由 OpenCode 接續專案時，請在專案根目錄 `E:\WORK\GodTower` 開啟 OpenCode：
 
@@ -215,7 +219,7 @@ opencode
 進入 OpenCode 後，第一個任務應先要求它讀取 `AGENTS.md`、`ROADMAP.md` 與本 README，再檢查目前工作樹，然後執行：
 
 ```text
-讀取 AGENTS.md、ROADMAP.md、README.md。P3 Gate A 已完成，請接續規劃並實作 P3 Gate B 最小垂直切片：下次目標勾選、主選單提示、跨局完成紀錄。先檢查目前程式碼與測試，再提出最小資料模型與驗收條件。
+讀取 AGENTS.md、ROADMAP.md、README.md。P1 程式碼層面已完成（311 tests、65 modules），僅剩 sprites.ts 中 4 隻新怪物（影貓/玄龜/雷鷹/幽魂）的 placeholder 需替換為正式 16×16 像素精靈矩陣（各 2 幀）。請依 docs/NEXT_CODEX_HANDOFF.md #7 規格完成精靈設計。
 ```
 
 OpenCode 的開發伺服器與驗證命令仍在另一個終端機執行：
@@ -226,13 +230,11 @@ npm test
 npm run build
 ```
 
-目前已驗證：Vitest 197/197 通過、production build 43 modules 成功；使用者也已確認連續放置 12–15 個岩壁及依序點擊不同塔按鈕正常。
+目前已驗證：Vitest 311/311 通過、production build 65 modules clean。
 
 ### OpenCode Fusion 注意事項
 
-本專案的 Fusion bridge 只允許去敏感摘要，不得傳送原始碼、`.env`、token、私鑰或 OpenCode 設定。最新一次 GLM 派發回傳 `ok:false`、`NO_FINAL_TEXT`、`verified:false`，Kimi 因 fail-fast 規則未呼叫；因此這一輪沒有可引用的外部模型審查結果。未來只有 wrapper 明確回傳 `verified:true` 且實際模型與白名單一致時，才能宣稱 OpenCode Fusion 成功。
-
-OpenCode 目前應先以專案本身的測試與 build 接手；不要把未驗證的 Fusion 輸出當作程式碼或模型身份證據。
+本專案的 Fusion bridge 只允許去敏感摘要，不得傳送原始碼、`.env`、token、私鑰或 OpenCode 設定。只有 wrapper 明確回傳 `verified:true` 且實際模型與白名單一致時，才能宣稱 Fusion 成功。OpenCode 應以專案本身的測試與 build 接手。
 
 ---
 
@@ -261,15 +263,20 @@ GodTower/
 │   ├── config/             # 資料驅動 JSON 配置
 │   │   ├── towers.json     # 砲台數值配置
 │   │   ├── enemies.json    # 怪物數值配置
-│   │   └── waves.json      # 20 波手調配置
+│   │   ├── waves.json      # 20 波手調配置（含新怪物漸進登場）
+│   │   ├── goals.json      # 目標系統 v2（17 goals）
+│   │   ├── collection.json # 圖鑑+成就（34 條目+20 成就）
+│   │   └── p3GateA.json    # 元素抗性與反雪球規則
 │   ├── scenes/             # 場景渲染（mainMenu, levelSelect, talentScreen, mapEditor）
 │   ├── battle/             # 戰鬥邏輯（battleManager, physics, towerActions, waveSystem, pathfinding, difficulty）
 │   ├── renderer/           # Canvas 渲染（gameRenderer, tileCache, particles, drawObstacle, drawRoutePreview）
-│   ├── ui/                 # UI 元件（uiManager, recipeCodex, wuxingCompass, cardPicker, mergeTooltip）
-│   ├── input/              # 輸入處理（inputHandler）
+│   ├── ui/                 # UI 元件（uiManager, collectionTab, collectionIcons, achievementNotify, goalSelector, goalHint, goalBoard, ritual）
+│   ├── input/              # 輸入處理（inputHandler, buildPlacement）
 │   ├── audio/              # 音效系統（audioSystem）
 │   ├── system/             # 系統模組（roguelikeSystem, traitLearning）
-│   └── __tests__/          # Vitest 單元測試（14 files，298 tests）
+│   ├── goals/              # 目標系統 v2（types, config, state, migrate）
+│   ├── collection/         # 圖鑑+成就（types, config, state, migrate）
+│   └── __tests__/          # Vitest 單元測試（14 files，311 tests）
 ├── assets/
 │   └── sprites/towers-v2/  # 72×96 高密度塔精靈（缺失時回退程式化繪製）
 └── docs/
@@ -277,6 +284,9 @@ GodTower/
     ├── GDD_Template.md     # GDD 模板
     ├── 72H_Progression_Design.md  # 72 小時 Roguelike 成長曲線設計
     ├── AI_Coding_Guidelines.md    # AI 協同開發規範
+    ├── NEXT_CODEX_HANDOFF.md      # P1 Codex 美術交接事項
+    ├── P3_GATE_B_CODEX_HANDOFF.md # P3 Gate B Codex 美術交接事項
+    ├── TALENT_MERIDIAN_PHASE2_PLAN.md # 天賦頁二階規劃
     └── mockups/terrain-material-board-v1.png # 地形材質參考稿
 ```
 

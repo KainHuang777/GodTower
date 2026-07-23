@@ -5,7 +5,8 @@
 import type { Element } from './towers';
 
 /** 怪物類型 ID */
-export type EnemyTypeId = 'snake' | 'fly' | 'salamander' | 'water_spirit' | 'golem' | 'beetle' | 'boss_dragon';
+export type EnemyTypeId = 'snake' | 'fly' | 'salamander' | 'water_spirit' | 'golem' | 'beetle' | 'boss_dragon'
+  | 'shadow_cat' | 'basalt_tortoise' | 'thunder_roc' | 'wandering_wisp';
 
 /** 怪物定義資料 */
 export interface EnemyDef {
@@ -23,6 +24,12 @@ export interface EnemyDef {
   // 像素精靈引用色
   colorPrimary: string;
   colorSecondary: string;
+  // 特殊機制（資料驅動）
+  stealth?: boolean;
+  innateArmor?: number;
+  evasion?: number;
+  phaseCycleFrames?: number;
+  phaseActiveFrames?: number;
 }
 
 import enemiesConfig from './config/enemies.json';

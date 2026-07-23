@@ -136,6 +136,8 @@
     "wood": "earth",
     "earth": "water",
     "water": "fire",
-    "fire": "metal"
+    "fire": "metal",
+    "yin": "yang",
+    "yang": "yin"
   }
 }

@@ -1132,8 +1132,7 @@ input:focus-visible {
 }
 
 #battleScene .instructions,
-#battleScene .details-panel,
-#battleScene #testControls {
+#battleScene .details-panel {
   display: none !important;
 }
 
@@ -3480,4 +3479,224 @@ input:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .achievement-notification,
   .achievement-notification-leaving { animation: none; }
+}
+
+/* ==========================================================
+ * Collection tab — bestiary & achievement progress
+ * ========================================================== */
+.collection-tab-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.collection-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.collection-section-title {
+  margin: 0;
+  padding: 8px 16px;
+  border: 3px solid #5a3826;
+  background: #fff3c4;
+  color: #5a3826;
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  box-shadow: 3px 3px 0 #3a251b;
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.collection-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  border: 3px solid #5a3826;
+  background: #fff3c4;
+  box-shadow: 3px 3px 0 #3a251b;
+  text-align: center;
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+
+.collection-card:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 #3a251b;
+}
+
+.collection-card.locked {
+  opacity: 0.6;
+  background: #d8c9a6;
+}
+
+.collection-card.unlocked {
+  background: #e8d9a8;
+}
+
+.collection-card.achievement-card.done {
+  background: #d4e4b0;
+  border-color: #4d8751;
+}
+
+.collection-card.achievement-card.pending {
+  background: #f2dfa7;
+}
+
+.collection-icon-frame {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 2px solid #8c6a3e;
+  background: #e4c77d;
+  color: #3a251b;
+}
+
+.collection-icon-frame svg {
+  width: 40px;
+  height: 40px;
+}
+
+.collection-icon-locked {
+  background: #b9aa89;
+  color: #675c4c;
+}
+
+.collection-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.collection-name {
+  color: #3a251b;
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.collection-name.unknown {
+  color: #8c7a5e;
+  font-style: italic;
+}
+
+.collection-meta {
+  color: #69513d;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.collection-meta.completion {
+  color: #4d8751;
+}
+
+.collection-meta.progress {
+  color: #8c6a3e;
+}
+
+.collection-desc {
+  margin: 4px 0 0;
+  color: #5f4b38;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.collection-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 3px solid #5a3826;
+  background: #f2dfa7;
+  box-shadow: 4px 4px 0 #3a251b;
+}
+
+.collection-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.collection-progress-label {
+  flex: 0 0 80px;
+  color: #5a3826;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.collection-progress-track {
+  flex: 1;
+  height: 18px;
+  border: 2px solid #5a3826;
+  background: #d8c9a6;
+  position: relative;
+  overflow: hidden;
+}
+
+.collection-progress-track > span {
+  display: block;
+  height: 100%;
+  background: #c65d32;
+  transition: width 200ms ease;
+}
+
+.collection-progress-track.bestiary-progress > span {
+  background: #4d8751;
+}
+
+.collection-progress-track.achievement-progress.bronze > span {
+  background: #a96f3c;
+}
+
+.collection-progress-track.achievement-progress.silver > span {
+  background: #8c9aa4;
+}
+
+.collection-progress-track.achievement-progress.gold > span {
+  background: #f2c14e;
+}
+
+.collection-progress-value {
+  flex: 0 0 100px;
+  text-align: right;
+  color: #3a251b;
+  font-size: 0.8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.collection-stat-summary {
+  display: flex;
+  gap: 16px;
+  padding-top: 8px;
+  border-top: 2px solid #8c6a3e;
+  color: #5a3826;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+@media (max-width: 900px), (max-height: 650px) {
+  .collection-tab-layout { padding: 10px; gap: 12px; }
+  .collection-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+  .collection-card { padding: 8px 6px; }
+  .collection-icon-frame { width: 44px; height: 44px; }
+  .collection-icon-frame svg { width: 32px; height: 32px; }
+  .collection-name { font-size: 0.75rem; }
+  .collection-meta { font-size: 0.62rem; }
+  .collection-desc { font-size: 0.6rem; }
+  .collection-progress-label { flex: 0 0 64px; font-size: 0.75rem; }
+  .collection-progress-value { flex: 0 0 80px; font-size: 0.7rem; }
 }

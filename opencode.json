@@ -48,9 +48,9 @@
     },
     "fusion-gemini": {
       "mode": "subagent",
-      "model": "google/gemini-3.5-flash",
+      "model": "antigravity/gemini-3.5-flash",
       "hidden": true,
-      "description": "Fusion panel: Gemini 3.5 Flash (free tier) — Google architecture diversity, alternative framing, blind spot detection"
+      "description": "Fusion panel: Gemini 3.5 Flash via agy CLI bridge — Google architecture diversity, alternative framing, blind spot detection"
     },
     "fusion-skyunion": {
       "mode": "subagent",

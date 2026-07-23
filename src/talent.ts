@@ -135,6 +135,8 @@ export interface TalentSaveData {
   mainMenuSeenGoalId?: string | null;
   /** 起卦儀式動畫開關；預設 true */
   ritualEnabled?: boolean;
+  /** v2: 已領取的目標獎勵；key = GoalId，防重複領取 */
+  claimedGoalRewards?: Record<string, boolean>;
 
   // --- 圖鑑＋成就系統（P0 Codex） ---
   collectionBestiary?: { enemies: Record<string, boolean>; towers: Record<string, boolean>; traits: Record<string, boolean> };

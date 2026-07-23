@@ -220,8 +220,8 @@ describe('config integrity', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('config has 30 bestiary entries (7 enemies + 7 base + 7 Lv2 + 6 recipe + 3 traits)', () => {
-    expect(getAllBestiaryEntries().length).toBe(30);
+  it('config has 38 bestiary entries (11 enemies + 7 base + 7 Lv2 + 6 recipe + 7 traits)', () => {
+    expect(getAllBestiaryEntries().length).toBe(38);
   });
 
   it('config has at least 8 achievements', () => {
@@ -238,9 +238,9 @@ describe('config integrity', () => {
 
   it('bestiary has correct category counts', () => {
     const entries = getAllBestiaryEntries();
-    expect(entries.filter(e => e.category === 'enemy').length).toBe(7);
+    expect(entries.filter(e => e.category === 'enemy').length).toBe(11);
     expect(entries.filter(e => e.category === 'tower').length).toBe(20);
-    expect(entries.filter(e => e.category === 'trait').length).toBe(3);
+    expect(entries.filter(e => e.category === 'trait').length).toBe(7);
   });
 
   it('bestiary Lv2 towers have level field and non-recipe have level only', () => {

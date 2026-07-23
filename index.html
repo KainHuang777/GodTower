@@ -1885,19 +1885,27 @@
 
         <!-- 第二排：輔助工具與戰鬥控制 -->
         <div class="control-row-bottom">
-          <!-- 測試關卡專用調試工具 -->
+          <!-- 測試關卡專用怪物召喚工具 -->
           <div id="testControls" style="display:none; align-items:center; gap:8px; background:rgba(30, 41, 59, 0.85); border:1px solid #475569; padding:4px 12px; height:40px; border-radius: 0px !important;">
-            <span style="color:#94a3b8; font-size:0.85rem; font-weight:bold; white-space:nowrap;">🧪 測試調試：</span>
-            <select id="testMonsterSelect" class="btn" style="padding: 2px 6px; font-size: 0.85rem; background:#334155; border-color:#475569; height:30px; line-height:1; color:#fff; cursor:pointer;">
-              <option value="snake">🐍 木蛇</option>
-              <option value="fly">🦟 金蠅 (飛行)</option>
-              <option value="salamander">🦎 火蜥蜴</option>
-              <option value="water_spirit">💧 水靈</option>
-              <option value="golem">🗿 土傀儡</option>
-              <option value="beetle">🪲 陰甲蟲</option>
-              <option value="boss_dragon">🐲 陽龍 (Boss)</option>
+            <span style="color:#94a3b8; font-size:0.85rem; font-weight:bold; white-space:nowrap;">🧪 怪物召喚：</span>
+            <select id="testMonsterSelect" class="btn" aria-label="選擇要召喚的測試怪物" style="padding: 2px 6px; font-size: 0.85rem; background:#334155; border-color:#475569; height:30px; line-height:1; color:#fff; cursor:pointer;">
+              <optgroup label="新 24×24 精靈">
+                <option value="shadow_cat">🌑 影貓・陰／潛影</option>
+                <option value="basalt_tortoise">🐢 玄龜・水／岩甲</option>
+                <option value="thunder_roc">⚡ 雷鷹・陽／閃避</option>
+                <option value="wandering_wisp">👻 幽魂・陰／相位</option>
+              </optgroup>
+              <optgroup label="既有怪物">
+                <option value="snake">🐍 木蛇</option>
+                <option value="fly">🦟 金蠅（飛行）</option>
+                <option value="salamander">🦎 火蜥蜴</option>
+                <option value="water_spirit">💧 水靈</option>
+                <option value="golem">🗿 土傀儡</option>
+                <option value="beetle">🪲 陰甲蟲</option>
+                <option value="boss_dragon">🐲 陽龍（Boss）</option>
+              </optgroup>
             </select>
-            <button id="btnSpawnTestMonster" class="btn" style="background:#8b5cf6; border-color:#7c3aed; height:30px; padding:2px 10px; font-size: 0.85rem; font-weight: bold; line-height:1; color:#fff; display:flex; align-items:center; justify-content:center;">放怪</button>
+            <button id="btnSpawnTestMonster" class="btn" style="background:#8b5cf6; border-color:#7c3aed; height:30px; padding:2px 10px; font-size: 0.85rem; font-weight: bold; line-height:1; color:#fff; display:flex; align-items:center; justify-content:center;">召喚</button>
             <button id="btnTestCardPicker" class="btn" style="background:#059669; border-color:#047857; height:30px; padding:2px 10px; font-size: 0.85rem; font-weight: bold; line-height:1; color:#fff; display:flex; align-items:center; justify-content:center;">測試卡牌</button>
           </div>
 

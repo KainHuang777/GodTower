@@ -9,35 +9,92 @@
 import type { TalentSaveData } from '../talent';
 import type {
   BoardSnapshot,
-  GoalCompletionKey,
+  GoalCondition,
+  GoalConditionLeaf,
+  GoalConditionStringLeaf,
   GoalDefinition,
   GoalId,
+  GoalReward,
   GoalRunResult,
   GoalStats,
   RunStats,
 } from './types';
 import { getGoalById, getGoalConfigVersion, validateGoalId } from './config';
 
+/** 判斷是否為數值條件葉 */
+function isNumericLeaf(c: GoalCondition): c is GoalConditionLeaf {
+  return !('type' in c) || c.type === 'leaf' || c.type === undefined;
+}
+
+/** 判斷是否為字串條件葉 */
+function isStringLeaf(c: GoalCondition): c is GoalConditionStringLeaf {
+  return 'type' in c && c.type === 'string';
+}
+
+/** 遞歸評估條件樹 */
+function evaluateCondition(condition: GoalCondition, runStats: RunStats): boolean {
+  // 數值條件葉
+  if (isNumericLeaf(condition)) {
+    if (condition.requiresVictory && !runStats.isVictory) return false;
+
+    let statValue: number | undefined;
+
+    // subKey 用於 Record 欄位（如 specificEnemyKills.wandering_wisp）
+    if (condition.subKey) {
+      const record = (runStats as unknown as Record<string, unknown>)[condition.key];
+      if (record && typeof record === 'object') {
+        statValue = (record as Record<string, number>)[condition.subKey];
+      }
+    } else {
+      statValue = (runStats as unknown as Record<string, number>)[condition.key];
+    }
+
+    if (typeof statValue !== 'number' || Number.isNaN(statValue)) return false;
+
+    switch (condition.operator) {
+      case 'gte': return statValue >= condition.value;
+      case 'lte': return statValue <= condition.value;
+      case 'eq': return statValue === condition.value;
+      case 'ne': return statValue !== condition.value;
+      default: return false;
+    }
+  }
+
+  // 字串條件葉
+  if (isStringLeaf(condition)) {
+    if (condition.requiresVictory && !runStats.isVictory) return false;
+
+    const statValue = (runStats as unknown as Record<string, unknown>)[condition.key];
+    if (typeof statValue !== 'string') return false;
+
+    switch (condition.operator) {
+      case 'eq': return statValue === condition.value;
+      case 'ne': return statValue !== condition.value;
+      case 'in': return Array.isArray(condition.value) && condition.value.includes(statValue);
+      default: return false;
+    }
+  }
+
+  // AND 複合條件
+  if (condition.type === 'and') {
+    return condition.conditions.every(c => evaluateCondition(c, runStats));
+  }
+
+  // OR 複合條件
+  if (condition.type === 'or') {
+    return condition.conditions.some(c => evaluateCondition(c, runStats));
+  }
+
+  return false;
+}
+
 /**
  * 比較 runStats 與目標完成條件。
  * 純函式：給定同一組 (goal, runStats) 永遠回傳同一結果。
+ * 支援遞歸條件樹（AND/OR/leaf/string）。
  */
 export function evaluateGoalCompletion(goal: GoalDefinition, runStats: RunStats): boolean {
-  if (goal.completion.requiresVictory === true && !runStats.isVictory) return false;
-
-  const value = (runStats as Record<GoalCompletionKey, number>)[goal.completion.key];
-  if (typeof value !== 'number' || Number.isNaN(value)) return false;
-
-  switch (goal.completion.operator) {
-    case 'gte':
-      return value >= goal.completion.value;
-    case 'lte':
-      return value <= goal.completion.value;
-    case 'eq':
-      return value === goal.completion.value;
-    default:
-      return false;
-  }
+  return evaluateCondition(goal.completion, runStats);
 }
 
 /**
@@ -163,16 +220,18 @@ export function buildBoardSnapshot(
 
 /**
  * 判定目標對玩家是否已解鎖。
- * 純函式：依據玩家長期資料（含 ascension/runs）與目標解鎖條件比較。
+ * 純函式：依據玩家長期資料（含 ascension/runs/completedGoals）與目標解鎖條件比較。
  *
  * @param goal 目標定義
  * @param ascensionLevel 當前 Ascension 層級
  * @param runsCompleted 累計完成局數（勝利局）
+ * @param data 玩家長期存檔（用於檢查 completedGoalIds）
  */
 export function isGoalUnlocked(
   goal: GoalDefinition,
   ascensionLevel: number,
   runsCompleted: number,
+  data: TalentSaveData,
 ): boolean {
   if (!goal.unlock) return true;
   if (goal.unlock.minAscension !== undefined && ascensionLevel < goal.unlock.minAscension) {
@@ -181,6 +240,15 @@ export function isGoalUnlocked(
   if (goal.unlock.minRunsCompleted !== undefined && runsCompleted < goal.unlock.minRunsCompleted) {
     return false;
   }
+
+  // v2: 檢查前置目標鏈
+  if (goal.unlock.completedGoalIds?.length) {
+    const mode = goal.unlock.completedGoalMode ?? 'all';
+    const completed = goal.unlock.completedGoalIds.map(id => isGoalCompleted(data, id));
+    const ok = mode === 'all' ? completed.every(Boolean) : completed.some(Boolean);
+    if (!ok) return false;
+  }
+
   return true;
 }
 
@@ -214,4 +282,45 @@ export function commitEndOfRun(
   const snapshot = buildBoardSnapshot(data, goalId, justAchieved);
   data.lastBoardSnapshot = snapshot;
   return { justAchieved, snapshot };
+}
+
+/**
+ * 領取目標獎勵。純函式：原地 mutation data，回傳已領取的獎勵清單。
+ * 冪等性：同一 goalId 只會領取一次（透過 claimedGoalRewards 標記）。
+ *
+ * @param data 玩家長期存檔
+ * @param goalId 剛完成的目標 id
+ * @returns 本次領取的獎勵清單（空陣列表示已領取過或無獎勵）
+ */
+export function claimGoalRewards(data: TalentSaveData, goalId: GoalId): GoalReward[] {
+  const goal = getGoalById(goalId);
+  if (!goal || !goal.rewards || goal.rewards.length === 0) return [];
+
+  data.claimedGoalRewards ??= {};
+  if (data.claimedGoalRewards[goalId]) return []; // 已領取過
+
+  data.claimedGoalRewards[goalId] = true;
+
+  // 套用獎勵（原地 mutation）
+  for (const reward of goal.rewards) {
+    switch (reward.type) {
+      case 'talentPoints':
+        data.totalTalentPoints += reward.amount;
+        break;
+      case 'startingGold':
+        // permanent=true 寫入永久加成；否則僅標記（未來實作下局加成）
+        // 目前暫不實作 non-permanent，留待 UI 層處理
+        break;
+      case 'unlockCard':
+        // 寫入卡牌解鎖狀態（未來與 roguelike 系統整合）
+        break;
+      case 'unlockTalent':
+        data.talentLevels ??= {};
+        const current = data.talentLevels[reward.talentId as keyof typeof data.talentLevels] ?? 0;
+        data.talentLevels[reward.talentId as keyof typeof data.talentLevels] = Math.max(1, current);
+        break;
+    }
+  }
+
+  return goal.rewards;
 }

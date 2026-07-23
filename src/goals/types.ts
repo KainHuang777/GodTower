@@ -29,22 +29,66 @@ export type GoalCompletionKey =
   | 'combatTowerCount'    // 非純牆的「實戰塔」數量 (damage > 0)
   | 'clearTimeMinutes'    // 通關花費分鐘
   | 'ascensionLevel'      // 結算時的 Ascension 層級
-  | 'killCount';          // 單局擊殺數
+  | 'killCount'           // 單局擊殺數
+  | 'mapId'               // v2: 通關地圖 ID
+  | 'difficultyLevel'     // v2: 難度等級 (0=easy, 1=normal, 2=hard)
+  | 'difficultyName'      // v2: 難度名稱
+  | 'yinYangTowerCount'   // v2: 陰/陽塔數量
+  | 'synthesisRecipeCount' // v2: 配方合成次數
+  | 'damageTaken'         // v2: 基地受傷總量
+  | 'noDamageTaken'       // v2: 零傷旗標 (0=有受傷, 1=零傷)
+  | 'specificEnemyKills'  // v2: 各怪物擊殺數 (Record, 需搭配 subKey)
+  | 'traitsEncountered';  // v2: 本局遭遇詞條 (Record)
 
 /** 比較運算子；value 為設定的門檻值 */
-export type GoalOperator = 'gte' | 'lte' | 'eq';
+export type GoalOperator = 'gte' | 'lte' | 'eq' | 'ne';
 
-/** 目標完成條件 */
-export interface GoalCompletion {
-  /** RunStats 對應欄位 */
+/** 字串比較運算子 */
+export type GoalStringOperator = 'eq' | 'ne' | 'in';
+
+/** 數值條件葉（v1 向後相容：type 可選） */
+export interface GoalConditionLeaf {
+  type?: 'leaf';
   key: GoalCompletionKey;
-  /** 比較方式 */
+  subKey?: string;
   operator: GoalOperator;
-  /** 門檻值 */
   value: number;
-  /** 是否要求該局為通關 (isVictory=true) 才能成立 */
   requiresVictory?: boolean;
 }
+
+/** 字串條件葉（用於 mapId、difficultyName 等非數值欄位） */
+export interface GoalConditionStringLeaf {
+  type: 'string';
+  key: 'mapId' | 'difficultyName';
+  operator: GoalStringOperator;
+  value: string | string[];
+  requiresVictory?: boolean;
+}
+
+/** AND 複合條件 */
+export interface GoalConditionAnd {
+  type: 'and';
+  conditions: GoalCondition[];
+}
+
+/** OR 複合條件 */
+export interface GoalConditionOr {
+  type: 'or';
+  conditions: GoalCondition[];
+}
+
+/** 遞歸條件樹（leaf / string / and / or） */
+export type GoalCondition = GoalConditionLeaf | GoalConditionStringLeaf | GoalConditionAnd | GoalConditionOr;
+
+/** 目標完成條件（v2: 支援遞歸條件樹） */
+export type GoalCompletion = GoalCondition;
+
+/** 目標獎勵類型 */
+export type GoalReward =
+  | { type: 'talentPoints'; amount: number }
+  | { type: 'startingGold'; amount: number; permanent: boolean }
+  | { type: 'unlockCard'; cardId: string }
+  | { type: 'unlockTalent'; talentId: string };
 
 /** 目標定義（資料驅動，由 goals.json 載入） */
 export interface GoalDefinition {
@@ -58,13 +102,17 @@ export interface GoalDefinition {
   emoji: string;
   /** UI 群組分類 */
   category: GoalCategory;
-  /** 完成判定 */
+  /** 完成判定（支援遞歸條件樹） */
   completion: GoalCompletion;
   /** 解鎖條件；缺欄位表示無門檻 */
   unlock?: {
     minAscension?: number;
     minRunsCompleted?: number;
+    completedGoalIds?: GoalId[];
+    completedGoalMode?: 'all' | 'any';
   };
+  /** 完成獎勵（首次完成時領取） */
+  rewards?: GoalReward[];
 }
 
 /** 目標設定檔（goals.json 的對應型別） */
@@ -112,6 +160,24 @@ export interface RunStats {
   ascensionLevel: number;
   /** 單局擊殺數 */
   killCount: number;
+  /** v2: 通關地圖 ID */
+  mapId: string;
+  /** v2: 難度等級（0=easy, 1=normal, 2=hard） */
+  difficultyLevel: number;
+  /** v2: 難度名稱（easy/normal/hard） */
+  difficultyName: string;
+  /** v2: 陰/陽塔數量 */
+  yinYangTowerCount: number;
+  /** v2: 配方合成次數（非基礎二合一） */
+  synthesisRecipeCount: number;
+  /** v2: 基地受傷總量 */
+  damageTaken: number;
+  /** v2: 零傷旗標（0=有受傷, 1=零傷） */
+  noDamageTaken: number;
+  /** v2: 各怪物擊殺數 */
+  specificEnemyKills: Record<string, number>;
+  /** v2: 本局遭遇過的詞條 */
+  traitsEncountered: Record<string, boolean>;
 }
 
 /** 紀錄板渲染快照；由 buildBoardSnapshot 產出，供 UI 直接取用 */
@@ -165,7 +231,7 @@ export interface RitualSettings {
 /** TalentSaveData 中目標相關欄位的子集合（供 migrate 純函式操作） */
 export type GoalSaveDataSlice = Pick<
   TalentSaveData,
-  'nextGoalId' | 'nextGoalVersion' | 'goalStats' | 'goalMilestones' | 'lastBoardSnapshot' | 'mainMenuSeenGoalId' | 'ritualEnabled'
+  'nextGoalId' | 'nextGoalVersion' | 'goalStats' | 'goalMilestones' | 'lastBoardSnapshot' | 'mainMenuSeenGoalId' | 'ritualEnabled' | 'claimedGoalRewards'
 >;
 
 /** 空的 BoardSnapshot（用於初始化與舊存檔補欄位） */

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ENEMY_DEFS, getEnemyCollisionRadius, getEnemyVisualScale, getWaveConfig } from '../enemies';
 import type { EnemyTypeId } from '../enemies';
+import { getEnemySpriteDimensions, getEnemySpriteFrameCount } from '../sprites';
 
 // ============================================================
 // 1. Smoke — Enemy Registry
@@ -59,6 +60,17 @@ describe('Enemy Registry', () => {
     expect(getEnemyCollisionRadius('boss_dragon', tileSize)).toBeGreaterThan(
       getEnemyCollisionRadius('snake', tileSize)
     );
+  });
+
+  it('1.8 P1 new enemies use two-frame 24×24 source sprites', () => {
+    const newEnemyTypes: EnemyTypeId[] = [
+      'shadow_cat', 'basalt_tortoise', 'thunder_roc', 'wandering_wisp',
+    ];
+
+    for (const type of newEnemyTypes) {
+      expect(getEnemySpriteDimensions(type)).toEqual({ width: 24, height: 24 });
+      expect(getEnemySpriteFrameCount(type)).toBe(2);
+    }
   });
 });
 

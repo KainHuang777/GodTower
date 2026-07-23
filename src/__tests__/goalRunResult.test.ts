@@ -13,6 +13,16 @@ const baseStats: RunStats = {
   clearTimeMinutes: 0,
   ascensionLevel: 0,
   killCount: 0,
+  // v2 新增欄位
+  mapId: 'level_1',
+  difficultyLevel: 1,
+  difficultyName: 'normal',
+  yinYangTowerCount: 0,
+  synthesisRecipeCount: 0,
+  damageTaken: 0,
+  noDamageTaken: 1,
+  specificEnemyKills: {},
+  traitsEncountered: {},
 };
 
 describe('buildGoalRunFeedback', () => {

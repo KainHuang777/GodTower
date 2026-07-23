@@ -17,8 +17,14 @@ export function renderCollectionTab(): void {
   html += '<div class="collection-section"><h3 class="collection-section-title">萬獸圖鑑</h3><div class="collection-grid bestiary-grid">';
   const allBestiary = getAllBestiaryEntries();
   allBestiary.forEach(entry => {
-    const unlocked = talentData.collectionBestiary?.enemies?.[entry.id] === true ||
-      talentData.collectionBestiary?.towers?.[entry.id] === true;
+    let unlocked = false;
+    if (entry.category === 'trait') {
+      const traitKey = entry.id.replace(/^trait_/, '');
+      unlocked = talentData.collectionBestiary?.traits?.[traitKey] === true;
+    } else {
+      unlocked = talentData.collectionBestiary?.enemies?.[entry.id] === true ||
+        talentData.collectionBestiary?.towers?.[entry.id] === true;
+    }
     const cat = entry.category === 'enemy' ? '妖' : entry.category === 'trait' ? '魄' : '器';
     if (unlocked) {
       html += `<div class="collection-card unlocked" data-id="${entry.id}">`;

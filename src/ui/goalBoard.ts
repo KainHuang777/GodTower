@@ -52,7 +52,8 @@ export function renderGoalBoard(container: HTMLElement, data: TalentSaveData): v
 
   const stats = data.goalStats?.[snap.currentGoalId];
   const attempts = stats?.attempts ?? snap.attempts;
-  const requiresVictory = goal.completion.requiresVictory === true;
+  // v2: 只處理單一條件葉，複合條件預設為需要通關
+  const requiresVictory = 'requiresVictory' in goal.completion ? goal.completion.requiresVictory === true : false;
   const resultLabel = snap.lastResult ? RESULT_TEXT[snap.lastResult] : '尚未嘗試';
   const resultClass = snap.lastResult ? RESULT_CLASS[snap.lastResult] : 'goal-result-none';
 

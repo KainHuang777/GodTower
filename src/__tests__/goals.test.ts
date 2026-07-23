@@ -11,6 +11,7 @@ import {
   buildBoardSnapshot,
   isGoalUnlocked,
   isGoalCompleted,
+  claimGoalRewards,
 } from '../goals/state';
 import { ensureGoalFields, reconcileGoalStats } from '../goals/migrate';
 import { createEmptyBoardSnapshot } from '../goals/types';
@@ -49,6 +50,16 @@ function makeRunStats(overrides: Partial<RunStats> = {}): RunStats {
     clearTimeMinutes: 0,
     ascensionLevel: 0,
     killCount: 50,
+    // v2 新增欄位
+    mapId: 'level_1',
+    difficultyLevel: 1,
+    difficultyName: 'normal',
+    yinYangTowerCount: 0,
+    synthesisRecipeCount: 0,
+    damageTaken: 0,
+    noDamageTaken: 1,
+    specificEnemyKills: {},
+    traitsEncountered: {},
   };
   if (overrides.isVictory === true && overrides.clearedAllWaves === undefined) {
     base.clearedAllWaves = 1;
@@ -57,13 +68,14 @@ function makeRunStats(overrides: Partial<RunStats> = {}): RunStats {
 }
 
 describe('goals config', () => {
-  it('ships v1 with 8 goals and a stable version stamp', () => {
-    expect(GOAL_CONFIG.goals.length).toBe(8);
-    expect(GOAL_CONFIG.version).toBe('1.0.0');
+  it('ships v2 with 17 goals and a stable version stamp', () => {
+    expect(GOAL_CONFIG.goals.length).toBe(17);
+    expect(GOAL_CONFIG.version).toBe('2.0.0');
     for (const goal of GOAL_CONFIG.goals) {
       expect(typeof goal.id).toBe('string');
       expect(typeof goal.label).toBe('string');
-      expect(typeof goal.completion.key).toBe('string');
+      // v2: completion 可以是 leaf 或複合條件
+      expect(typeof goal.completion).toBe('object');
     }
   });
 
@@ -294,20 +306,33 @@ describe('buildBoardSnapshot', () => {
 describe('isGoalUnlocked & isGoalCompleted', () => {
   it('unlocks goal without unlock requirement always', () => {
     const goal = getGoalById('reach_wave_15')!;
-    expect(isGoalUnlocked(goal, 0, 0)).toBe(true);
+    const data = makeSaveData();
+    expect(isGoalUnlocked(goal, 0, 0, data)).toBe(true);
   });
 
   it('respects minAscension requirement', () => {
     const goal = getGoalById('asc2_clear')!;
-    expect(isGoalUnlocked(goal, 1, 0)).toBe(false);
-    expect(isGoalUnlocked(goal, 2, 0)).toBe(true);
-    expect(isGoalUnlocked(goal, 5, 0)).toBe(true);
+    const data = makeSaveData();
+    expect(isGoalUnlocked(goal, 1, 0, data)).toBe(false);
+    expect(isGoalUnlocked(goal, 2, 0, data)).toBe(true);
+    expect(isGoalUnlocked(goal, 5, 0, data)).toBe(true);
   });
 
   it('respects minRunsCompleted requirement', () => {
     const goal = getGoalById('clear_20_boss')!;
-    expect(isGoalUnlocked(goal, 0, 0)).toBe(false);
-    expect(isGoalUnlocked(goal, 0, 1)).toBe(true);
+    const data = makeSaveData();
+    expect(isGoalUnlocked(goal, 0, 0, data)).toBe(false);
+    expect(isGoalUnlocked(goal, 0, 1, data)).toBe(true);
+  });
+
+  it('respects completedGoalIds requirement (all mode)', () => {
+    const goal = getGoalById('zero_breach')!;
+    const data = makeSaveData();
+    // 未前置目標
+    expect(isGoalUnlocked(goal, 0, 1, data)).toBe(false);
+    // 完成前置目標
+    updateGoalStats(data, 'clear_20_boss', makeRunStats({ isVictory: true }), 'success', 1);
+    expect(isGoalUnlocked(goal, 0, 1, data)).toBe(true);
   });
 
   it('isGoalCompleted false when no stats present', () => {
@@ -418,5 +443,156 @@ describe('ensureGoalFields & reconcileGoalStats', () => {
     } as unknown) as TalentSaveData;
     ensureGoalFields(raw);
     expect(raw.formalRunsCompleted).toBe(3);
+  });
+});
+
+// ============================================================
+// v2 新增測試：遞歸條件、字串葉、獎勵系統
+// ============================================================
+
+describe('v2 composite conditions', () => {
+  it('evaluates AND condition correctly', () => {
+    const goal: GoalDefinition = {
+      id: 'test_and',
+      label: 'Test AND',
+      description: 'Test',
+      emoji: '🧪',
+      category: 'survival',
+      completion: {
+        type: 'and',
+        conditions: [
+          { key: 'highestWave', operator: 'gte', value: 15 },
+          { key: 'killCount', operator: 'gte', value: 50 },
+        ],
+      },
+    };
+    expect(evaluateGoalCompletion(goal, makeRunStats({ highestWave: 15, killCount: 50 }))).toBe(true);
+    expect(evaluateGoalCompletion(goal, makeRunStats({ highestWave: 15, killCount: 49 }))).toBe(false);
+    expect(evaluateGoalCompletion(goal, makeRunStats({ highestWave: 14, killCount: 50 }))).toBe(false);
+  });
+
+  it('evaluates OR condition correctly', () => {
+    const goal: GoalDefinition = {
+      id: 'test_or',
+      label: 'Test OR',
+      description: 'Test',
+      emoji: '🧪',
+      category: 'survival',
+      completion: {
+        type: 'or',
+        conditions: [
+          { key: 'highestWave', operator: 'gte', value: 15 },
+          { key: 'killCount', operator: 'gte', value: 100 },
+        ],
+      },
+    };
+    expect(evaluateGoalCompletion(goal, makeRunStats({ highestWave: 15, killCount: 50 }))).toBe(true);
+    expect(evaluateGoalCompletion(goal, makeRunStats({ highestWave: 10, killCount: 100 }))).toBe(true);
+    expect(evaluateGoalCompletion(goal, makeRunStats({ highestWave: 10, killCount: 50 }))).toBe(false);
+  });
+
+  it('evaluates nested AND/OR conditions', () => {
+    const goal: GoalDefinition = {
+      id: 'test_nested',
+      label: 'Test Nested',
+      description: 'Test',
+      emoji: '🧪',
+      category: 'survival',
+      completion: {
+        type: 'and',
+        conditions: [
+          { key: 'highestWave', operator: 'gte', value: 15 },
+          {
+            type: 'or',
+            conditions: [
+              { key: 'highestWave', operator: 'gte', value: 20 },
+              { key: 'killCount', operator: 'gte', value: 100 },
+            ],
+          },
+        ],
+      },
+    };
+    expect(evaluateGoalCompletion(goal, makeRunStats({ highestWave: 20, killCount: 50 }))).toBe(true);
+    expect(evaluateGoalCompletion(goal, makeRunStats({ highestWave: 15, killCount: 100 }))).toBe(true);
+    expect(evaluateGoalCompletion(goal, makeRunStats({ highestWave: 15, killCount: 50 }))).toBe(false);
+  });
+});
+
+describe('v2 string leaf conditions', () => {
+  it('evaluates string eq condition', () => {
+    const goal: GoalDefinition = {
+      id: 'test_string_eq',
+      label: 'Test String EQ',
+      description: 'Test',
+      emoji: '🧪',
+      category: 'survival',
+      completion: {
+        type: 'string',
+        key: 'mapId',
+        operator: 'eq',
+        value: 'rift',
+      },
+    };
+    expect(evaluateGoalCompletion(goal, makeRunStats({ mapId: 'rift' }))).toBe(true);
+    expect(evaluateGoalCompletion(goal, makeRunStats({ mapId: 'spiral' }))).toBe(false);
+  });
+
+  it('evaluates string in condition', () => {
+    const goal: GoalDefinition = {
+      id: 'test_string_in',
+      label: 'Test String IN',
+      description: 'Test',
+      emoji: '🧪',
+      category: 'survival',
+      completion: {
+        type: 'string',
+        key: 'difficultyName',
+        operator: 'in',
+        value: ['normal', 'hard'],
+      },
+    };
+    expect(evaluateGoalCompletion(goal, makeRunStats({ difficultyName: 'normal' }))).toBe(true);
+    expect(evaluateGoalCompletion(goal, makeRunStats({ difficultyName: 'hard' }))).toBe(true);
+    expect(evaluateGoalCompletion(goal, makeRunStats({ difficultyName: 'easy' }))).toBe(false);
+  });
+});
+
+describe('v2 subKey for Record fields', () => {
+  it('evaluates specificEnemyKills with subKey', () => {
+    const goal: GoalDefinition = {
+      id: 'test_subkey',
+      label: 'Test SubKey',
+      description: 'Test',
+      emoji: '🧪',
+      category: 'combat',
+      completion: {
+        key: 'specificEnemyKills',
+        subKey: 'shadow_cat',
+        operator: 'gte',
+        value: 30,
+      },
+    };
+    expect(evaluateGoalCompletion(goal, makeRunStats({ specificEnemyKills: { shadow_cat: 30 } }))).toBe(true);
+    expect(evaluateGoalCompletion(goal, makeRunStats({ specificEnemyKills: { shadow_cat: 29 } }))).toBe(false);
+    expect(evaluateGoalCompletion(goal, makeRunStats({ specificEnemyKills: {} }))).toBe(false);
+  });
+});
+
+describe('v2 rewards system', () => {
+  it('claimGoalRewards grants talent points once', () => {
+    const data = makeSaveData({ totalTalentPoints: 10 });
+    const rewards = claimGoalRewards(data, 'reach_wave_15');
+    expect(rewards.length).toBeGreaterThan(0);
+    expect(data.totalTalentPoints).toBe(11); // +1 from reach_wave_15
+    // 第二次呼叫不應再給予
+    const rewards2 = claimGoalRewards(data, 'reach_wave_15');
+    expect(rewards2.length).toBe(0);
+    expect(data.totalTalentPoints).toBe(11);
+  });
+
+  it('claimGoalRewards returns empty for unknown goal', () => {
+    const data = makeSaveData();
+    const rewards = claimGoalRewards(data, 'does_not_exist');
+    expect(rewards.length).toBe(0);
   });
 });

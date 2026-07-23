@@ -401,6 +401,120 @@ const DRAGON_MATRIX_F3: SpriteMatrix = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
 ];
 
+// P1 新怪物：24×24 原生像素精靈。
+// 畫布大於 TILE_SIZE 不影響尋路；保留外圍留白，讓輪廓、翅膀與煙霧可跨格呈現。
+const NEW_ENEMY_SPRITE_IDS = new Set<EnemyTypeId>([
+  'shadow_cat', 'basalt_tortoise', 'thunder_roc', 'wandering_wisp',
+]);
+const NEW_ENEMY_SPRITE_SIZE = 24;
+
+function create24SpriteMatrix(rows: readonly string[]): SpriteMatrix {
+  if (rows.length !== NEW_ENEMY_SPRITE_SIZE) {
+    throw new Error(`Expected ${NEW_ENEMY_SPRITE_SIZE} sprite rows, received ${rows.length}.`);
+  }
+
+  return rows.map(row => {
+    const pixels = row.replace(/\s/g, '');
+    if (pixels.length !== NEW_ENEMY_SPRITE_SIZE || !/^[0-4]+$/.test(pixels)) {
+      throw new Error('24×24 sprite rows must contain exactly 24 palette indices (0-4).');
+    }
+    return Array.from(pixels, Number);
+  });
+}
+
+function withSpriteEdits(source: SpriteMatrix, edits: ReadonlyArray<readonly [number, number, number]>): SpriteMatrix {
+  const next = source.map(row => [...row]);
+  for (const [x, y, color] of edits) next[y][x] = color;
+  return next;
+}
+
+// 影貓：正面貓臉、三角耳、冷白眼、口鼻、四腳與彎尾。
+const SHADOW_CAT_PALETTE: Palette = ['', '#4c1d95', '#a78bfa', '#f8fafc', '#1a1028'];
+const SHADOW_CAT_MATRIX_F0 = create24SpriteMatrix([
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+  '0000 0044 0000 0440 0000 0000', '0000 0411 4004 1114 0000 0000',
+  '0000 4122 1404 1222 1400 0000', '0000 4122 2222 2222 1400 0000',
+  '0000 4124 2112 1422 1400 0000', '0000 4122 1331 2222 1400 0000',
+  '0000 4122 2131 2222 1400 0000', '0000 0412 2222 2214 0000 0000',
+  '0000 0041 2222 2140 0000 0000', '0000 0412 2222 2214 0000 0000',
+  '0000 4122 2112 2221 4000 0000', '0000 4122 2100 1221 4000 0000',
+  '0000 0411 1400 4114 0000 0000', '0000 0044 4000 0444 0000 0000',
+  '0000 0000 4000 0411 4000 0000', '0000 0000 0400 4122 1400 0000',
+  '0000 0000 0044 1221 4000 0000', '0000 0000 0004 1114 0000 0000',
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+]);
+const SHADOW_CAT_MATRIX_F1 = withSpriteEdits(SHADOW_CAT_MATRIX_F0, [
+  [4, 15, 0], [5, 15, 0], [6, 15, 4], [7, 15, 1],
+  [14, 16, 0], [15, 16, 4], [16, 16, 1], [15, 18, 0],
+  [11, 18, 4], [12, 18, 1], [13, 18, 1],
+]);
+
+// 玄龜：岩層龜殼、青灰石甲與交替踏步的四肢。
+const BASALT_TORTOISE_PALETTE: Palette = ['', '#1e3a5f', '#64748b', '#94a3b8', '#2A1F14'];
+const BASALT_TORTOISE_MATRIX_F0 = create24SpriteMatrix([
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+  '0000 0000 0044 4400 0000 0000', '0000 0000 0411 1144 0000 0000',
+  '0000 0004 4122 2214 4000 0000', '0000 0041 2233 3222 1400 0000',
+  '0000 0412 2322 2232 2140 0000', '0000 4122 3221 1223 2214 0000',
+  '0004 1223 2212 2122 3221 4000', '0041 2232 2111 1122 2322 1400',
+  '0412 2321 1444 4412 2322 2144', '4122 3214 4000 4122 2322 2231',
+  '0412 2321 4404 1222 2222 2214', '0041 2222 1404 1222 2222 2114',
+  '0004 1222 2141 2222 2221 1140', '0000 4122 2144 1222 1114 0000',
+  '0000 0411 1140 0411 1400 0000', '0000 0044 4000 0044 0000 0000',
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+]);
+const BASALT_TORTOISE_MATRIX_F1 = withSpriteEdits(BASALT_TORTOISE_MATRIX_F0, [
+  [4, 16, 0], [5, 16, 0], [6, 16, 4], [7, 16, 1],
+  [15, 16, 0], [16, 16, 4], [17, 16, 1], [18, 16, 1],
+  [20, 12, 3], [21, 12, 1], [22, 12, 4],
+]);
+
+// 雷鷹：寬翼、金色雷羽與兩幀拍翼姿態。
+const THUNDER_ROC_PALETTE: Palette = ['', '#f59e0b', '#fef3c7', '#fbbf24', '#2A1F14'];
+const THUNDER_ROC_MATRIX_F0 = create24SpriteMatrix([
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+  '0000 0000 0044 0000 0000 0000', '0000 0000 0411 4000 0000 0000',
+  '0000 0004 4122 1400 0000 0000', '0000 0411 2222 1140 0000 0000',
+  '0004 1222 2332 2221 4000 0000', '0041 2222 2112 2222 1400 0000',
+  '0412 2222 2112 2222 2140 0000', '4122 2222 2112 2222 2214 0000',
+  '0412 2222 2112 2222 2140 0000', '0041 2222 2112 2222 1400 0000',
+  '0004 1222 2112 2221 4000 0000', '0000 4122 2233 2221 4000 0000',
+  '0000 0412 2221 2221 4000 0000', '0000 0041 2222 2214 0000 0000',
+  '0000 0004 1222 2140 0000 0000', '0000 0004 1122 1140 0000 0000',
+  '0000 0000 4104 0140 0000 0000', '0000 0004 4004 4000 0000 0000',
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+]);
+const THUNDER_ROC_MATRIX_F1 = withSpriteEdits(THUNDER_ROC_MATRIX_F0, [
+  [1, 7, 0], [2, 7, 0], [3, 7, 0], [2, 8, 0], [3, 8, 0], [4, 8, 0],
+  [19, 7, 0], [20, 7, 0], [21, 7, 0], [18, 8, 0], [19, 8, 0], [20, 8, 0],
+  [2, 4, 4], [3, 5, 1], [17, 4, 4], [16, 5, 1], [12, 17, 1],
+]);
+
+// 幽魂：清楚的人形頭部、冷白雙眼、漂浮雙臂與不規則霧尾。
+const WANDERING_WISP_PALETTE: Palette = ['', '#4338ca', '#c7d2fe', '#f8fafc', '#2A1F14'];
+const WANDERING_WISP_MATRIX_F0 = create24SpriteMatrix([
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+  '0000 0000 0044 0000 0000 0000', '0000 0000 0411 4000 0000 0000',
+  '0000 0004 4122 1400 0000 0000', '0000 0041 2222 2140 0000 0000',
+  '0000 0412 2332 2214 0000 0000', '0000 4122 2222 2221 4000 0000',
+  '0044 1222 2112 2222 1440 0000', '0412 2221 4000 4122 2140 0000',
+  '4122 2214 0000 0412 2221 4000', '0412 2221 4000 4122 2140 0000',
+  '0041 2222 1404 1222 1400 0000', '0004 1222 2141 2221 4000 0000',
+  '0000 4122 2212 2221 4000 0000', '0000 0412 2222 2214 0000 0000',
+  '0000 0041 2222 2140 0000 0000', '0000 0004 1222 1400 0000 0000',
+  '0000 0000 4121 4000 0000 0000', '0000 0000 0412 1400 0000 0000',
+  '0000 0000 0041 4000 0000 0000', '0000 0000 0004 0000 0000 0000',
+  '0000 0000 0000 0000 0000 0000', '0000 0000 0000 0000 0000 0000',
+]);
+const WANDERING_WISP_MATRIX_F1 = withSpriteEdits(WANDERING_WISP_MATRIX_F0, [
+  [1, 8, 0], [2, 8, 0], [2, 9, 0], [3, 9, 0], [4, 10, 0],
+  [20, 10, 4], [21, 11, 1], [19, 12, 2], [11, 18, 0], [12, 19, 0], [13, 20, 0],
+]);
+
 // 怪物精靈多幀對應表
 const ENEMY_SPRITE_MAP: Record<EnemyTypeId, { palette: Palette; matrices: SpriteMatrix[] }> = {
   snake:        { palette: SNAKE_PALETTE,         matrices: [SNAKE_MATRIX_F0, SNAKE_MATRIX_F1] },
@@ -410,7 +524,21 @@ const ENEMY_SPRITE_MAP: Record<EnemyTypeId, { palette: Palette; matrices: Sprite
   golem:        { palette: GOLEM_PALETTE,         matrices: [GOLEM_MATRIX_F0, GOLEM_MATRIX_F1] },
   beetle:       { palette: BEETLE_PALETTE,        matrices: [BEETLE_MATRIX_F0, BEETLE_MATRIX_F1] },
   boss_dragon:  { palette: DRAGON_PALETTE,        matrices: [DRAGON_MATRIX_F0, DRAGON_MATRIX_F1, DRAGON_MATRIX_F2, DRAGON_MATRIX_F3] },
+  shadow_cat:   { palette: SHADOW_CAT_PALETTE,    matrices: [SHADOW_CAT_MATRIX_F0, SHADOW_CAT_MATRIX_F1] },
+  basalt_tortoise: { palette: BASALT_TORTOISE_PALETTE, matrices: [BASALT_TORTOISE_MATRIX_F0, BASALT_TORTOISE_MATRIX_F1] },
+  thunder_roc:  { palette: THUNDER_ROC_PALETTE,   matrices: [THUNDER_ROC_MATRIX_F0, THUNDER_ROC_MATRIX_F1] },
+  wandering_wisp: { palette: WANDERING_WISP_PALETTE, matrices: [WANDERING_WISP_MATRIX_F0, WANDERING_WISP_MATRIX_F1] },
 };
+
+/** 用於 UI／驗證的原生精靈來源尺寸；與世界格或碰撞尺寸無關。 */
+export function getEnemySpriteDimensions(enemyType: EnemyTypeId): { width: number; height: number } {
+  const matrix = ENEMY_SPRITE_MAP[enemyType].matrices[0];
+  return { width: matrix[0].length, height: matrix.length };
+}
+
+export function getEnemySpriteFrameCount(enemyType: EnemyTypeId): number {
+  return ENEMY_SPRITE_MAP[enemyType].matrices.length;
+}
 
 // ============================================================
 // 2. 砲台 16x16 像素矩陣（2 幀呼吸待機動畫）
@@ -2089,9 +2217,11 @@ export function drawEnemySprite(
     return;
   }
 
-  // 2. 原生像素預設：常規敵人使用第二輪生物剪影；Boss 保留大尺寸龍影矩陣。
-  const pixelScale = scale * getEnemyVisualScale(enemyType);
-  if (enemyType !== 'boss_dragon') {
+  // 2. 原生像素預設：舊常規敵人使用第二輪生物剪影；P1 新怪物與 Boss 使用矩陣快取。
+  // 24px 新怪物以 16/24 換算渲染比例，維持既有血條、碰撞和道路視覺尺度。
+  const isLargeMatrixEnemy = NEW_ENEMY_SPRITE_IDS.has(enemyType);
+  const pixelScale = scale * getEnemyVisualScale(enemyType) * (isLargeMatrixEnemy ? 16 / NEW_ENEMY_SPRITE_SIZE : 1);
+  if (enemyType !== 'boss_dragon' && !isLargeMatrixEnemy) {
     drawRefinedEnemySprite(ctx, enemyType, x, y, pixelScale, hitFlashFrame, vx, vy);
     ctx.restore();
     return;

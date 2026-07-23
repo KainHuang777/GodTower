@@ -34,6 +34,15 @@ exports[`Snapshot Tests > Wave 5 snapshot 1`] = `
     "spawnIntervalMs": 0,
     "split": undefined,
   },
+  {
+    "armor": undefined,
+    "count": 2,
+    "enemyType": "thunder_roc",
+    "hpMultiplier": 1,
+    "regen": undefined,
+    "spawnIntervalMs": 800,
+    "split": undefined,
+  },
 ]
 `;
 
@@ -64,6 +73,15 @@ exports[`Snapshot Tests > Wave 10 snapshot 1`] = `
     "hpMultiplier": 4,
     "regen": undefined,
     "spawnIntervalMs": 0,
+    "split": undefined,
+  },
+  {
+    "armor": undefined,
+    "count": 3,
+    "enemyType": "thunder_roc",
+    "hpMultiplier": 1.5,
+    "regen": undefined,
+    "spawnIntervalMs": 700,
     "split": undefined,
   },
 ]

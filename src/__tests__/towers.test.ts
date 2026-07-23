@@ -234,13 +234,18 @@ describe('Element Counter Bonus (getElementBonus)', () => {
     expect(getElementBonus('metal', 'fire')).toBe(1.0);
   });
 
-  it('yin/yang have no elemental counters', () => {
-    for (const el of baseElements) {
+  it('yin/yang counter each other but not base elements', () => {
+    const fiveElements = ['fire', 'water', 'wood', 'earth', 'metal'] as const;
+    for (const el of fiveElements) {
       expect(getElementBonus('yin', el)).toBe(1.0);
       expect(getElementBonus('yang', el)).toBe(1.0);
       expect(getElementBonus(el, 'yin')).toBe(1.0);
       expect(getElementBonus(el, 'yang')).toBe(1.0);
     }
+    expect(getElementBonus('yin', 'yang')).toBe(1.31);
+    expect(getElementBonus('yang', 'yin')).toBe(1.31);
+    expect(getElementBonus('yin', 'yin')).toBe(1.0);
+    expect(getElementBonus('yang', 'yang')).toBe(1.0);
   });
 });
 

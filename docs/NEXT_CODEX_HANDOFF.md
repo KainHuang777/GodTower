@@ -1,30 +1,34 @@
 # 五行迷宮塔防 — 下一階段 Codex 美術接手事項
 
 > 本文件記錄 P1 內容擴充階段中**保留給 Codex（美術產線）**的視覺／動畫／音效交接項目。
-> 邏輯層與 #1 成就通知已完成（當前驗證：298 tests／14 files，65 modules build clean），
+> 邏輯層與 #1 成就通知已完成（當前驗證：311 tests／14 files，65 modules build clean），
 > 以下僅列出視覺/動畫/音效相關的待實作與強化項目。
 
 > 2026-07-19 更新：#2 MORE 系統 SVG icon、#4 圖鑑 UI 翻新、#5 圖鑑／成就進度條與 #6 核心 UI 改造已完成；#6 已追加完成關卡選擇紙本路線卡與戰場地形質感第一輪（高細節草地、固定裝飾、外置素材 fallback、Lv1 塔縮尺），並以出口置中的 16 格專用道路 autotile 取代偏心參考圖集的道路拼接。同步完成教學「清風折廊」、初級「六合星陣」與可組合道路地塊。圖鑑 Tab 天賦連線殘留亦已修正。已確認順序：銀級成就邏輯與設定完成後才實作 #1 通知；Lv2／配方／詞條資料進入 config 後才補 #3 Lore。驗證：278/278 tests、64 modules build clean。
 >
 > 2026-07-19 更新（第三次）：銀級成就系統與 #1 成就通知動畫已實作完成。驗證：298/298 tests、65 modules build clean；待 Antigravity 人工目視確認。
+>
+> 2026-07-23 更新：Fusion 設計完成 4 隻新怪物（影貓/玄龜/雷鷹/幽魂）+ 2 張新地圖（盤蛇古陣/陰陽裂界）+ 陰陽相剋規則。程式邏輯已實作（enemies.json/towers.json/types.ts/physics.ts/waves.json/maps.ts/collection.json），placeholder 精靈已加入 sprites.ts。目標系統 v2 完成（遞歸條件+獎勵+目標鏈，17 goals）。驗證：311 tests／14 files，65 modules build clean。待 Codex 完成像素精靈矩陣替換 placeholder + MORE 系統 SVG icon。
 
 | # | 項目 | 狀態 | 優先級 | 依賴 |
 |:--:|:---|:---:|:---:|:---|
 | 1 | 成就解鎖通知動畫 | ✅ | High | 無（銀級成就邏輯已完成） |
-| 2 | MORE 系統（SVG icon 置換 emoji） | ✅ | High | 無 |
-| 3 | 圖鑑 Lore 補完（新條目文案） | ⏳ | Medium | 銀級成就 config 完成後 |
+| 2 | MORE 系統（SVG icon 置換 emoji） | ⏳ | High | 無 |
+| 3 | 圖鑑 Lore 補完（新條目文案） | ✅ | Medium | 已完成（v1.2.0 30 條 + v1.4.0 4 條新詞條） |
 | 4 | 圖鑑 UI 翻新（東方像素風格） | ✅ | Medium | 無 |
 | 5 | 圖鑑進度條視覺 | ✅ | Low | 項目 4 完成後 |
 | 6 | Codex UI 美術改造（已核准範圍） | ✅ | Optional | 共用基礎＋HUD＋主選單＋關卡選擇 |
+| 7 | 4 隻新怪物像素精靈 | ✅ | High | 已改為正式 24×24 矩陣、各 2 幀，並接入戰場渲染 |
 
-## 執行順序（2026-07-19）
+## 執行順序（2026-07-23）
 
-1. ✅ **MORE 系統 SVG icon（#2）**：已完成，作為後續圖鑑 UI 的共同基礎。
-2. ✅ **圖鑑 UI 翻新（#4）**：已接入 SVG icon，完成紙本／青銅視覺語言。
-3. ✅ **圖鑑進度條（#5）**：已完成五行漸變圖鑑條與 tier 成就條。
-4. ✅ **成就解鎖通知（#1）**：已完成通知掛鉤與 DOM overlay；不修改純邏輯。
-5. **進階圖鑑 Lore（#3）**：等待 Lv2、配方塔與詞條圖鑑資料進入 config 後補完。
-6. ✅ **全域 Codex UI 改造（#6）**：已完成共用視覺基礎、戰鬥 HUD、主選單與關卡選擇紙本路線卡；卡牌、彈窗、結算與羅盤圖鑑仍未核准。
+1. ⏳ **MORE 系統 SVG icon（#2）**：待實作，將 HUD 與操作按鈕的 emoji 替換為 SVG icon。
+2. ✅ **4 隻新怪物像素精靈（#7）**：完成正式 24×24 矩陣與 2 幀動畫；視覺大小依既有 visualScale 換算，不改尋路或碰撞。
+3. ✅ **圖鑑 Lore（#3）**：已完成（v1.2.0 30 條古典中文 + v1.4.0 4 條新詞條）。
+4. ✅ **圖鑑 UI 翻新（#4）**：已接入 SVG icon，完成紙本／青銅視覺語言。
+5. ✅ **圖鑑進度條（#5）**：已完成五行漸變圖鑑條與 tier 成就條。
+6. ✅ **成就解鎖通知（#1）**：已完成通知掛鉤與 DOM overlay；不修改純邏輯。
+7. ✅ **全域 Codex UI 改造（#6）**：已完成共用視覺基礎、戰鬥 HUD、主選單與關卡選擇紙本路線卡；卡牌、彈窗、結算與羅盤圖鑑仍未核准。
 
 ---
 
@@ -269,6 +273,65 @@ export function getCollectionIcon(id: string): string {
 - 像素 Icon 統一替換所有 emoji
 
 此項為選修範圍，需專案擁有者決策後啟動。
+
+---
+
+## 7. 新怪物像素精靈矩陣 — High（2026-07-23 新增）
+
+### 現況
+- 4 隻新怪物的程式邏輯已完成（enemies.json、types.ts、physics.ts）
+- sprites.ts 尚未加入新怪物的像素精靈矩陣，目前會 fallback 到預設渲染
+- 需要 Codex 完成 4 組 16×16 像素精靈（各 2 幀動畫）
+
+### 新怪物清單
+
+| ID | 名稱 | 屬性 | 視覺主題 | 主色 | 副色 | 特殊視覺 |
+|:---|:---|:---:|:---|:---|:---|:---|
+| shadow_cat | 影貓 | yin | 霧狀貓形，下半身拖曳如煙 | `#6d28d9` 陰紫 | `#e9d5ff` 淡紫 | stealth 時 alpha 0.35 |
+| basalt_tortoise | 玄龜 | water | 厚重岩甲龜，背負玄武岩 | `#1e3a5f` 深岩藍 | `#64748b` 岩灰 | 岩甲視覺（無需特殊動畫） |
+| thunder_roc | 雷鷹 | yang | 展翅雷鳥，金色閃電紋 | `#f59e0b` 陽金 | `#fef3c7` 熾白 | 飛行 + evasion 時金色殘影 |
+| wandering_wisp | 幽魂 | yin | 不規則霧狀人形，雙眼冷白 | `#4338ca` 深陰藍 | `#c7d2fe` 淡藍 | phase 時虛無態半透明 |
+
+### 規格
+- 尺寸：24×24 像素矩陣（新怪物標準；不等同 16 單位世界格）
+- 動畫：2 幀（frame0 / frame1），每幀 150ms
+- 格式：`src/sprites.ts` 中的 `MATRIX_F0` / `MATRIX_F1` 常數
+- 色票：使用上述主色/副色，加上 `#2A1F14` 描邊
+- 特殊狀態視覺：
+  - shadow_cat stealth：`globalAlpha = 0.35`（physics.ts 已處理）
+  - wandering_wisp phase：`globalAlpha = 0.3` + 金色粒子（physics.ts 已處理）
+  - thunder_roc evasion：閃避時顯示金色殘影 1 幀（需 sprites.ts 支援）
+
+### 實作參考
+```typescript
+// src/sprites.ts — 新增 4 組精靈
+
+const SHADOW_CAT_PALETTE = { '.': null, 'p': '#6d28d9', 's': '#e9d5ff', 'e': '#c4b5fd', 'o': '#2A1F14' };
+const SHADOW_CAT_F0 = [
+  '................',
+  '....pp..........',
+  '...pppp.........',
+  '...pepp.........',
+  '...pppp.........',
+  '....pp..........',
+  '...pppp.........',
+  '..pppppp........',
+  '..p....p........',
+  '.pp....pp.......',
+  '.p......p.......',
+  '..........p.....',
+  '...........p....',
+  '............p...',
+  '................',
+  '................',
+];
+// ... 類似格式完成 4 組
+```
+
+### 不應修改的檔案
+- `src/battle/physics.ts` — 機制邏輯已完成
+- `src/config/enemies.json` — 數值定義已完成
+- `src/types.ts` — 型別定義已完成
 
 ---
 
