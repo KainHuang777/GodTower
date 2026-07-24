@@ -8,6 +8,7 @@
 import { ENEMY_DEFS, getEnemyVisualScale, type EnemyTypeId } from './enemies';
 import type { TowerTypeId } from './towers';
 import { ELEMENT_RING_COLORS, OUTLINE_COLOR, hexToRgba, getElementAccent } from './theme';
+import { drawDragonSpine } from './spineBoss';
 
 // 元素主題色現從 theme.ts 匯入（Mindustry 高飽和螢光風格）
 
@@ -16,6 +17,17 @@ export const spriteCache = new Map<string, HTMLCanvasElement>();
 
 /** 圖片資產快取 (Phase 4 高品質美術資源，保留作為 Fallback 切換) */
 const imageAssetCache = new Map<string, HTMLImageElement>();
+
+/**
+ * 從外部素材挑選的行走動畫。每個序列維持原始像素，不進行模糊縮放；
+ * 若其中任一資產載入失敗，繪製流程會回退到下方的原生矩陣精靈。
+ */
+const EXTERNAL_ENEMY_ANIMATIONS: Partial<Record<EnemyTypeId, { frameCount: number; path: string }>> = {
+  shadow_cat: { frameCount: 15, path: 'shadow_cat' },
+  basalt_tortoise: { frameCount: 15, path: 'basalt_tortoise' },
+  thunder_roc: { frameCount: 20, path: 'thunder_roc' },
+  wandering_wisp: { frameCount: 15, path: 'wandering_wisp' },
+};
 
 /** 預載入單張高品質圖片資產 */
 export function preloadImage(key: string, src: string): Promise<void> {
@@ -30,6 +42,57 @@ export function preloadImage(key: string, src: string): Promise<void> {
       console.warn(`[Asset Loader] High-res image not found: ${src}, using pixel art fallback.`);
       resolve();
     };
+  });
+}
+
+function drawExternalEnemyAnimation(
+  ctx: CanvasRenderingContext2D,
+  enemyType: EnemyTypeId,
+  x: number,
+  y: number,
+  hitFlashFrame: number,
+  scale: number,
+  vx: number,
+): boolean {
+  const animation = EXTERNAL_ENEMY_ANIMATIONS[enemyType];
+  if (!animation) return false;
+
+  const frameIdx = Math.floor(Date.now() / 110) % animation.frameCount;
+  const image = imageAssetCache.get(`external_enemy_${enemyType}_${frameIdx}`);
+  if (!image?.complete || image.naturalWidth === 0) return false;
+
+  const targetWidth = 16 * scale * getEnemyVisualScale(enemyType);
+  const targetHeight = targetWidth * (image.naturalHeight / image.naturalWidth);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.shadowBlur = hitFlashFrame > 0 ? 6 * scale : 3 * scale;
+  ctx.shadowColor = hitFlashFrame > 0
+    ? '#f8fafc'
+    : hexToRgba(getElementAccent(ENEMY_DEFS[enemyType].element), 0.4);
+  // 來源 Walk 序列預設朝左；東向移動時以角色中心為軸鏡像。
+  // 南北移動保留側身輪廓，避免直接旋轉而失去像素怪物的可讀性。
+  if (vx > 0.01) {
+    ctx.translate(x, y);
+    ctx.scale(-1, 1);
+    ctx.translate(-x, -y);
+  }
+  ctx.drawImage(image, x - targetWidth / 2, y - targetHeight / 2, targetWidth, targetHeight);
+  ctx.restore();
+  return true;
+}
+
+/** 預載四隻替換怪物的 Walk 幀；任何失敗會保留原生精靈 fallback。 */
+export function preloadExternalEnemyAnimations(): void {
+  const basePath = 'assets/sprites/enemies/external';
+  Object.entries(EXTERNAL_ENEMY_ANIMATIONS).forEach(([enemyType, animation]) => {
+    if (!animation) return;
+    for (let frame = 0; frame < animation.frameCount; frame += 1) {
+      const frameName = String(frame).padStart(2, '0');
+      preloadImage(
+        `external_enemy_${enemyType}_${frame}`,
+        `${basePath}/${animation.path}/walk_${frameName}.png`,
+      );
+    }
   });
 }
 
@@ -2153,7 +2216,19 @@ export function drawEnemySprite(
     ctx.translate(-x, -y);
   }
 
-  // 1. 只有當選擇 AI 高清 (style === 'highres') 且圖片載入成功時才使用 SD 圖片
+  // 1. 指定的外部行走序列優先於風格切換；失敗時自然回退至原生矩陣精靈。
+  if (drawExternalEnemyAnimation(ctx, enemyType, x, y, hitFlashFrame, scale, vx)) {
+    ctx.restore();
+    return;
+  }
+
+  // 2. Boss 1004 的 Spine 試點。資產未就緒或解析失敗時仍會使用下方原生 Boss。
+  if (enemyType === 'boss_dragon' && drawDragonSpine(ctx, x, y, hitFlashFrame)) {
+    ctx.restore();
+    return;
+  }
+
+  // 3. 只有當選擇 AI 高清 (style === 'highres') 且圖片載入成功時才使用 SD 圖片
   const highresKey = `enemy_${enemyType}`;
   const img = imageAssetCache.get(highresKey);
   if (style === 'highres' && img && img.complete && img.naturalWidth !== 0) {
@@ -2217,7 +2292,7 @@ export function drawEnemySprite(
     return;
   }
 
-  // 2. 原生像素預設：舊常規敵人使用第二輪生物剪影；P1 新怪物與 Boss 使用矩陣快取。
+  // 4. 原生像素預設：舊常規敵人使用第二輪生物剪影；P1 新怪物與 Boss 使用矩陣快取。
   // 24px 新怪物以 16/24 換算渲染比例，維持既有血條、碰撞和道路視覺尺度。
   const isLargeMatrixEnemy = NEW_ENEMY_SPRITE_IDS.has(enemyType);
   const pixelScale = scale * getEnemyVisualScale(enemyType) * (isLargeMatrixEnemy ? 16 / NEW_ENEMY_SPRITE_SIZE : 1);
@@ -2227,7 +2302,7 @@ export function drawEnemySprite(
     return;
   }
 
-  // 3. Fallback: 大型 Boss 的原始內建像素精靈多幀動畫
+  // 5. Fallback: 大型 Boss 的原始內建像素精靈多幀動畫
   const data = ENEMY_SPRITE_MAP[enemyType];
   if (data) {
     const frameCount = data.matrices.length;

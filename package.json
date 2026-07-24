@@ -14,5 +14,9 @@
     "typescript": "^5.2.2",
     "vite": "^5.0.0",
     "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "@esotericsoftware/spine-canvas": "4.1.24",
+    "@esotericsoftware/spine-core": "4.1.24"
   }
 }

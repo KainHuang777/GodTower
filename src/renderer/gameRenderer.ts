@@ -2,7 +2,8 @@
 
 import { gameState } from '../state';
 import { getDomRefs } from '../domRefs';
-import { drawTowerSprite, drawEnemySprite, preloadImage, spriteCache } from '../sprites';
+import { drawTowerSprite, drawEnemySprite, preloadImage, preloadExternalEnemyAnimations, spriteCache } from '../sprites';
+import { preloadDragonSpine } from '../spineBoss';
 import { drawRoutePreview } from './drawRoutePreview';
 import { getTileCacheCanvas } from './tileCache';
 import { BASE_TOWERS, getTowerDef, getSameMergeResult, getCrossRecipeResult, ELEMENT_COUNTER, RECIPE_TOWERS, LV2_TOWERS, TowerTypeId } from '../towers';
@@ -979,6 +980,8 @@ export function loadAllHighResSprites(): void {
   imagePreloads.forEach(([key, src]) => {
     preloadImage(key, src);
   });
+  preloadExternalEnemyAnimations();
+  preloadDragonSpine();
 }
 
 export function drawMergeAnimation(ctx: CanvasRenderingContext2D) {
